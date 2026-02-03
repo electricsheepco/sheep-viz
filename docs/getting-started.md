@@ -36,12 +36,17 @@ This is useful for:
 
 ## Basic Controls
 
-| Control | Action |
-|---------|--------|
+| Key | Action |
+|-----|--------|
 | Space | Play / Pause |
+| P | Pop out canvas (for dual-screen) |
 | F | Toggle fullscreen |
 | H | Hide / show UI |
 | R | Start / stop recording |
+
+## Switching Visualizers
+
+Use the dropdown at the top of the sidebar to switch between different visualizers without reloading the page.
 
 ## Interface Overview
 

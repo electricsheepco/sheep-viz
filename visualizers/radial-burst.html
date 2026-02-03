@@ -79,6 +79,14 @@
     }
     #fullscreen-indicator.show { opacity: 1; }
 
+    .viz-selector { margin-bottom: 16px; }
+    .viz-selector select {
+      width: 100%; padding: 10px 12px; font-family: inherit; font-size: 11px;
+      background: var(--bg-tertiary); color: var(--text-primary);
+      border: 1px solid var(--bg-tertiary); border-radius: 6px; cursor: pointer; outline: none;
+    }
+    .viz-selector select:hover, .viz-selector select:focus { border-color: var(--accent); }
+
     h1 { font-size: 14px; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }
     .subtitle { font-size: 11px; color: var(--text-secondary); margin-bottom: 24px; }
 
@@ -194,6 +202,15 @@
       <div id="click-prompt">Click to enable audio</div>
     </div>
     <div id="sidebar">
+      <div class="viz-selector">
+        <select id="vizSelect" onchange="if(this.value) window.location.href=this.value">
+          <option value="">Switch Visualizer...</option>
+          <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
+          <option value="fluid-flow.html">Fluid Flow</option>
+          <option value="radial-burst.html" selected>Radial Burst</option>
+          <option value="vertical-pulse.html">Vertical Pulse (Full)</option>
+        </select>
+      </div>
       <h1>Radial Burst</h1>
       <p class="subtitle">Particle explosions synced to beats</p>
 

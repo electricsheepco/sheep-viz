@@ -221,6 +221,16 @@
             </div>
 
             <div class="section">
+                <select id="vizSelect" onchange="if(this.value) window.location.href=this.value" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;cursor:pointer;">
+                    <option value="">Switch Visualizer...</option>
+                    <option value="vertical-pulse-pro.html" selected>Vertical Pulse Pro</option>
+                    <option value="fluid-flow.html">Fluid Flow</option>
+                    <option value="radial-burst.html">Radial Burst</option>
+                    <option value="vertical-pulse.html">Vertical Pulse (Full)</option>
+                </select>
+            </div>
+
+            <div class="section">
                 <div class="section-title">Audio Input</div>
                 <div id="audio-status" class="status">Click canvas or press SPACE</div>
                 <div class="file-wrap">
