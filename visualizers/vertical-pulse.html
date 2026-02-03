@@ -273,6 +273,7 @@
                         <span class="val" id="overlayIntensity-v">50%</span>
                     </div>
                 </div>
+                <button class="btn green" id="extract-colors">Extract Colors from Image</button>
                 <button class="btn blue" id="clear-overlay">Clear Overlay</button>
             </div>
 
@@ -832,6 +833,106 @@
         setStatus('overlay-status', 'No overlay', '');
     }
 
+    function extractColorsFromOverlay() {
+        const img = overlayImg || (cycleImages.length > 0 ? cycleImages[0] : null);
+        if (!img) {
+            alert('Load an overlay image first');
+            return;
+        }
+
+        // Create offscreen graphics to sample the image
+        const g = createGraphics(img.width, img.height);
+        g.image(img, 0, 0);
+        g.loadPixels();
+
+        // Sample colors from image
+        const colors = [];
+        const step = Math.max(1, Math.floor(img.width * img.height / 1000)); // Sample ~1000 pixels
+
+        for (let i = 0; i < g.pixels.length; i += step * 4) {
+            const r = g.pixels[i];
+            const gr = g.pixels[i + 1];
+            const b = g.pixels[i + 2];
+            const a = g.pixels[i + 3];
+
+            // Skip transparent and very dark/light pixels
+            if (a < 128) continue;
+            const brightness = (r + gr + b) / 3;
+            if (brightness < 30 || brightness > 225) continue;
+
+            colors.push({ r, g: gr, b, count: 1 });
+        }
+
+        // Simple color clustering - find 3 dominant colors
+        const dominantColors = findDominantColors(colors, 3);
+
+        if (dominantColors.length >= 3) {
+            // Sort by brightness for bass/mid/treble mapping
+            dominantColors.sort((a, b) => (a.r + a.g + a.b) - (b.r + b.g + b.b));
+
+            P.colorBass = rgbToHex(dominantColors[0]);
+            P.colorMid = rgbToHex(dominantColors[1]);
+            P.colorTreble = rgbToHex(dominantColors[2]);
+
+            // Update UI
+            document.getElementById('colorBass').value = P.colorBass;
+            document.getElementById('colorBass-v').textContent = P.colorBass;
+            document.getElementById('colorMid').value = P.colorMid;
+            document.getElementById('colorMid-v').textContent = P.colorMid;
+            document.getElementById('colorTreble').value = P.colorTreble;
+            document.getElementById('colorTreble-v').textContent = P.colorTreble;
+
+            setStatus('overlay-status', 'Colors extracted!', 'active');
+        }
+
+        g.remove();
+    }
+
+    function findDominantColors(colors, count) {
+        if (colors.length < count) return colors;
+
+        // K-means-ish clustering
+        const clusters = [];
+        for (let i = 0; i < count; i++) {
+            clusters.push(colors[Math.floor(Math.random() * colors.length)]);
+        }
+
+        for (let iter = 0; iter < 10; iter++) {
+            const groups = clusters.map(() => []);
+
+            // Assign colors to nearest cluster
+            colors.forEach(c => {
+                let minDist = Infinity;
+                let nearest = 0;
+                clusters.forEach((cl, i) => {
+                    const dist = Math.abs(c.r - cl.r) + Math.abs(c.g - cl.g) + Math.abs(c.b - cl.b);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        nearest = i;
+                    }
+                });
+                groups[nearest].push(c);
+            });
+
+            // Update cluster centers
+            groups.forEach((group, i) => {
+                if (group.length > 0) {
+                    clusters[i] = {
+                        r: Math.round(group.reduce((s, c) => s + c.r, 0) / group.length),
+                        g: Math.round(group.reduce((s, c) => s + c.g, 0) / group.length),
+                        b: Math.round(group.reduce((s, c) => s + c.b, 0) / group.length)
+                    };
+                }
+            });
+        }
+
+        return clusters;
+    }
+
+    function rgbToHex(c) {
+        return '#' + [c.r, c.g, c.b].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+
     // ═══════════════════════════════════════════════════════════════════
     // PRESETS
     // ═══════════════════════════════════════════════════════════════════
@@ -1058,6 +1159,7 @@
             P.overlayIntensity = this.value / 100;
             document.getElementById('overlayIntensity-v').textContent = this.value + '%';
         };
+        document.getElementById('extract-colors').onclick = extractColorsFromOverlay;
         document.getElementById('clear-overlay').onclick = clearOverlay;
 
         // Resolution
