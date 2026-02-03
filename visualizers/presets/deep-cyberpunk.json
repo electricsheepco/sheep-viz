@@ -1,0 +1,25 @@
+{
+  "name": "Deep Cyberpunk",
+  "description": "Dense columns, heavy blobs, deep reds and electric blues. The original look.",
+  "visualizer": "vertical-pulse",
+  "version": "1.0",
+  "created": "2025-02-03",
+  "params": {
+    "seed": 42,
+    "columnCount": 70,
+    "columnWidth": 0.75,
+    "baseBright": 0.18,
+    "blobCount": 6,
+    "blobSize": 180,
+    "sensitivity": 1.6,
+    "colorBass": "#cc0033",
+    "colorMid": "#aa00aa",
+    "colorTreble": "#2244ff",
+    "overlaySize": 0.2,
+    "overlayOpacity": 0.8,
+    "overlayPosition": "center",
+    "overlayEffect": "split",
+    "overlayIntensity": 0.5
+  },
+  "tags": ["cyberpunk", "neon", "dark", "intense"]
+}

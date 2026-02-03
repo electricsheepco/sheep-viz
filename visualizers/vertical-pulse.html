@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vertical Pulse - Audio Reactive Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark: #141413;
+            --light: #faf9f5;
+            --mid-gray: #b0aea5;
+            --light-gray: #e8e6dc;
+            --orange: #d97757;
+            --blue: #6a9bcc;
+            --green: #788c5d;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+        .container { display: flex; min-height: 100vh; padding: 20px; gap: 20px; }
+        .sidebar {
+            width: 300px;
+            flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto;
+            max-height: 100vh;
+        }
+        .sidebar h1 { font-family: 'Lora', serif; font-size: 22px; margin-bottom: 6px; }
+        .sidebar .subtitle { color: var(--mid-gray); font-size: 13px; margin-bottom: 20px; line-height: 1.4; }
+        .section { margin-bottom: 20px; }
+        .section h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .section h3::before { content: '•'; color: var(--orange); }
+        .status {
+            background: var(--light);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--light-gray);
+        }
+        .status.active { border-color: var(--green); background: rgba(120, 140, 93, 0.1); }
+        .status.error { border-color: #c44; background: rgba(200, 60, 60, 0.1); }
+        .control { margin-bottom: 14px; }
+        .control label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 5px; }
+        .slider-row { display: flex; align-items: center; gap: 10px; }
+        .slider-row input[type="range"] { flex: 1; height: 4px; background: var(--light-gray); border-radius: 2px; -webkit-appearance: none; }
+        .slider-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--orange); border-radius: 50%; cursor: pointer; }
+        .val { font-family: monospace; font-size: 11px; color: var(--mid-gray); min-width: 45px; text-align: right; }
+        .color-row { display: flex; align-items: center; gap: 8px; }
+        .color-row input[type="color"] { width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; padding: 0; }
+        .btn {
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 8px;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #c86641; }
+        .btn.blue { background: var(--blue); }
+        .btn.blue:hover { background: #5a8bb8; }
+        .btn.green { background: var(--green); }
+        .btn.green:hover { background: #6b7b52; }
+        .btn.dark { background: var(--dark); }
+        .btn.dark:hover { background: #2a2a28; }
+        .btn.rec { background: #c33; animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { opacity: 0.7; } }
+        .btn-row { display: flex; gap: 8px; }
+        .btn-row .btn { flex: 1; margin: 0; }
+        .file-wrap { position: relative; margin-bottom: 8px; }
+        .file-wrap input[type="file"] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; top: 0; left: 0; }
+        .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; }
+        #canvas-container {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            background: #0a0a0a;
+        }
+        #defaultCanvas0 { display: block; }
+        @media (max-width: 900px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; max-height: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Vertical Pulse</h1>
+            <div class="subtitle">Audio-reactive light columns. Load audio or use mic.</div>
+
+            <div class="section">
+                <h3>Audio</h3>
+                <div id="audio-status" class="status">Click canvas to enable audio</div>
+                <div class="file-wrap">
+                    <button class="btn dark">Load Audio File</button>
+                    <input type="file" id="audio-file" accept="audio/*">
+                </div>
+                <button class="btn blue" id="mic-btn">Use Microphone</button>
+                <button class="btn green" id="play-btn">Play / Pause</button>
+            </div>
+
+            <div class="section">
+                <h3>Seed</h3>
+                <input type="number" id="seed" value="42" style="width:100%;padding:8px;border:1px solid var(--light-gray);border-radius:6px;font-family:monospace;text-align:center;margin-bottom:8px;">
+                <div class="btn-row">
+                    <button class="btn blue" id="prev-seed">Prev</button>
+                    <button class="btn blue" id="next-seed">Next</button>
+                </div>
+                <button class="btn green" id="rand-seed">Random</button>
+            </div>
+
+            <div class="section">
+                <h3>Columns</h3>
+                <div class="control">
+                    <label>Count</label>
+                    <div class="slider-row">
+                        <input type="range" id="columnCount" min="20" max="100" value="60">
+                        <span class="val" id="columnCount-v">60</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Width</label>
+                    <div class="slider-row">
+                        <input type="range" id="columnWidth" min="30" max="100" value="70">
+                        <span class="val" id="columnWidth-v">70%</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Base Brightness</label>
+                    <div class="slider-row">
+                        <input type="range" id="baseBright" min="5" max="50" value="20">
+                        <span class="val" id="baseBright-v">20%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Blobs</h3>
+                <div class="control">
+                    <label>Count</label>
+                    <div class="slider-row">
+                        <input type="range" id="blobCount" min="0" max="10" value="5">
+                        <span class="val" id="blobCount-v">5</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Size</label>
+                    <div class="slider-row">
+                        <input type="range" id="blobSize" min="50" max="300" value="150">
+                        <span class="val" id="blobSize-v">150</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Audio Response</h3>
+                <div class="control">
+                    <label>Sensitivity</label>
+                    <div class="slider-row">
+                        <input type="range" id="sensitivity" min="50" max="300" value="150">
+                        <span class="val" id="sensitivity-v">1.5x</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Colors</h3>
+                <div class="control">
+                    <label>Bass</label>
+                    <div class="color-row">
+                        <input type="color" id="colorBass" value="#ff1a4b">
+                        <span class="val" id="colorBass-v">#ff1a4b</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Mid</label>
+                    <div class="color-row">
+                        <input type="color" id="colorMid" value="#cc33ff">
+                        <span class="val" id="colorMid-v">#cc33ff</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Treble</label>
+                    <div class="color-row">
+                        <input type="color" id="colorTreble" value="#3366ff">
+                        <span class="val" id="colorTreble-v">#3366ff</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3>Overlay</h3>
+                <div id="overlay-status" class="status">No overlay</div>
+                <div class="file-wrap">
+                    <button class="btn dark">Load Overlay Image</button>
+                    <input type="file" id="overlay-file" accept="image/*">
+                </div>
+                <div class="control">
+                    <label>Size</label>
+                    <div class="slider-row">
+                        <input type="range" id="overlaySize" min="5" max="50" value="20">
+                        <span class="val" id="overlaySize-v">20%</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Opacity</label>
+                    <div class="slider-row">
+                        <input type="range" id="overlayOpacity" min="10" max="100" value="80">
+                        <span class="val" id="overlayOpacity-v">80%</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Position</label>
+                    <select id="overlayPosition" style="width:100%;padding:6px;border:1px solid var(--light-gray);border-radius:4px;">
+                        <option value="center" selected>Center</option>
+                        <option value="bottom-right">Bottom Right</option>
+                        <option value="bottom-left">Bottom Left</option>
+                        <option value="top-right">Top Right</option>
+                        <option value="top-left">Top Left</option>
+                    </select>
+                </div>
+                <div class="control">
+                    <label>Reactive Effect</label>
+                    <select id="overlayEffect" style="width:100%;padding:6px;border:1px solid var(--light-gray);border-radius:4px;">
+                        <option value="none">None (Static)</option>
+                        <option value="split" selected>Split & Shift</option>
+                        <option value="pulse">Pulse</option>
+                        <option value="glitch">Glitch</option>
+                        <option value="cycle">Cycle (Multiple Images)</option>
+                    </select>
+                </div>
+                <div id="cycle-options" style="display:none;margin-top:8px;padding:10px;background:var(--light);border-radius:6px;">
+                    <div class="file-wrap" style="margin-bottom:8px;">
+                        <button class="btn blue" style="font-size:12px;">+ Add Images to Cycle</button>
+                        <input type="file" id="cycle-files" accept="image/*" multiple>
+                    </div>
+                    <div id="cycle-count" style="font-size:11px;color:var(--mid-gray);">0 images loaded</div>
+                    <div class="control" style="margin-top:8px;margin-bottom:0;">
+                        <label>Cycle Trigger</label>
+                        <select id="cycleTrigger" style="width:100%;padding:6px;border:1px solid var(--light-gray);border-radius:4px;font-size:12px;">
+                            <option value="beat">On Beat (Bass Hit)</option>
+                            <option value="time">Timed (Every N sec)</option>
+                            <option value="bar">Every 4 Beats</option>
+                        </select>
+                    </div>
+                    <div class="control" style="margin-top:8px;margin-bottom:0;">
+                        <label>Cycle Speed</label>
+                        <div class="slider-row">
+                            <input type="range" id="cycleSpeed" min="5" max="40" value="20">
+                            <span class="val" id="cycleSpeed-v">2s</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Effect Intensity</label>
+                    <div class="slider-row">
+                        <input type="range" id="overlayIntensity" min="0" max="100" value="50">
+                        <span class="val" id="overlayIntensity-v">50%</span>
+                    </div>
+                </div>
+                <button class="btn blue" id="clear-overlay">Clear Overlay</button>
+            </div>
+
+            <div class="section">
+                <h3>Resolution</h3>
+                <select id="resolution" style="width:100%;padding:8px;border:1px solid var(--light-gray);border-radius:6px;margin-bottom:8px;">
+                    <option value="1200x800">Default (1200x800)</option>
+                    <optgroup label="Horizontal">
+                        <option value="1920x1080">YouTube / HD (1920x1080)</option>
+                        <option value="2560x1440">YouTube 2K (2560x1440)</option>
+                        <option value="3840x2160">YouTube 4K (3840x2160)</option>
+                    </optgroup>
+                    <optgroup label="Vertical (Mobile)">
+                        <option value="1080x1920">TikTok / Reels / Shorts (1080x1920)</option>
+                        <option value="1080x1350">Instagram Portrait (1080x1350)</option>
+                    </optgroup>
+                    <optgroup label="Square">
+                        <option value="1080x1080">Instagram Square (1080x1080)</option>
+                    </optgroup>
+                </select>
+                <div id="res-display" class="status">1200 x 800</div>
+            </div>
+
+            <div class="section">
+                <h3>Presets</h3>
+                <div class="file-wrap">
+                    <button class="btn blue">Load Preset</button>
+                    <input type="file" id="preset-file" accept=".json">
+                </div>
+                <button class="btn green" id="save-preset">Save Current as Preset</button>
+            </div>
+
+            <div class="section">
+                <h3>Export</h3>
+                <div id="record-status" class="status">Ready</div>
+                <button class="btn dark" id="record-btn">Start Recording</button>
+                <button class="btn blue" id="save-frame">Save Frame (PNG)</button>
+                <button class="btn" id="reset-btn">Reset All</button>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container"></div>
+        </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // PARAMS
+    // ═══════════════════════════════════════════════════════════════════
+    const P = {
+        seed: 42,
+        columnCount: 60,
+        columnWidth: 0.7,
+        baseBright: 0.2,
+        blobCount: 5,
+        blobSize: 150,
+        sensitivity: 1.5,
+        colorBass: '#ff1a4b',
+        colorMid: '#cc33ff',
+        colorTreble: '#3366ff',
+        overlaySize: 0.2,
+        overlayOpacity: 0.8,
+        overlayPosition: 'center',
+        overlayEffect: 'split',
+        overlayIntensity: 0.5,
+        cycleTrigger: 'beat',
+        cycleSpeed: 2.0
+    };
+    const defaults = {...P};
+
+    // Overlay image
+    let overlayImg = null;
+
+    // Cycle mode
+    let cycleImages = [];
+    let cycleIndex = 0;
+    let lastCycleTime = 0;
+    let lastBeatTime = 0;
+    let beatCount = 0;
+    let prevBass = 0;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUDIO
+    // ═══════════════════════════════════════════════════════════════════
+    let actx, analyser, source, audioEl, freqData, smoothed;
+    let audioReady = false, playing = false;
+
+    function initAudio() {
+        if (actx) return Promise.resolve();
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = actx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        smoothed = new Float32Array(analyser.frequencyBinCount).fill(0);
+        return actx.resume();
+    }
+
+    function loadFile(file) {
+        initAudio().then(() => {
+            if (source) { try { source.disconnect(); } catch(e){} }
+            if (audioEl) audioEl.pause();
+
+            const url = URL.createObjectURL(file);
+            audioEl = new Audio(url);
+
+            audioEl.oncanplay = () => {
+                source = actx.createMediaElementSource(audioEl);
+                source.connect(analyser);
+                analyser.connect(actx.destination);
+                audioReady = true;
+                setStatus('audio-status', 'Loaded: ' + file.name, 'active');
+            };
+            audioEl.onerror = () => setStatus('audio-status', 'Error loading file', 'error');
+            audioEl.onended = () => { playing = false; };
+        });
+    }
+
+    function useMic() {
+        initAudio().then(() => {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    if (source) { try { source.disconnect(); } catch(e){} }
+                    if (audioEl) audioEl.pause();
+                    source = actx.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    audioReady = true;
+                    playing = true;
+                    setStatus('audio-status', 'Microphone active', 'active');
+                })
+                .catch(e => setStatus('audio-status', 'Mic error: ' + e.message, 'error'));
+        });
+    }
+
+    function togglePlay() {
+        if (!audioEl) return;
+        initAudio().then(() => {
+            if (playing) {
+                audioEl.pause();
+                playing = false;
+            } else {
+                audioEl.play();
+                playing = true;
+            }
+        });
+    }
+
+    function getAudio() {
+        if (!audioReady || !analyser) {
+            return { bass: 0, mid: 0, treble: 0, spectrum: new Array(P.columnCount).fill(0) };
+        }
+        analyser.getByteFrequencyData(freqData);
+
+        for (let i = 0; i < freqData.length; i++) {
+            smoothed[i] = smoothed[i] * 0.85 + (freqData[i] / 255) * 0.15;
+        }
+
+        const len = freqData.length;
+        const bassEnd = Math.floor(len * 0.1);
+        const midEnd = Math.floor(len * 0.5);
+
+        let bass = 0, mid = 0, treble = 0;
+        for (let i = 0; i < bassEnd; i++) bass += smoothed[i];
+        for (let i = bassEnd; i < midEnd; i++) mid += smoothed[i];
+        for (let i = midEnd; i < len; i++) treble += smoothed[i];
+
+        bass = (bass / bassEnd) * P.sensitivity;
+        mid = (mid / (midEnd - bassEnd)) * P.sensitivity;
+        treble = (treble / (len - midEnd)) * P.sensitivity;
+
+        const spectrum = [];
+        const perCol = Math.max(1, Math.floor(len / P.columnCount));
+        for (let c = 0; c < P.columnCount; c++) {
+            let sum = 0;
+            for (let b = 0; b < perCol && c * perCol + b < len; b++) {
+                sum += smoothed[c * perCol + b];
+            }
+            spectrum.push((sum / perCol) * P.sensitivity);
+        }
+
+        return { bass, mid, treble, spectrum };
+    }
+
+    function setStatus(id, msg, cls) {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.className = 'status' + (cls ? ' ' + cls : '');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // VISUALS
+    // ═══════════════════════════════════════════════════════════════════
+    let blobs = [], columns = [];
+
+    class Blob {
+        constructor(i) {
+            this.i = i;
+            this.reset();
+        }
+        reset() {
+            randomSeed(P.seed + this.i * 1000);
+            this.x = random(width);
+            this.y = random(height);
+            this.r = P.blobSize * random(0.5, 1.5);
+            this.vx = random(-1, 1) * 0.8;
+            this.vy = random(-0.5, 0.5) * 0.5;
+            this.ph = random(TWO_PI);
+        }
+        update(e) {
+            this.x += this.vx * (1 + e * 2);
+            this.y += this.vy + sin(frameCount * 0.02 + this.ph) * 0.5;
+            if (this.x < -this.r) this.x = width + this.r;
+            if (this.x > width + this.r) this.x = -this.r;
+            if (this.y < -this.r) this.y = height + this.r;
+            if (this.y > height + this.r) this.y = -this.r;
+        }
+        rad(e) { return this.r * (0.8 + e * 1.5); }
+    }
+
+    class Column {
+        constructor(i, x, w) {
+            this.i = i; this.x = x; this.w = w;
+            this.b = 0; this.tb = 0;
+        }
+        update(e) {
+            this.tb = P.baseBright + e;
+            this.b += (this.tb - this.b) * 0.15;
+        }
+    }
+
+    function initSystem() {
+        randomSeed(P.seed);
+        noiseSeed(P.seed);
+        blobs = [];
+        for (let i = 0; i < P.blobCount; i++) blobs.push(new Blob(i));
+        columns = [];
+        const cw = width / P.columnCount;
+        for (let i = 0; i < P.columnCount; i++) {
+            columns.push(new Column(i, i * cw, cw * P.columnWidth));
+        }
+    }
+
+    function hexRgb(hex) {
+        const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [255,0,100];
+    }
+
+    function lerpC(a, b, t) {
+        return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+    }
+
+    function colColor(idx, br) {
+        const t = idx / P.columnCount;
+        const bass = hexRgb(P.colorBass);
+        const mid = hexRgb(P.colorMid);
+        const treb = hexRgb(P.colorTreble);
+        let c = t < 0.5 ? lerpC(bass, mid, t*2) : lerpC(mid, treb, (t-0.5)*2);
+        return color(c[0]*br, c[1]*br, c[2]*br);
+    }
+
+    function metaInf(x, y, midE) {
+        let tot = 0;
+        for (let b of blobs) {
+            const dx = x - b.x, dy = y - b.y;
+            const d = Math.sqrt(dx*dx + dy*dy);
+            const r = b.rad(midE);
+            if (d < r * 2) tot += Math.pow(r / Math.max(d, 1), 2);
+        }
+        return Math.min(tot, 3);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // P5
+    // ═══════════════════════════════════════════════════════════════════
+    function setup() {
+        const c = createCanvas(1200, 800);
+        c.parent('canvas-container');
+        initSystem();
+
+        // Enable audio on canvas click
+        c.mousePressed(() => {
+            initAudio().then(() => {
+                setStatus('audio-status', 'Audio enabled - load file or use mic', 'active');
+            });
+        });
+    }
+
+    function draw() {
+        background(10, 10, 12);
+
+        const a = getAudio();
+
+        for (let b of blobs) b.update(a.mid);
+        for (let i = 0; i < columns.length; i++) columns[i].update(a.spectrum[i] || 0);
+
+        noStroke();
+        const res = 4;
+
+        for (let col of columns) {
+            for (let y = 0; y < height; y += res) {
+                const cx = col.x + col.w / 2;
+                const inf = metaInf(cx, y, a.mid);
+
+                let br = col.b;
+                if (inf > 0.3) br *= (1 + inf * 0.8);
+
+                const vy = 1 - Math.abs(y / height - 0.5) * 0.5;
+                br *= vy;
+
+                let w = col.w;
+                if (inf > 0.5) w *= (1 + inf * 0.3);
+
+                fill(colColor(col.i, Math.min(br, 1.5)));
+                rect(col.x + (col.w - w) / 2, y, w, res + 1);
+            }
+        }
+
+        // Glow
+        if (a.bass > 0.5) {
+            drawingContext.globalCompositeOperation = 'screen';
+            for (let b of blobs) {
+                const r = b.rad(a.mid);
+                const g = drawingContext.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+                const bc = hexRgb(P.colorBass);
+                g.addColorStop(0, `rgba(${bc[0]},${bc[1]},${bc[2]},${a.bass*0.3})`);
+                g.addColorStop(1, 'rgba(0,0,0,0)');
+                drawingContext.fillStyle = g;
+                drawingContext.fillRect(b.x - r, b.y - r, r * 2, r * 2);
+            }
+            drawingContext.globalCompositeOperation = 'source-over';
+        }
+
+        // Scanlines
+        stroke(0, 0, 0, 25);
+        for (let y = 0; y < height; y += 3) line(0, y, width, y);
+
+        // Handle overlay cycling
+        if (P.overlayEffect === 'cycle' && cycleImages.length > 0) {
+            updateCycle(a);
+        }
+
+        // Draw overlay
+        if (overlayImg || (P.overlayEffect === 'cycle' && cycleImages.length > 0)) {
+            drawOverlay(a);
+        }
+    }
+
+    function updateCycle(audio) {
+        if (cycleImages.length === 0) return;
+
+        const now = millis();
+        const bass = audio ? audio.bass : 0;
+        let shouldCycle = false;
+
+        if (P.cycleTrigger === 'beat') {
+            // Detect beat (bass spike)
+            const threshold = 0.6;
+            const minInterval = 300; // ms between beats
+            if (bass > threshold && prevBass <= threshold && now - lastBeatTime > minInterval) {
+                lastBeatTime = now;
+                beatCount++;
+                shouldCycle = true;
+            }
+        } else if (P.cycleTrigger === 'bar') {
+            // Every 4 beats
+            const threshold = 0.6;
+            const minInterval = 300;
+            if (bass > threshold && prevBass <= threshold && now - lastBeatTime > minInterval) {
+                lastBeatTime = now;
+                beatCount++;
+                if (beatCount % 4 === 0) {
+                    shouldCycle = true;
+                }
+            }
+        } else if (P.cycleTrigger === 'time') {
+            // Timed interval
+            if (now - lastCycleTime > P.cycleSpeed * 1000) {
+                lastCycleTime = now;
+                shouldCycle = true;
+            }
+        }
+
+        if (shouldCycle) {
+            cycleIndex = (cycleIndex + 1) % cycleImages.length;
+            overlayImg = cycleImages[cycleIndex];
+        }
+
+        prevBass = bass;
+    }
+
+    function drawOverlay(audio) {
+        if (!overlayImg) return;
+
+        const maxDim = Math.max(width, height) * P.overlaySize;
+        const imgAspect = overlayImg.width / overlayImg.height;
+        let w, h;
+
+        if (imgAspect > 1) {
+            w = maxDim;
+            h = maxDim / imgAspect;
+        } else {
+            h = maxDim;
+            w = maxDim * imgAspect;
+        }
+
+        const margin = 30;
+        let baseX, baseY;
+
+        switch (P.overlayPosition) {
+            case 'center':
+                baseX = (width - w) / 2;
+                baseY = (height - h) / 2;
+                break;
+            case 'top-left':
+                baseX = margin;
+                baseY = margin;
+                break;
+            case 'top-right':
+                baseX = width - w - margin;
+                baseY = margin;
+                break;
+            case 'bottom-left':
+                baseX = margin;
+                baseY = height - h - margin;
+                break;
+            case 'bottom-right':
+            default:
+                baseX = width - w - margin;
+                baseY = height - h - margin;
+        }
+
+        push();
+
+        const intensity = P.overlayIntensity;
+        const bass = audio ? audio.bass : 0;
+        const mid = audio ? audio.mid : 0;
+        const spectrum = audio ? audio.spectrum : [];
+
+        // For cycle mode, use split effect on the cycling images
+        const effectType = P.overlayEffect === 'cycle' ? 'split' : P.overlayEffect;
+
+        if (effectType === 'none' || intensity === 0) {
+            // Static overlay
+            tint(255, P.overlayOpacity * 255);
+            image(overlayImg, baseX, baseY, w, h);
+        }
+        else if (effectType === 'split') {
+            // Split into vertical slices that shift based on audio
+            const slices = 20;
+            const sliceW = w / slices;
+            const srcSliceW = overlayImg.width / slices;
+
+            for (let i = 0; i < slices; i++) {
+                const specIdx = Math.floor((i / slices) * spectrum.length);
+                const energy = spectrum[specIdx] || 0;
+
+                // Vertical offset based on frequency energy
+                const yOffset = (energy * intensity * 60) * Math.sin(frameCount * 0.05 + i * 0.5);
+
+                // Horizontal spread based on bass
+                const xOffset = (bass * intensity * 20) * Math.sin(i * 0.3);
+
+                // Opacity variation
+                const alpha = P.overlayOpacity * (0.7 + energy * 0.3);
+
+                tint(255, alpha * 255);
+
+                // Draw slice
+                image(
+                    overlayImg,
+                    baseX + i * sliceW + xOffset,
+                    baseY + yOffset,
+                    sliceW + 1,
+                    h,
+                    i * srcSliceW,
+                    0,
+                    srcSliceW,
+                    overlayImg.height
+                );
+            }
+        }
+        else if (effectType === 'pulse') {
+            // Scale and opacity pulse with bass
+            const scale = 1 + bass * intensity * 0.3;
+            const pulseW = w * scale;
+            const pulseH = h * scale;
+            const pulseX = baseX - (pulseW - w) / 2;
+            const pulseY = baseY - (pulseH - h) / 2;
+
+            // Glow effect
+            if (bass > 0.3) {
+                drawingContext.shadowBlur = bass * intensity * 50;
+                drawingContext.shadowColor = P.colorBass;
+            }
+
+            tint(255, P.overlayOpacity * 255);
+            image(overlayImg, pulseX, pulseY, pulseW, pulseH);
+
+            drawingContext.shadowBlur = 0;
+        }
+        else if (effectType === 'glitch') {
+            // Glitch effect - RGB split and displacement
+            const glitchAmount = mid * intensity * 30;
+
+            // Red channel offset
+            tint(255, 0, 0, P.overlayOpacity * 200);
+            image(overlayImg, baseX - glitchAmount, baseY, w, h);
+
+            // Green channel
+            tint(0, 255, 0, P.overlayOpacity * 200);
+            image(overlayImg, baseX, baseY + glitchAmount * 0.5, w, h);
+
+            // Blue channel offset
+            tint(0, 0, 255, P.overlayOpacity * 200);
+            image(overlayImg, baseX + glitchAmount, baseY, w, h);
+
+            // Random slice displacement on high energy
+            if (bass > 0.6 && random() > 0.7) {
+                const sliceY = random(h);
+                const sliceH = random(10, 40);
+                const displacement = random(-50, 50) * intensity;
+
+                tint(255, P.overlayOpacity * 255);
+                image(
+                    overlayImg,
+                    baseX + displacement,
+                    baseY + sliceY,
+                    w,
+                    sliceH,
+                    0,
+                    (sliceY / h) * overlayImg.height,
+                    overlayImg.width,
+                    (sliceH / h) * overlayImg.height
+                );
+            }
+        }
+
+        pop();
+    }
+
+    function loadOverlay(file) {
+        const url = URL.createObjectURL(file);
+        loadImage(url, img => {
+            overlayImg = img;
+            setStatus('overlay-status', 'Loaded: ' + file.name, 'active');
+        }, () => {
+            setStatus('overlay-status', 'Error loading image', 'error');
+        });
+    }
+
+    function clearOverlay() {
+        overlayImg = null;
+        cycleImages = [];
+        cycleIndex = 0;
+        document.getElementById('cycle-count').textContent = '0 images loaded';
+        setStatus('overlay-status', 'No overlay', '');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PRESETS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function savePreset() {
+        const name = prompt('Preset name:', 'My Preset');
+        if (!name) return;
+
+        const preset = {
+            name: name,
+            description: '',
+            visualizer: 'vertical-pulse',
+            version: '1.0',
+            created: new Date().toISOString().split('T')[0],
+            params: { ...P },
+            tags: []
+        };
+
+        const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name.toLowerCase().replace(/\s+/g, '-') + '.json';
+        a.click();
+    }
+
+    function loadPreset(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const preset = JSON.parse(e.target.result);
+                if (preset.params) {
+                    Object.assign(P, preset.params);
+                    syncUIFromParams();
+                    initSystem();
+                    setStatus('overlay-status', 'Loaded: ' + preset.name, 'active');
+                    setTimeout(() => {
+                        if (!overlayImg) setStatus('overlay-status', 'No overlay', '');
+                    }, 2000);
+                }
+            } catch (err) {
+                alert('Invalid preset file');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function syncUIFromParams() {
+        document.getElementById('seed').value = P.seed;
+        document.getElementById('columnCount').value = P.columnCount;
+        document.getElementById('columnCount-v').textContent = P.columnCount;
+        document.getElementById('columnWidth').value = P.columnWidth * 100;
+        document.getElementById('columnWidth-v').textContent = (P.columnWidth * 100) + '%';
+        document.getElementById('baseBright').value = P.baseBright * 100;
+        document.getElementById('baseBright-v').textContent = (P.baseBright * 100) + '%';
+        document.getElementById('blobCount').value = P.blobCount;
+        document.getElementById('blobCount-v').textContent = P.blobCount;
+        document.getElementById('blobSize').value = P.blobSize;
+        document.getElementById('blobSize-v').textContent = P.blobSize;
+        document.getElementById('sensitivity').value = P.sensitivity * 100;
+        document.getElementById('sensitivity-v').textContent = P.sensitivity.toFixed(1) + 'x';
+        document.getElementById('colorBass').value = P.colorBass;
+        document.getElementById('colorBass-v').textContent = P.colorBass;
+        document.getElementById('colorMid').value = P.colorMid;
+        document.getElementById('colorMid-v').textContent = P.colorMid;
+        document.getElementById('colorTreble').value = P.colorTreble;
+        document.getElementById('colorTreble-v').textContent = P.colorTreble;
+        document.getElementById('overlaySize').value = P.overlaySize * 100;
+        document.getElementById('overlaySize-v').textContent = (P.overlaySize * 100) + '%';
+        document.getElementById('overlayOpacity').value = P.overlayOpacity * 100;
+        document.getElementById('overlayOpacity-v').textContent = (P.overlayOpacity * 100) + '%';
+        document.getElementById('overlayPosition').value = P.overlayPosition;
+        document.getElementById('overlayEffect').value = P.overlayEffect || 'split';
+        document.getElementById('overlayIntensity').value = (P.overlayIntensity || 0.5) * 100;
+        document.getElementById('overlayIntensity-v').textContent = ((P.overlayIntensity || 0.5) * 100) + '%';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // RECORDING
+    // ═══════════════════════════════════════════════════════════════════
+    let recorder, chunks = [], recording = false;
+
+    function startRec() {
+        const canvas = document.getElementById('defaultCanvas0');
+        if (!canvas) return;
+
+        const stream = canvas.captureStream(60);
+
+        // Add audio if available
+        if (actx && audioReady) {
+            const dest = actx.createMediaStreamDestination();
+            analyser.connect(dest);
+            const at = dest.stream.getAudioTracks()[0];
+            if (at) stream.addTrack(at);
+        }
+
+        const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+            ? 'video/webm;codecs=vp9' : 'video/webm';
+
+        recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 15000000 });
+        chunks = [];
+
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `vertical-pulse-${P.seed}-${Date.now()}.webm`;
+            a.click();
+            setStatus('record-status', 'Saved!', 'active');
+            setTimeout(() => setStatus('record-status', 'Ready', ''), 2000);
+        };
+
+        recorder.start(100);
+        recording = true;
+        document.getElementById('record-btn').textContent = 'Stop Recording';
+        document.getElementById('record-btn').className = 'btn rec';
+        setStatus('record-status', 'Recording...', 'active');
+    }
+
+    function stopRec() {
+        if (recorder && recorder.state !== 'inactive') recorder.stop();
+        recording = false;
+        document.getElementById('record-btn').textContent = 'Start Recording';
+        document.getElementById('record-btn').className = 'btn dark';
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // UI WIRING
+    // ═══════════════════════════════════════════════════════════════════
+    window.onload = function() {
+        // Audio
+        document.getElementById('audio-file').onchange = function() {
+            if (this.files.length) loadFile(this.files[0]);
+        };
+        document.getElementById('mic-btn').onclick = useMic;
+        document.getElementById('play-btn').onclick = togglePlay;
+
+        // Seed
+        document.getElementById('seed').onchange = function() {
+            P.seed = parseInt(this.value) || 1;
+            initSystem();
+        };
+        document.getElementById('prev-seed').onclick = () => {
+            P.seed = Math.max(1, P.seed - 1);
+            document.getElementById('seed').value = P.seed;
+            initSystem();
+        };
+        document.getElementById('next-seed').onclick = () => {
+            P.seed++;
+            document.getElementById('seed').value = P.seed;
+            initSystem();
+        };
+        document.getElementById('rand-seed').onclick = () => {
+            P.seed = Math.floor(Math.random() * 999999) + 1;
+            document.getElementById('seed').value = P.seed;
+            initSystem();
+        };
+
+        // Sliders
+        const sliders = [
+            ['columnCount', v => { P.columnCount = +v; initSystem(); }, v => v],
+            ['columnWidth', v => { P.columnWidth = v/100; initSystem(); }, v => v+'%'],
+            ['baseBright', v => { P.baseBright = v/100; }, v => v+'%'],
+            ['blobCount', v => { P.blobCount = +v; initSystem(); }, v => v],
+            ['blobSize', v => { P.blobSize = +v; initSystem(); }, v => v],
+            ['sensitivity', v => { P.sensitivity = v/100; }, v => (v/100).toFixed(1)+'x']
+        ];
+        sliders.forEach(([id, fn, fmt]) => {
+            const el = document.getElementById(id);
+            el.oninput = function() {
+                fn(this.value);
+                document.getElementById(id + '-v').textContent = fmt(this.value);
+            };
+        });
+
+        // Colors
+        ['colorBass', 'colorMid', 'colorTreble'].forEach(id => {
+            document.getElementById(id).oninput = function() {
+                P[id] = this.value;
+                document.getElementById(id + '-v').textContent = this.value;
+            };
+        });
+
+        // Overlay
+        document.getElementById('overlay-file').onchange = function() {
+            if (this.files.length) loadOverlay(this.files[0]);
+        };
+        document.getElementById('overlaySize').oninput = function() {
+            P.overlaySize = this.value / 100;
+            document.getElementById('overlaySize-v').textContent = this.value + '%';
+        };
+        document.getElementById('overlayOpacity').oninput = function() {
+            P.overlayOpacity = this.value / 100;
+            document.getElementById('overlayOpacity-v').textContent = this.value + '%';
+        };
+        document.getElementById('overlayPosition').onchange = function() {
+            P.overlayPosition = this.value;
+        };
+        document.getElementById('overlayEffect').onchange = function() {
+            P.overlayEffect = this.value;
+            document.getElementById('cycle-options').style.display = this.value === 'cycle' ? 'block' : 'none';
+        };
+        document.getElementById('cycle-files').onchange = function() {
+            const files = Array.from(this.files);
+            files.forEach(file => {
+                const url = URL.createObjectURL(file);
+                loadImage(url, img => {
+                    cycleImages.push(img);
+                    if (cycleImages.length === 1) overlayImg = img;
+                    document.getElementById('cycle-count').textContent = cycleImages.length + ' images loaded';
+                    setStatus('overlay-status', cycleImages.length + ' images in cycle', 'active');
+                });
+            });
+        };
+        document.getElementById('cycleTrigger').onchange = function() {
+            P.cycleTrigger = this.value;
+            beatCount = 0;
+        };
+        document.getElementById('cycleSpeed').oninput = function() {
+            P.cycleSpeed = this.value / 10;
+            document.getElementById('cycleSpeed-v').textContent = P.cycleSpeed.toFixed(1) + 's';
+        };
+        document.getElementById('overlayIntensity').oninput = function() {
+            P.overlayIntensity = this.value / 100;
+            document.getElementById('overlayIntensity-v').textContent = this.value + '%';
+        };
+        document.getElementById('clear-overlay').onclick = clearOverlay;
+
+        // Resolution
+        document.getElementById('resolution').onchange = function() {
+            const [w, h] = this.value.split('x').map(Number);
+            resizeCanvas(w, h);
+            initSystem();
+            document.getElementById('res-display').textContent = w + ' x ' + h;
+        };
+
+        // Presets
+        document.getElementById('preset-file').onchange = function() {
+            if (this.files.length) loadPreset(this.files[0]);
+        };
+        document.getElementById('save-preset').onclick = savePreset;
+
+        // Actions
+        document.getElementById('record-btn').onclick = () => recording ? stopRec() : startRec();
+        document.getElementById('save-frame').onclick = () => saveCanvas('vertical-pulse-' + P.seed, 'png');
+        document.getElementById('reset-btn').onclick = () => {
+            Object.assign(P, defaults);
+            document.getElementById('seed').value = P.seed;
+            document.getElementById('columnCount').value = P.columnCount;
+            document.getElementById('columnCount-v').textContent = P.columnCount;
+            document.getElementById('columnWidth').value = P.columnWidth * 100;
+            document.getElementById('columnWidth-v').textContent = (P.columnWidth*100)+'%';
+            document.getElementById('baseBright').value = P.baseBright * 100;
+            document.getElementById('baseBright-v').textContent = (P.baseBright*100)+'%';
+            document.getElementById('blobCount').value = P.blobCount;
+            document.getElementById('blobCount-v').textContent = P.blobCount;
+            document.getElementById('blobSize').value = P.blobSize;
+            document.getElementById('blobSize-v').textContent = P.blobSize;
+            document.getElementById('sensitivity').value = P.sensitivity * 100;
+            document.getElementById('sensitivity-v').textContent = P.sensitivity.toFixed(1)+'x';
+            document.getElementById('colorBass').value = P.colorBass;
+            document.getElementById('colorBass-v').textContent = P.colorBass;
+            document.getElementById('colorMid').value = P.colorMid;
+            document.getElementById('colorMid-v').textContent = P.colorMid;
+            document.getElementById('colorTreble').value = P.colorTreble;
+            document.getElementById('colorTreble-v').textContent = P.colorTreble;
+            initSystem();
+        };
+    };
+    </script>
+</body>
+</html>

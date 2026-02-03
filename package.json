@@ -1,0 +1,28 @@
+{
+  "name": "sheep",
+  "version": "1.0.0",
+  "description": "Audio-reactive visual generation for music videos and live performances",
+  "author": "Electric Sheep Supply Co.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/electric-sheep-supply-co/sheep.git"
+  },
+  "keywords": [
+    "audio-reactive",
+    "visualizer",
+    "music-video",
+    "p5js",
+    "generative-art",
+    "vj",
+    "live-visuals"
+  ],
+  "scripts": {
+    "preview": "open visualizers/vertical-pulse.html",
+    "setup": "cd tools && npm install",
+    "render": "./tools/render-video.sh"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

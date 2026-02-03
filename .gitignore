@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+tools/node_modules/
+
+# Output
+output/
+frames/
+*.webm
+*.mp4
+
+# Temp files
+.DS_Store
+*.log
+tmp/
+temp/
+
+# Audio data (generated)
+*-audio-data.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db

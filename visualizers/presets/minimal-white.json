@@ -1,0 +1,25 @@
+{
+  "name": "Minimal White",
+  "description": "Clean white columns on black. Subtle, elegant, no blobs.",
+  "visualizer": "vertical-pulse",
+  "version": "1.0",
+  "created": "2025-02-03",
+  "params": {
+    "seed": 1,
+    "columnCount": 80,
+    "columnWidth": 0.5,
+    "baseBright": 0.15,
+    "blobCount": 0,
+    "blobSize": 100,
+    "sensitivity": 1.2,
+    "colorBass": "#ffffff",
+    "colorMid": "#cccccc",
+    "colorTreble": "#888888",
+    "overlaySize": 0.15,
+    "overlayOpacity": 0.6,
+    "overlayPosition": "center",
+    "overlayEffect": "split",
+    "overlayIntensity": 0.5
+  },
+  "tags": ["minimal", "white", "clean", "elegant"]
+}
