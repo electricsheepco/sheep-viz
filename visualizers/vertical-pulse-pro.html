@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHEEP / Vertical Pulse</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d0d0f;
+            --surface: #161619;
+            --surface-2: #1e1e22;
+            --border: #2a2a30;
+            --text: #e0e0e5;
+            --text-dim: #6a6a75;
+            --accent: #ff3366;
+            --accent-dim: #cc2952;
+            --success: #33ff99;
+            --warning: #ffcc33;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg);
+            min-height: 100vh;
+            color: var(--text);
+            font-size: 12px;
+        }
+        .container { display: flex; min-height: 100vh; }
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            max-height: 100vh;
+            transition: transform 0.3s;
+        }
+        .sidebar.hidden { transform: translateX(-100%); position: absolute; }
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .logo { font-size: 14px; font-weight: 600; letter-spacing: 2px; color: var(--accent); }
+        .viz-name { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+        .section {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            margin-bottom: 12px;
+        }
+        .status {
+            background: var(--surface-2);
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-bottom: 8px;
+            border-left: 2px solid var(--border);
+        }
+        .status.active { border-color: var(--success); color: var(--success); }
+        .status.warn { border-color: var(--warning); color: var(--warning); }
+        .control { margin-bottom: 12px; }
+        .control label {
+            display: block;
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .slider-row { display: flex; align-items: center; gap: 8px; }
+        .slider-row input[type="range"] {
+            flex: 1;
+            height: 2px;
+            background: var(--border);
+            border-radius: 1px;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        .slider-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 2px;
+            cursor: pointer;
+        }
+        .slider-row input[type="range"]::-webkit-slider-thumb:hover { background: var(--accent-dim); }
+        .val {
+            font-size: 10px;
+            color: var(--accent);
+            min-width: 40px;
+            text-align: right;
+        }
+        .color-row { display: flex; align-items: center; gap: 8px; }
+        .color-row input[type="color"] {
+            width: 24px;
+            height: 24px;
+            border: 1px solid var(--border);
+            border-radius: 2px;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        select:focus { outline: none; border-color: var(--accent); }
+        .btn {
+            background: var(--surface-2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 11px;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 6px;
+            transition: all 0.15s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .btn:hover { border-color: var(--accent); color: var(--accent); }
+        .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+        .btn.primary:hover { background: var(--accent-dim); }
+        .btn.rec { background: #aa2233; border-color: #aa2233; animation: pulse 1s infinite; }
+        @keyframes pulse { 50% { opacity: 0.7; } }
+        .btn-row { display: flex; gap: 6px; }
+        .btn-row .btn { flex: 1; margin: 0; }
+        .file-wrap { position: relative; margin-bottom: 6px; }
+        .file-wrap input[type="file"] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; top: 0; left: 0; }
+        .canvas-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg);
+            position: relative;
+        }
+        #canvas-container { background: #000; }
+        #defaultCanvas0 { display: block; }
+        .fullscreen #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1000;
+        }
+        .fullscreen .sidebar { z-index: 1001; position: fixed; left: 0; top: 0; height: 100vh; }
+        .fullscreen .sidebar.hidden { transform: translateX(-100%); }
+        .toggle-sidebar {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1002;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 10px;
+            display: none;
+        }
+        .fullscreen .toggle-sidebar { display: block; }
+        .midi-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--border);
+            margin-left: 6px;
+        }
+        .midi-indicator.connected { background: var(--success); }
+        .midi-indicator.active { background: var(--warning); animation: blink 0.1s; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .hotkeys {
+            font-size: 9px;
+            color: var(--text-dim);
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+        .hotkeys kbd {
+            background: var(--surface-2);
+            padding: 2px 5px;
+            border-radius: 2px;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-sidebar" id="toggle-sidebar">☰ CONTROLS</button>
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div>
+                    <div class="logo">SHEEP</div>
+                    <div class="viz-name">Vertical Pulse</div>
+                </div>
+                <span class="midi-indicator" id="midi-dot" title="MIDI Status"></span>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Audio Input</div>
+                <div id="audio-status" class="status">Click canvas or press SPACE</div>
+                <div class="file-wrap">
+                    <button class="btn">Load Audio File</button>
+                    <input type="file" id="audio-file" accept="audio/*">
+                </div>
+                <button class="btn" id="mic-btn">Use Microphone</button>
+                <button class="btn primary" id="play-btn">▶ Play / Pause</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Columns</div>
+                <div class="control">
+                    <label>Count</label>
+                    <div class="slider-row">
+                        <input type="range" id="columnCount" min="20" max="100" value="60" data-midi="1">
+                        <span class="val" id="columnCount-v">60</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Width</label>
+                    <div class="slider-row">
+                        <input type="range" id="columnWidth" min="30" max="100" value="70" data-midi="2">
+                        <span class="val" id="columnWidth-v">70%</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Base Brightness</label>
+                    <div class="slider-row">
+                        <input type="range" id="baseBright" min="5" max="50" value="20" data-midi="3">
+                        <span class="val" id="baseBright-v">20%</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Blobs</div>
+                <div class="control">
+                    <label>Count</label>
+                    <div class="slider-row">
+                        <input type="range" id="blobCount" min="0" max="10" value="5" data-midi="4">
+                        <span class="val" id="blobCount-v">5</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Size</label>
+                    <div class="slider-row">
+                        <input type="range" id="blobSize" min="50" max="300" value="150" data-midi="5">
+                        <span class="val" id="blobSize-v">150</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Audio Response</div>
+                <div class="control">
+                    <label>Sensitivity</label>
+                    <div class="slider-row">
+                        <input type="range" id="sensitivity" min="50" max="300" value="150" data-midi="6">
+                        <span class="val" id="sensitivity-v">1.5x</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Colors</div>
+                <div class="control">
+                    <label>Bass</label>
+                    <div class="color-row">
+                        <input type="color" id="colorBass" value="#ff1a4b">
+                        <span class="val" id="colorBass-v">#ff1a4b</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Mid</label>
+                    <div class="color-row">
+                        <input type="color" id="colorMid" value="#cc33ff">
+                        <span class="val" id="colorMid-v">#cc33ff</span>
+                    </div>
+                </div>
+                <div class="control">
+                    <label>Treble</label>
+                    <div class="color-row">
+                        <input type="color" id="colorTreble" value="#3366ff">
+                        <span class="val" id="colorTreble-v">#3366ff</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Output</div>
+                <select id="resolution">
+                    <option value="1200x800">1200×800 Default</option>
+                    <option value="1920x1080">1920×1080 HD</option>
+                    <option value="1080x1920">1080×1920 Vertical</option>
+                    <option value="1080x1080">1080×1080 Square</option>
+                </select>
+                <div style="height:8px"></div>
+                <button class="btn primary" id="fullscreen-btn">⛶ Fullscreen</button>
+                <div id="record-status" class="status">Ready</div>
+                <button class="btn" id="record-btn">● Record</button>
+                <button class="btn" id="save-frame">Save Frame</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">MIDI</div>
+                <div id="midi-status" class="status">Connecting...</div>
+                <div class="hotkeys">
+                    <kbd>F</kbd> Fullscreen &nbsp;
+                    <kbd>H</kbd> Hide UI<br>
+                    <kbd>Space</kbd> Play/Pause &nbsp;
+                    <kbd>R</kbd> Record
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container"></div>
+        </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // PARAMS
+    // ═══════════════════════════════════════════════════════════════════
+
+    const P = {
+        seed: 42,
+        columnCount: 60,
+        columnWidth: 0.7,
+        baseBright: 0.2,
+        blobCount: 5,
+        blobSize: 150,
+        sensitivity: 1.5,
+        colorBass: '#ff1a4b',
+        colorMid: '#cc33ff',
+        colorTreble: '#3366ff'
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // MIDI
+    // ═══════════════════════════════════════════════════════════════════
+
+    let midiAccess = null;
+    const midiMappings = {}; // CC -> element id
+
+    function initMIDI() {
+        if (!navigator.requestMIDIAccess) {
+            setStatus('midi-status', 'MIDI not supported', '');
+            return;
+        }
+
+        navigator.requestMIDIAccess().then(access => {
+            midiAccess = access;
+            const inputs = Array.from(access.inputs.values());
+
+            if (inputs.length === 0) {
+                setStatus('midi-status', 'No MIDI devices', '');
+                return;
+            }
+
+            setStatus('midi-status', inputs.length + ' device(s) found', 'active');
+            document.getElementById('midi-dot').classList.add('connected');
+
+            inputs.forEach(input => {
+                input.onmidimessage = handleMIDI;
+            });
+
+            // Build mappings from data-midi attributes
+            document.querySelectorAll('[data-midi]').forEach(el => {
+                const cc = parseInt(el.dataset.midi);
+                midiMappings[cc] = el.id;
+            });
+
+        }).catch(err => {
+            setStatus('midi-status', 'MIDI error: ' + err.message, '');
+        });
+    }
+
+    function handleMIDI(msg) {
+        const [status, cc, value] = msg.data;
+        const dot = document.getElementById('midi-dot');
+
+        // Flash indicator
+        dot.classList.add('active');
+        setTimeout(() => dot.classList.remove('active'), 100);
+
+        // Control Change (0xB0 = 176)
+        if ((status & 0xF0) === 0xB0) {
+            const elementId = midiMappings[cc];
+            if (elementId) {
+                const el = document.getElementById(elementId);
+                if (el && el.type === 'range') {
+                    const min = parseFloat(el.min);
+                    const max = parseFloat(el.max);
+                    const newVal = min + (value / 127) * (max - min);
+                    el.value = newVal;
+                    el.dispatchEvent(new Event('input'));
+                }
+            }
+        }
+
+        // Note On (0x90 = 144) - trigger actions
+        if ((status & 0xF0) === 0x90 && value > 0) {
+            if (cc === 36) togglePlay();      // Pad 1
+            if (cc === 37) toggleRecord();    // Pad 2
+            if (cc === 38) toggleFullscreen(); // Pad 3
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUDIO
+    // ═══════════════════════════════════════════════════════════════════
+
+    let actx, analyser, source, audioEl, freqData, smoothed;
+    let audioReady = false, playing = false;
+
+    function initAudio() {
+        if (actx) return Promise.resolve();
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = actx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        freqData = new Uint8Array(analyser.frequencyBinCount);
+        smoothed = new Float32Array(analyser.frequencyBinCount).fill(0);
+        return actx.resume();
+    }
+
+    function loadFile(file) {
+        initAudio().then(() => {
+            if (source) { try { source.disconnect(); } catch(e){} }
+            if (audioEl) audioEl.pause();
+            const url = URL.createObjectURL(file);
+            audioEl = new Audio(url);
+            audioEl.oncanplay = () => {
+                source = actx.createMediaElementSource(audioEl);
+                source.connect(analyser);
+                analyser.connect(actx.destination);
+                audioReady = true;
+                setStatus('audio-status', file.name, 'active');
+            };
+        });
+    }
+
+    function useMic() {
+        initAudio().then(() => {
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                if (source) { try { source.disconnect(); } catch(e){} }
+                source = actx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                audioReady = true;
+                playing = true;
+                setStatus('audio-status', 'Microphone active', 'active');
+            });
+        });
+    }
+
+    function togglePlay() {
+        if (!audioEl) return;
+        initAudio().then(() => {
+            if (playing) { audioEl.pause(); playing = false; }
+            else { audioEl.play(); playing = true; }
+        });
+    }
+
+    function getAudio() {
+        if (!audioReady || !analyser) {
+            return { bass: 0, mid: 0, treble: 0, spectrum: new Array(P.columnCount).fill(0) };
+        }
+        analyser.getByteFrequencyData(freqData);
+        for (let i = 0; i < freqData.length; i++) {
+            smoothed[i] = smoothed[i] * 0.85 + (freqData[i] / 255) * 0.15;
+        }
+        const len = freqData.length;
+        const bassEnd = Math.floor(len * 0.1), midEnd = Math.floor(len * 0.5);
+        let bass = 0, mid = 0, treble = 0;
+        for (let i = 0; i < bassEnd; i++) bass += smoothed[i];
+        for (let i = bassEnd; i < midEnd; i++) mid += smoothed[i];
+        for (let i = midEnd; i < len; i++) treble += smoothed[i];
+        bass = (bass / bassEnd) * P.sensitivity;
+        mid = (mid / (midEnd - bassEnd)) * P.sensitivity;
+        treble = (treble / (len - midEnd)) * P.sensitivity;
+
+        const spectrum = [];
+        const perCol = Math.max(1, Math.floor(len / P.columnCount));
+        for (let c = 0; c < P.columnCount; c++) {
+            let sum = 0;
+            for (let b = 0; b < perCol && c * perCol + b < len; b++) sum += smoothed[c * perCol + b];
+            spectrum.push((sum / perCol) * P.sensitivity);
+        }
+        return { bass, mid, treble, spectrum };
+    }
+
+    function setStatus(id, msg, cls) {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.className = 'status' + (cls ? ' ' + cls : '');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // VISUALS
+    // ═══════════════════════════════════════════════════════════════════
+
+    let blobs = [], columns = [];
+
+    class Blob {
+        constructor(i) { this.i = i; this.reset(); }
+        reset() {
+            randomSeed(P.seed + this.i * 1000);
+            this.x = random(width); this.y = random(height);
+            this.r = P.blobSize * random(0.5, 1.5);
+            this.vx = random(-1, 1) * 0.8; this.vy = random(-0.5, 0.5) * 0.5;
+            this.ph = random(TWO_PI);
+        }
+        update(e) {
+            this.x += this.vx * (1 + e * 2);
+            this.y += this.vy + sin(frameCount * 0.02 + this.ph) * 0.5;
+            if (this.x < -this.r) this.x = width + this.r;
+            if (this.x > width + this.r) this.x = -this.r;
+            if (this.y < -this.r) this.y = height + this.r;
+            if (this.y > height + this.r) this.y = -this.r;
+        }
+        rad(e) { return this.r * (0.8 + e * 1.5); }
+    }
+
+    class Column {
+        constructor(i, x, w) { this.i = i; this.x = x; this.w = w; this.b = 0; }
+        update(e) { this.b += ((P.baseBright + e) - this.b) * 0.15; }
+    }
+
+    function initSystem() {
+        randomSeed(P.seed); noiseSeed(P.seed);
+        blobs = []; for (let i = 0; i < P.blobCount; i++) blobs.push(new Blob(i));
+        columns = [];
+        const cw = width / P.columnCount;
+        for (let i = 0; i < P.columnCount; i++) columns.push(new Column(i, i * cw, cw * P.columnWidth));
+    }
+
+    function hexRgb(hex) {
+        const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [255,0,100];
+    }
+
+    function lerpC(a, b, t) { return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t]; }
+
+    function colColor(idx, br) {
+        const t = idx / P.columnCount;
+        const bass = hexRgb(P.colorBass), mid = hexRgb(P.colorMid), treb = hexRgb(P.colorTreble);
+        let c = t < 0.5 ? lerpC(bass, mid, t*2) : lerpC(mid, treb, (t-0.5)*2);
+        return color(c[0]*br, c[1]*br, c[2]*br);
+    }
+
+    function metaInf(x, y, midE) {
+        let tot = 0;
+        for (let b of blobs) {
+            const dx = x - b.x, dy = y - b.y, d = Math.sqrt(dx*dx + dy*dy), r = b.rad(midE);
+            if (d < r * 2) tot += Math.pow(r / Math.max(d, 1), 2);
+        }
+        return Math.min(tot, 3);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // P5
+    // ═══════════════════════════════════════════════════════════════════
+
+    function setup() {
+        const c = createCanvas(1200, 800);
+        c.parent('canvas-container');
+        initSystem();
+        initMIDI();
+        c.mousePressed(() => initAudio().then(() => setStatus('audio-status', 'Audio enabled', 'active')));
+    }
+
+    function draw() {
+        background(10, 10, 12);
+        const a = getAudio();
+        for (let b of blobs) b.update(a.mid);
+        for (let i = 0; i < columns.length; i++) columns[i].update(a.spectrum[i] || 0);
+
+        noStroke();
+        const res = 4;
+        for (let col of columns) {
+            for (let y = 0; y < height; y += res) {
+                const cx = col.x + col.w / 2, inf = metaInf(cx, y, a.mid);
+                let br = col.b;
+                if (inf > 0.3) br *= (1 + inf * 0.8);
+                br *= 1 - Math.abs(y / height - 0.5) * 0.5;
+                let w = col.w;
+                if (inf > 0.5) w *= (1 + inf * 0.3);
+                fill(colColor(col.i, Math.min(br, 1.5)));
+                rect(col.x + (col.w - w) / 2, y, w, res + 1);
+            }
+        }
+
+        if (a.bass > 0.5) {
+            drawingContext.globalCompositeOperation = 'screen';
+            for (let b of blobs) {
+                const r = b.rad(a.mid);
+                const g = drawingContext.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+                const bc = hexRgb(P.colorBass);
+                g.addColorStop(0, `rgba(${bc[0]},${bc[1]},${bc[2]},${a.bass*0.3})`);
+                g.addColorStop(1, 'rgba(0,0,0,0)');
+                drawingContext.fillStyle = g;
+                drawingContext.fillRect(b.x - r, b.y - r, r * 2, r * 2);
+            }
+            drawingContext.globalCompositeOperation = 'source-over';
+        }
+
+        stroke(0, 0, 0, 25);
+        for (let y = 0; y < height; y += 3) line(0, y, width, y);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // FULLSCREEN & RECORDING
+    // ═══════════════════════════════════════════════════════════════════
+
+    let isFullscreen = false;
+
+    function toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+            document.body.classList.add('fullscreen');
+            isFullscreen = true;
+        } else {
+            document.exitFullscreen();
+            document.body.classList.remove('fullscreen');
+            isFullscreen = false;
+        }
+    }
+
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('hidden');
+    }
+
+    let recorder, chunks = [], recording = false;
+
+    function toggleRecord() {
+        if (recording) stopRec(); else startRec();
+    }
+
+    function startRec() {
+        const canvas = document.getElementById('defaultCanvas0');
+        if (!canvas) return;
+        const stream = canvas.captureStream(60);
+        if (actx && audioReady) {
+            const dest = actx.createMediaStreamDestination();
+            analyser.connect(dest);
+            const at = dest.stream.getAudioTracks()[0];
+            if (at) stream.addTrack(at);
+        }
+        const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+        recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 15000000 });
+        chunks = [];
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: mime });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `sheep-${Date.now()}.webm`;
+            a.click();
+            setStatus('record-status', 'Saved!', 'active');
+        };
+        recorder.start(100);
+        recording = true;
+        document.getElementById('record-btn').textContent = '■ Stop';
+        document.getElementById('record-btn').classList.add('rec');
+        setStatus('record-status', 'Recording...', 'warn');
+    }
+
+    function stopRec() {
+        if (recorder && recorder.state !== 'inactive') recorder.stop();
+        recording = false;
+        document.getElementById('record-btn').textContent = '● Record';
+        document.getElementById('record-btn').classList.remove('rec');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // KEYBOARD
+    // ═══════════════════════════════════════════════════════════════════
+
+    document.addEventListener('keydown', e => {
+        if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+        if (e.code === 'KeyF') toggleFullscreen();
+        if (e.code === 'KeyH') toggleSidebar();
+        if (e.code === 'KeyR') toggleRecord();
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // UI
+    // ═══════════════════════════════════════════════════════════════════
+
+    window.onload = function() {
+        document.getElementById('audio-file').onchange = function() { if (this.files.length) loadFile(this.files[0]); };
+        document.getElementById('mic-btn').onclick = useMic;
+        document.getElementById('play-btn').onclick = togglePlay;
+        document.getElementById('fullscreen-btn').onclick = toggleFullscreen;
+        document.getElementById('toggle-sidebar').onclick = toggleSidebar;
+
+        const sliders = [
+            ['columnCount', v => { P.columnCount = +v; initSystem(); }, v => v],
+            ['columnWidth', v => { P.columnWidth = v/100; initSystem(); }, v => v+'%'],
+            ['baseBright', v => { P.baseBright = v/100; }, v => v+'%'],
+            ['blobCount', v => { P.blobCount = +v; initSystem(); }, v => v],
+            ['blobSize', v => { P.blobSize = +v; initSystem(); }, v => v],
+            ['sensitivity', v => { P.sensitivity = v/100; }, v => (v/100).toFixed(1)+'x']
+        ];
+        sliders.forEach(([id, fn, fmt]) => {
+            document.getElementById(id).oninput = function() {
+                fn(this.value);
+                document.getElementById(id + '-v').textContent = fmt(this.value);
+            };
+        });
+
+        ['colorBass', 'colorMid', 'colorTreble'].forEach(id => {
+            document.getElementById(id).oninput = function() {
+                P[id] = this.value;
+                document.getElementById(id + '-v').textContent = this.value;
+            };
+        });
+
+        document.getElementById('resolution').onchange = function() {
+            const [w, h] = this.value.split('x').map(Number);
+            resizeCanvas(w, h);
+            initSystem();
+        };
+
+        document.getElementById('record-btn').onclick = toggleRecord;
+        document.getElementById('save-frame').onclick = () => saveCanvas('sheep', 'png');
+    };
+    </script>
+</body>
+</html>
