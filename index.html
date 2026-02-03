@@ -21,7 +21,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       padding: 40px 20px;
     }
 
@@ -43,9 +42,9 @@
 
     .visualizers {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 20px;
-      max-width: 900px;
+      max-width: 1000px;
       width: 100%;
       margin-bottom: 48px;
     }
@@ -54,19 +53,38 @@
       background: #12121a;
       border: 1px solid #1a1a24;
       border-radius: 12px;
-      padding: 24px;
+      overflow: hidden;
       text-decoration: none;
       color: inherit;
-      transition: all 0.2s;
+      transition: all 0.3s;
+      display: block;
     }
 
     .card:hover {
       border-color: #6366f1;
-      transform: translateY(-2px);
+      transform: translateY(-4px);
+      box-shadow: 0 10px 40px rgba(99, 102, 241, 0.2);
+    }
+
+    .card-preview {
+      height: 160px;
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card-preview canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .card-content {
+      padding: 20px;
     }
 
     .card h2 {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 600;
       margin-bottom: 8px;
     }
@@ -121,27 +139,47 @@
 
   <div class="visualizers">
     <a href="visualizers/vertical-pulse-pro.html" class="card">
-      <h2>Vertical Pulse Pro</h2>
-      <p>Light columns that breathe with frequency, distorted by organic blobs. Modern UI with MIDI support.</p>
-      <span class="tag">MIDI + Fullscreen</span>
+      <div class="card-preview">
+        <canvas id="preview-vertical"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Vertical Pulse Pro</h2>
+        <p>Light columns that breathe with frequency, distorted by organic blobs. Modern UI with MIDI support.</p>
+        <span class="tag">MIDI + Fullscreen</span>
+      </div>
     </a>
 
     <a href="visualizers/fluid-flow.html" class="card">
-      <h2>Fluid Flow</h2>
-      <p>Particles following velocity fields, pushed by bass, swirling with mids. Inspired by gpu-io.</p>
-      <span class="tag">New</span>
+      <div class="card-preview">
+        <canvas id="preview-fluid"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Fluid Flow</h2>
+        <p>Particles following velocity fields, pushed by bass, swirling with mids. Inspired by gpu-io.</p>
+        <span class="tag">New</span>
+      </div>
     </a>
 
     <a href="visualizers/radial-burst.html" class="card">
-      <h2>Radial Burst</h2>
-      <p>Particles explode from center on every beat. Trails decay into nothing. Waveform ring pulses.</p>
-      <span class="tag">Beat-reactive</span>
+      <div class="card-preview">
+        <canvas id="preview-radial"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Radial Burst</h2>
+        <p>Particles explode from center on every beat. Trails decay into nothing. Waveform ring pulses.</p>
+        <span class="tag">Beat-reactive</span>
+      </div>
     </a>
 
     <a href="visualizers/vertical-pulse.html" class="card">
-      <h2>Vertical Pulse (Full)</h2>
-      <p>Extended version with overlay system, color extraction, and resolution presets for video export.</p>
-      <span class="tag">Overlays + Export</span>
+      <div class="card-preview">
+        <canvas id="preview-overlay"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Vertical Pulse (Full)</h2>
+        <p>Extended version with overlay system, color extraction, and resolution presets for video export.</p>
+        <span class="tag">Overlays + Export</span>
+      </div>
     </a>
   </div>
 
@@ -153,5 +191,211 @@
   <footer>
     Made by <a href="https://electric-sheep-supply-co.in">Electric Sheep Supply Co.</a>
   </footer>
+
+  <script>
+    // Mini visualizer previews
+    class MiniVisualizer {
+      constructor(canvasId, type) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.type = type;
+        this.time = Math.random() * 1000;
+        this.particles = [];
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+      }
+
+      resize() {
+        const rect = this.canvas.parentElement.getBoundingClientRect();
+        this.canvas.width = rect.width * 2;
+        this.canvas.height = rect.height * 2;
+        this.width = this.canvas.width;
+        this.height = this.canvas.height;
+      }
+
+      draw() {
+        this.time += 0.02;
+        const ctx = this.ctx;
+
+        // Fade background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        switch (this.type) {
+          case 'vertical':
+            this.drawVertical();
+            break;
+          case 'fluid':
+            this.drawFluid();
+            break;
+          case 'radial':
+            this.drawRadial();
+            break;
+          case 'overlay':
+            this.drawOverlay();
+            break;
+        }
+
+        requestAnimationFrame(() => this.draw());
+      }
+
+      drawVertical() {
+        const ctx = this.ctx;
+        const cols = 30;
+        const colW = this.width / cols;
+
+        for (let i = 0; i < cols; i++) {
+          const x = i * colW;
+          const noise = Math.sin(this.time + i * 0.3) * 0.5 + 0.5;
+          const h = this.height * (0.3 + noise * 0.5);
+
+          const gradient = ctx.createLinearGradient(x, this.height - h, x, this.height);
+          gradient.addColorStop(0, `hsla(${330 + i * 2}, 100%, 60%, 0)`);
+          gradient.addColorStop(0.5, `hsla(${330 + i * 2}, 100%, 60%, ${noise * 0.8})`);
+          gradient.addColorStop(1, `hsla(${330 + i * 2}, 100%, 60%, ${noise})`);
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x, this.height - h, colW - 2, h);
+        }
+      }
+
+      drawFluid() {
+        const ctx = this.ctx;
+
+        // Add particles occasionally
+        if (Math.random() < 0.3) {
+          this.particles.push({
+            x: Math.random() * this.width,
+            y: Math.random() * this.height,
+            vx: 0,
+            vy: 0,
+            life: 1,
+            hue: Math.random() * 60 + 220
+          });
+        }
+
+        // Update and draw particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+
+          // Flow field
+          const angle = Math.sin(p.x * 0.01 + this.time) * Math.cos(p.y * 0.01 + this.time) * Math.PI * 2;
+          p.vx += Math.cos(angle) * 0.5;
+          p.vy += Math.sin(angle) * 0.5;
+          p.vx *= 0.95;
+          p.vy *= 0.95;
+
+          p.x += p.vx;
+          p.y += p.vy;
+          p.life -= 0.01;
+
+          if (p.life > 0) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${p.hue}, 80%, 60%, ${p.life})`;
+            ctx.fill();
+          } else {
+            this.particles.splice(i, 1);
+          }
+        }
+
+        // Limit particles
+        if (this.particles.length > 200) {
+          this.particles = this.particles.slice(-200);
+        }
+      }
+
+      drawRadial() {
+        const ctx = this.ctx;
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+
+        // Burst on "beat"
+        if (Math.sin(this.time * 2) > 0.9 && Math.random() < 0.3) {
+          for (let i = 0; i < 20; i++) {
+            const angle = (Math.PI * 2 / 20) * i + Math.random() * 0.2;
+            this.particles.push({
+              x: cx,
+              y: cy,
+              vx: Math.cos(angle) * (5 + Math.random() * 5),
+              vy: Math.sin(angle) * (5 + Math.random() * 5),
+              life: 1,
+              hue: 340 + Math.random() * 40
+            });
+          }
+        }
+
+        // Update and draw particles
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+          const p = this.particles[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vx *= 0.98;
+          p.vy *= 0.98;
+          p.life -= 0.02;
+
+          if (p.life > 0) {
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 4 * p.life, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${p.hue}, 100%, 60%, ${p.life})`;
+            ctx.fill();
+          } else {
+            this.particles.splice(i, 1);
+          }
+        }
+
+        // Ring
+        const ringR = 60 + Math.sin(this.time * 3) * 10;
+        ctx.beginPath();
+        ctx.arc(cx, cy, ringR, 0, Math.PI * 2);
+        ctx.strokeStyle = `hsla(280, 80%, 60%, 0.5)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Limit particles
+        if (this.particles.length > 150) {
+          this.particles = this.particles.slice(-150);
+        }
+      }
+
+      drawOverlay() {
+        const ctx = this.ctx;
+        const cols = 25;
+        const colW = this.width / cols;
+
+        // Vertical bars
+        for (let i = 0; i < cols; i++) {
+          const x = i * colW;
+          const noise = Math.sin(this.time * 1.5 + i * 0.4) * 0.5 + 0.5;
+          const h = this.height * (0.2 + noise * 0.6);
+
+          const hue = 200 + i * 3;
+          ctx.fillStyle = `hsla(${hue}, 80%, 50%, ${noise * 0.7})`;
+          ctx.fillRect(x, this.height - h, colW - 2, h);
+        }
+
+        // Overlay simulation (centered shape)
+        const pulse = Math.sin(this.time * 2) * 0.2 + 0.8;
+        const size = 50 * pulse;
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, size, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.3 * pulse})`;
+        ctx.fill();
+      }
+    }
+
+    // Initialize all previews
+    const previews = [
+      new MiniVisualizer('preview-vertical', 'vertical'),
+      new MiniVisualizer('preview-fluid', 'fluid'),
+      new MiniVisualizer('preview-radial', 'radial'),
+      new MiniVisualizer('preview-overlay', 'overlay')
+    ];
+
+    previews.forEach(p => p.draw());
+  </script>
 </body>
 </html>

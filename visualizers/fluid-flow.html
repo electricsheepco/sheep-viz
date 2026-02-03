@@ -107,6 +107,31 @@
       opacity: 1;
     }
 
+    .viz-selector {
+      margin-bottom: 16px;
+    }
+
+    .viz-selector select {
+      width: 100%;
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 11px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--bg-tertiary);
+      border-radius: 6px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .viz-selector select:hover {
+      border-color: var(--accent);
+    }
+
+    .viz-selector select:focus {
+      border-color: var(--accent);
+    }
+
     h1 {
       font-size: 14px;
       font-weight: 600;
@@ -272,6 +297,15 @@
       <div id="click-prompt">Click to enable audio</div>
     </div>
     <div id="sidebar">
+      <div class="viz-selector">
+        <select id="vizSelect" onchange="if(this.value) window.location.href=this.value">
+          <option value="">Switch Visualizer...</option>
+          <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
+          <option value="fluid-flow.html" selected>Fluid Flow</option>
+          <option value="radial-burst.html">Radial Burst</option>
+          <option value="vertical-pulse.html">Vertical Pulse (Full)</option>
+        </select>
+      </div>
       <h1>Fluid Flow</h1>
       <p class="subtitle">Audio-reactive fluid simulation</p>
 

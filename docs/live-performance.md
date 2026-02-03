@@ -17,6 +17,29 @@ Audio Source (Mixer/DAW)
               Audio React
 ```
 
+## Dual-Screen Setup (Recommended)
+
+The best setup for live performance: **controls on your laptop, visuals on the projector**.
+
+### Pop-Out Canvas
+
+1. Open any visualizer
+2. Load audio and start playback
+3. Press **P** to pop out the canvas
+4. Drag the popup window to your projector/second display
+5. Click in the popup and press **F** for fullscreen
+6. Adjust parameters from your laptop - changes appear on projector instantly
+
+This gives you full control without the audience seeing your UI.
+
+### Projection Mode Features
+
+When in fullscreen projection mode:
+- UI auto-hides
+- Cursor disappears after 2 seconds
+- Canvas fills entire screen
+- Press **H** to temporarily show controls
+
 ## Hardware Setup
 
 ### Audio Input
@@ -27,11 +50,24 @@ Audio Source (Mixer/DAW)
 ### Video Output
 1. Connect HDMI/DisplayPort to projector or LED screen
 2. Set display to "Extended" mode (not mirrored)
-3. Drag browser window to the external display
-4. Press `F` for fullscreen
+3. Use the pop-out feature to send canvas to second display
 
 ### MIDI Controller (Optional)
 See [MIDI Setup](midi-setup.md) for controller configuration.
+
+## Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `P` | Pop out canvas to new window |
+| `F` | Toggle fullscreen |
+| `H` | Hide/show UI |
+| `Space` | Play/pause |
+| `R` | Start/stop recording |
+
+## Switching Visualizers
+
+Use the dropdown at the top of the sidebar to switch between visualizers without leaving the page. Your audio continues playing.
 
 ## Performance Workflow
 
@@ -39,32 +75,21 @@ See [MIDI Setup](midi-setup.md) for controller configuration.
 
 1. **Test audio levels** - Play your loudest track, ensure no clipping
 2. **Set your parameters** - Dial in visuals that match your set
-3. **Save a preset** - Click "Save Preset" to backup your settings
-4. **Check projection** - Verify colors and brightness on the actual screen
+3. **Test pop-out** - Verify it works with your projector
+4. **Save a preset** - Backup your settings
 
 ### During the Show
 
-| Action | Method |
-|--------|--------|
-| Go fullscreen | Press `F` |
-| Hide UI | Press `H` |
-| Adjust parameters | MIDI controller or press `H` to show UI |
-| Switch presets | Load from preset dropdown |
-
-### Keyboard Shortcuts
-
-| Key | Action |
-|-----|--------|
-| `F` | Toggle fullscreen |
-| `H` | Hide/show UI |
-| `Space` | Play/pause (if using file) |
-| `R` | Start/stop recording |
+1. Pop out canvas to projector (P)
+2. Fullscreen the popup (F)
+3. Adjust parameters from your laptop as needed
+4. Use dropdown to switch visualizers between songs
 
 ## Tips for Live Performance
 
 ### Visual Impact
 - **Keep it simple** - Subtle visuals enhance music, busy visuals distract
-- **Match the energy** - High blob count for drops, low for breakdowns
+- **Match the energy** - High particle count for drops, low for breakdowns
 - **Use color shift sparingly** - Constant rainbow can be nauseating
 
 ### Technical
@@ -76,21 +101,12 @@ See [MIDI Setup](midi-setup.md) for controller configuration.
 ### Audio
 - **Don't clip** - Distorted input = jerky visuals
 - **Consistent levels** - Compress your master or normalize input
-- **Test the room** - Bass buildup affects the visualizer
-
-## Resolution Settings
-
-For projection, match your output device:
-
-| Device | Resolution |
-|--------|------------|
-| Standard projector | 1920x1080 |
-| Widescreen | 2560x1080 |
-| Portrait LED | 1080x1920 |
-
-The visualizer automatically scales to fill the window.
 
 ## Troubleshooting
+
+### Pop-out window won't open
+- Allow popups for the site in browser settings
+- Try clicking the button instead of using keyboard shortcut
 
 ### No audio response
 1. Check that "Use Mic" is active
@@ -99,13 +115,8 @@ The visualizer automatically scales to fill the window.
 
 ### Choppy visuals
 1. Close other browser tabs
-2. Reduce column count or blob count
+2. Reduce particle count or complexity
 3. Use Chrome instead of Firefox
-
-### Fullscreen issues
-1. Some projectors need a delay - wait for connection
-2. Try clicking canvas before pressing `F`
-3. Use browser's fullscreen (View > Enter Fullscreen)
 
 ## Example Setups
 
@@ -115,6 +126,8 @@ CDJ 1 ──┐
         ├──► Mixer ──► Main Out ──► PA
 CDJ 2 ──┘      │
                └──► Record Out ──► Audio Interface ──► Computer
+                                        │
+                                   Pop-out to projector
 ```
 
 ### Band with Mixer
@@ -122,11 +135,6 @@ CDJ 2 ──┘      │
 Instruments ──► Mixer ──► Main Out ──► PA
                   │
                   └──► Aux Send ──► Audio Interface ──► Computer
-```
-
-### Laptop Producer
-```
-DAW ──► Audio Interface ──► Loopback ──► sheep-viz
-              │
-              └──► Speakers/PA
+                                          │
+                                     Pop-out to projector
 ```
