@@ -1,116 +1,172 @@
-# Sheep
+# sheep-viz
 
-Audio-reactive visual generation for music videos and live performances.
+**Audio-reactive visuals for musicians who miss the old days.**
 
-![Vertical Pulse](https://img.shields.io/badge/visualizer-vertical--pulse-ff1a4b)
+*(Not a cheap visualizer. Well, it's free. But not cheap.)*
+
 ![License](https://img.shields.io/badge/license-MIT-blue)
+![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)
 
-## What is this?
+---
 
-**Sheep** is a toolkit for creating audio-reactive visuals that sync perfectly with music. Use it for:
-- Live VJ performances
-- Music video backgrounds
-- Social media content (TikTok, Reels, YouTube Shorts)
-- Album art animations
+## Why This Exists
+
+Remember Winamp?
+
+Remember sitting in the dark, watching **Geiss** and **MilkDrop** paint impossible geometries while your favorite album played? Those visualizers weren't just eye candy—they were *companions* to the music. They made you *see* what you were hearing.
+
+I'm a musician. I make electronic music. And when it came time to create visuals for my live shows and music videos, I looked around and found... not much. The old tools are gone or abandoned. The new ones are either $500/year subscriptions, locked into specific DAWs, or require a computer science degree to operate.
+
+So I built this.
+
+**sheep-viz** is what I wanted: simple, hackable, audio-reactive visuals that run in a browser. No installation. No subscription. No bullshit. Load your track, tweak the knobs, record the output. Or plug in a MIDI controller and perform live.
+
+It's named after [Electric Sheep](https://electricsheep.org/)—the distributed computing project that generates fractal flames. And yes, the Philip K. Dick reference. And yes, the counting-sheep-to-sleep thing, because these visuals are hypnotic.
+
+---
+
+## What It Does
+
+Drop in an audio file. The visuals react to bass, mids, and treble in real-time.
+
+**Vertical Pulse** — Light columns that breathe with frequency, distorted by organic blobs drifting across the screen. That neon-rain-through-glass aesthetic.
+
+**Radial Burst** — Particles explode from the center on every beat. Trails decay into nothing. A waveform ring pulses around the chaos.
+
+More visualizers coming. Or fork it and make your own.
+
+---
 
 ## Quick Start
 
-### Live Preview (Browser)
+```bash
+# Just open in a browser. That's it.
+open visualizers/vertical-pulse-pro.html
+```
+
+1. Click the canvas to enable audio
+2. Load a track or use your microphone
+3. Press `F` for fullscreen (projection mode)
+4. Press `R` to record
+
+For high-quality video export:
+```bash
+cd tools && npm install
+./render-video.sh your-track.mp3 output.mp4 --res tiktok
+```
+
+---
+
+## Features
+
+- **Browser-based** — No installation, runs anywhere
+- **MIDI support** — Map your controller, perform live
+- **Fullscreen projection** — Hide the UI, output to a projector
+- **Overlay system** — Add your logo, album art, whatever
+- **Color extraction** — Pull palette from your artwork automatically
+- **Preset system** — Save and share your configurations
+- **Frame-perfect export** — Render videos that sync exactly to your audio
+- **Resolution presets** — YouTube, TikTok, Instagram, all covered
+
+---
+
+## For Live Performance
+
+1. Open `vertical-pulse-pro.html`
+2. Connect your MIDI controller (auto-detected)
+3. Load your set or use line-in from your mixer
+4. Press `F` for fullscreen
+5. Press `H` to hide controls
+6. Output to projector via HDMI
+
+Default MIDI mapping (customize in code):
+| CC | Control |
+|----|---------|
+| 1-6 | Visual parameters |
+| Note 36 | Play/Pause |
+| Note 37 | Record |
+| Note 38 | Fullscreen |
+
+---
+
+## For Music Videos
 
 ```bash
-# Just open in browser
-open visualizers/vertical-pulse.html
+# Vertical for TikTok/Reels/Shorts
+./tools/render-video.sh track.mp3 video.mp4 --res tiktok --overlay logo.png
+
+# Horizontal for YouTube
+./tools/render-video.sh track.mp3 video.mp4 --res youtube
+
+# With a visual preset
+./tools/render-video.sh track.mp3 video.mp4 --preset visualizers/presets/deep-cyberpunk.json
 ```
 
-1. Click canvas to enable audio
-2. Load an audio file or use microphone
-3. Tweak parameters in the sidebar
-4. Record directly or save frames
+The render pipeline:
+1. Analyzes your audio frame-by-frame (FFT extraction)
+2. Renders each frame headlessly via Puppeteer
+3. Compiles with FFmpeg, perfectly synced
 
-### Render Video (CLI)
+---
 
-```bash
-# Install dependencies (one time)
-cd tools && npm install && cd ..
+## Keyboard Shortcuts
 
-# Render a music video
-./tools/render-video.sh song.mp3 output.mp4
+| Key | Action |
+|-----|--------|
+| `Space` | Play / Pause |
+| `F` | Toggle fullscreen |
+| `H` | Hide / show UI |
+| `R` | Start / stop recording |
 
-# With options
-./tools/render-video.sh song.mp3 output.mp4 \
-  --res tiktok \
-  --preset visualizers/presets/deep-cyberpunk.json \
-  --overlay logo.png
-```
+---
 
-## Visualizers
+## Make Your Own Visualizer
 
-### Vertical Pulse
+The architecture is simple:
 
-Audio-reactive light columns with organic metaball distortion.
+1. **Audio analysis** — Web Audio API gives you frequency data
+2. **Visual system** — p5.js draws to canvas
+3. **Parameters** — Sliders in the UI, exposed for MIDI
 
-| Feature | Description |
-|---------|-------------|
-| Columns | Vertical bars mapped to frequency spectrum |
-| Metaballs | Organic blobs that distort the columns |
-| Colors | Bass → Mid → Treble gradient |
-| Overlay | Logo/image with reactive effects (split, pulse, glitch, cycle) |
+Look at `vertical-pulse-pro.html`. It's one self-contained file. Copy it, change the `draw()` function, add your own parameters. That's it.
 
-## Resolution Presets
+Ideas I haven't built yet:
+- Flow field particles
+- 3D waveform terrain
+- Geometric kaleidoscope
+- Liquid/fluid simulation
+- Spectrum bars (classic, but make it fresh)
 
-| Preset | Size | Use Case |
-|--------|------|----------|
-| `youtube` / `hd` | 1920×1080 | YouTube, general HD |
-| `youtube2k` / `2k` | 2560×1440 | YouTube 2K |
-| `youtube4k` / `4k` | 3840×2160 | YouTube 4K |
-| `tiktok` / `reels` / `shorts` | 1080×1920 | Vertical mobile video |
-| `instagram` / `square` | 1080×1080 | Instagram feed |
-| `portrait` | 1080×1350 | Instagram portrait |
+If you build something cool, open a PR.
 
-## Visual Presets
-
-```
-visualizers/presets/
-├── vertical-pulse-default.json   # Neon red/magenta/blue
-├── deep-cyberpunk.json           # Dense, intense
-├── minimal-white.json            # Clean monochrome
-└── warm-sunset.json              # Orange/yellow gradient
-```
-
-Save your own: adjust parameters → click "Save Current as Preset"
-
-## Overlay Effects
-
-| Effect | Description |
-|--------|-------------|
-| None | Static overlay |
-| Split & Shift | Vertical slices move with frequencies |
-| Pulse | Scale and glow with bass |
-| Glitch | RGB split + displacement |
-| Cycle | Rotate through multiple images |
+---
 
 ## Project Structure
 
 ```
 sheep/
 ├── visualizers/
-│   ├── vertical-pulse.html       # Live interactive visualizer
-│   ├── vertical-pulse-render.html # Headless render version
+│   ├── vertical-pulse-pro.html   # Main visualizer (MIDI + fullscreen)
+│   ├── vertical-pulse.html       # Full-featured with overlays
+│   ├── radial-burst.html         # Particle explosion visualizer
 │   └── presets/                  # Saved configurations
 ├── tools/
-│   ├── render-video.sh           # Full pipeline script
-│   ├── analyze-audio.js          # Extract FFT per frame
-│   └── render-frames.js          # Puppeteer frame renderer
+│   ├── render-video.sh           # Full render pipeline
+│   ├── analyze-audio.js          # FFT extraction
+│   └── render-frames.js          # Headless frame renderer
 ├── assets/                       # Your images, logos
-├── output/                       # Rendered videos (gitignored)
-└── README.md
+└── docs/                         # Notes, documentation
 ```
+
+---
 
 ## Requirements
 
-- **Browser**: Chrome/Firefox (for live preview)
-- **Node.js**: v18+ (for CLI rendering)
-- **FFmpeg**: (for video compilation)
+**For live use:** Any modern browser (Chrome/Firefox recommended)
+
+**For video rendering:**
+- Node.js 18+
+- FFmpeg
 
 ```bash
 # macOS
@@ -120,39 +176,41 @@ brew install node ffmpeg
 sudo apt install nodejs ffmpeg
 ```
 
-## CLI Reference
+---
 
-```bash
-./tools/render-video.sh <input-audio> <output-video> [options]
+## Contributing
 
-Options:
-  --res <preset>        Resolution preset
-  --fps <number>        Frame rate (default: 60)
-  --seed <number>       Random seed for reproducibility
-  --preset <file>       Load visual preset JSON
-  --overlay <image>     Overlay image (logo, album art)
-  --overlay-size <n>    Overlay size as % (default: 20)
-  --overlay-pos <pos>   Position: center, bottom-right, etc.
-  --crf <number>        Video quality, lower=better (default: 18)
-```
+This is open source because the old visualizers were communities. MilkDrop had hundreds of preset authors. Geiss was passed around on burned CDs.
 
-## Examples
+**Ways to contribute:**
+- Build a new visualizer
+- Create and share presets
+- Improve the render pipeline
+- Add features (better MIDI learn, OSC support, etc.)
+- Fix bugs
+- Write documentation
 
-```bash
-# TikTok vertical video with logo
-./tools/render-video.sh track.mp3 tiktok.mp4 --res tiktok --overlay logo.png
-
-# YouTube video with preset
-./tools/render-video.sh track.mp3 youtube.mp4 --res youtube --preset visualizers/presets/deep-cyberpunk.json
-
-# 4K render
-./tools/render-video.sh track.mp3 4k.mp4 --res 4k --fps 30
-```
-
-## License
-
-MIT
+Fork it. Break it. Make it yours.
 
 ---
 
-Part of [Electric Sheep Supply Co.](https://electric-sheep-supply-co.in)
+## Acknowledgments
+
+Standing on the shoulders of:
+- **Geiss** by Ryan Geiss — The one that started it all
+- **MilkDrop** by Ryan Geiss — Still unmatched after 20 years
+- **Electric Sheep** by Scott Draves — Distributed dreams
+- **Winamp** — It really whips the llama's ass
+- **p5.js** — Creative coding for everyone
+
+---
+
+## License
+
+MIT — Do whatever you want. Credit appreciated but not required.
+
+---
+
+*Made for musicians, by a musician.*
+
+*Part of [Electric Sheep Supply Co.](https://electric-sheep-supply-co.in)*
