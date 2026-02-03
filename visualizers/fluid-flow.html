@@ -355,6 +355,7 @@
 
       <div class="section">
         <div class="section-title">Actions</div>
+        <button class="btn btn-primary" id="popout">Pop Out Canvas (P)</button>
         <button class="btn btn-secondary" id="fullscreen">Fullscreen (F)</button>
         <button class="btn btn-secondary" id="reset">Reset Particles</button>
       </div>
@@ -363,6 +364,7 @@
         <div class="section-title">Shortcuts</div>
         <div class="shortcuts">
           <kbd>Space</kbd> Play/Pause<br>
+          <kbd>P</kbd> Pop out canvas<br>
           <kbd>F</kbd> Fullscreen<br>
           <kbd>H</kbd> Hide UI<br>
           <kbd>R</kbd> Reset particles
@@ -698,6 +700,96 @@
       initVelocityField();
       initParticles();
     });
+    document.getElementById('popout').addEventListener('click', popOutCanvas);
+
+    // Pop-out window for dual-screen setup (controls on laptop, canvas on projector)
+    let popoutWindow = null;
+
+    function popOutCanvas() {
+      if (popoutWindow && !popoutWindow.closed) {
+        popoutWindow.focus();
+        return;
+      }
+
+      // Create popup window
+      popoutWindow = window.open('', 'FluidFlowCanvas', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
+
+      popoutWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Fluid Flow - Projection</title>
+          <style>
+            * { margin: 0; padding: 0; }
+            body { background: #000; overflow: hidden; cursor: none; }
+            canvas { display: block; width: 100vw; height: 100vh; }
+            #hint {
+              position: fixed;
+              top: 20px;
+              left: 50%;
+              transform: translateX(-50%);
+              background: rgba(0,0,0,0.8);
+              color: #fff;
+              padding: 12px 24px;
+              border-radius: 8px;
+              font-family: monospace;
+              font-size: 14px;
+              opacity: 1;
+              transition: opacity 1s;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="hint">Move to projector, then press F for fullscreen</div>
+          <script>
+            setTimeout(() => {
+              document.getElementById('hint').style.opacity = '0';
+              setTimeout(() => document.getElementById('hint').remove(), 1000);
+            }, 3000);
+
+            document.addEventListener('keydown', (e) => {
+              if (e.key.toLowerCase() === 'f') {
+                document.documentElement.requestFullscreen();
+              }
+            });
+
+            let cursorTimeout;
+            document.addEventListener('mousemove', () => {
+              document.body.style.cursor = 'default';
+              clearTimeout(cursorTimeout);
+              cursorTimeout = setTimeout(() => document.body.style.cursor = 'none', 2000);
+            });
+          </script>
+        </body>
+        </html>
+      `);
+      popoutWindow.document.close();
+
+      // Move canvas to popup
+      const canvas = document.getElementById('defaultCanvas0');
+      if (canvas) {
+        popoutWindow.document.body.appendChild(canvas);
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+      }
+
+      // Update button text
+      document.getElementById('popout').textContent = 'Canvas Popped Out';
+
+      // Handle popup close
+      popoutWindow.addEventListener('beforeunload', () => {
+        // Move canvas back
+        const container = document.getElementById('canvas-container');
+        if (canvas && container) {
+          container.appendChild(canvas);
+          canvas.style.width = '';
+          canvas.style.height = '';
+          windowResized();
+        }
+        document.getElementById('popout').textContent = 'Pop Out Canvas (P)';
+        popoutWindow = null;
+      });
+    }
 
     function toggleFullscreen() {
       if (document.fullscreenElement) {
@@ -755,8 +847,8 @@
           initVelocityField();
           initParticles();
           break;
-        case 'escape':
-          // ESC is handled by browser for fullscreen exit
+        case 'p':
+          popOutCanvas();
           break;
       }
     });
