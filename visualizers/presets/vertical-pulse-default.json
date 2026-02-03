@@ -1,0 +1,25 @@
+{
+  "name": "Vertical Pulse",
+  "description": "Audio-reactive light columns with organic metaball distortion. Neon red/magenta/blue gradient.",
+  "visualizer": "vertical-pulse",
+  "version": "1.0",
+  "created": "2025-02-03",
+  "params": {
+    "seed": 42,
+    "columnCount": 60,
+    "columnWidth": 0.7,
+    "baseBright": 0.2,
+    "blobCount": 5,
+    "blobSize": 150,
+    "sensitivity": 1.5,
+    "colorBass": "#ff1a4b",
+    "colorMid": "#cc33ff",
+    "colorTreble": "#3366ff",
+    "overlaySize": 0.2,
+    "overlayOpacity": 0.8,
+    "overlayPosition": "center",
+    "overlayEffect": "split",
+    "overlayIntensity": 0.5
+  },
+  "tags": ["columns", "metaballs", "neon", "cyberpunk"]
+}

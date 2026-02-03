@@ -1,0 +1,14 @@
+{
+  "name": "sheep-render-tools",
+  "version": "1.0.0",
+  "description": "Audio analysis and frame rendering tools for Sheep visualizers",
+  "scripts": {
+    "analyze": "node analyze-audio.js",
+    "render": "node render-frames.js"
+  },
+  "dependencies": {
+    "meyda": "^5.6.4",
+    "puppeteer": "^21.6.1",
+    "web-audio-api": "^0.2.2"
+  }
+}

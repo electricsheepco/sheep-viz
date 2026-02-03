@@ -1,0 +1,25 @@
+{
+  "name": "Warm Sunset",
+  "description": "Orange to yellow gradient with large organic blobs. Warm, dreamy feel.",
+  "visualizer": "vertical-pulse",
+  "version": "1.0",
+  "created": "2025-02-03",
+  "params": {
+    "seed": 777,
+    "columnCount": 45,
+    "columnWidth": 0.85,
+    "baseBright": 0.25,
+    "blobCount": 8,
+    "blobSize": 200,
+    "sensitivity": 1.8,
+    "colorBass": "#ff4400",
+    "colorMid": "#ff8800",
+    "colorTreble": "#ffcc00",
+    "overlaySize": 0.2,
+    "overlayOpacity": 0.7,
+    "overlayPosition": "center",
+    "overlayEffect": "split",
+    "overlayIntensity": 0.5
+  },
+  "tags": ["warm", "sunset", "orange", "dreamy"]
+}

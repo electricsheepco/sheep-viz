@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vertical Pulse - Render Mode</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// RENDER MODE - Reads audio from window.injectedAudio
+// ═══════════════════════════════════════════════════════════════════
+
+const P = {
+    seed: 42,
+    columnCount: 60,
+    columnWidth: 0.7,
+    baseBright: 0.2,
+    blobCount: 5,
+    blobSize: 150,
+    sensitivity: 1.5,
+    colorBass: '#ff1a4b',
+    colorMid: '#cc33ff',
+    colorTreble: '#3366ff',
+    overlaySize: 0.2,
+    overlayOpacity: 0.8,
+    overlayPosition: 'center',
+    overlayEffect: 'split',
+    overlayIntensity: 0.5
+};
+
+// Overlay image (set via window.overlayImg or loadOverlayFromURL)
+let overlayImg = null;
+window.overlayImg = null;
+
+// Injected audio data (set by renderer before each frame)
+window.injectedAudio = null;
+
+function getAudio() {
+    const data = window.injectedAudio;
+    if (!data) {
+        return { bass: 0, mid: 0, treble: 0, spectrum: new Array(P.columnCount).fill(0) };
+    }
+
+    // Map spectrum to column count
+    const spectrum = [];
+    const srcLen = data.spectrum ? data.spectrum.length : 0;
+    const perCol = Math.max(1, Math.floor(srcLen / P.columnCount));
+
+    for (let c = 0; c < P.columnCount; c++) {
+        if (data.spectrum) {
+            let sum = 0;
+            for (let b = 0; b < perCol && c * perCol + b < srcLen; b++) {
+                sum += data.spectrum[c * perCol + b] || 0;
+            }
+            spectrum.push((sum / perCol) * P.sensitivity);
+        } else {
+            spectrum.push(0);
+        }
+    }
+
+    return {
+        bass: (data.bass || 0) * P.sensitivity,
+        mid: (data.mid || 0) * P.sensitivity,
+        treble: (data.treble || 0) * P.sensitivity,
+        spectrum
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// VISUALS (same as live version)
+// ═══════════════════════════════════════════════════════════════════
+
+let blobs = [], columns = [];
+
+class Blob {
+    constructor(i) {
+        this.i = i;
+        this.reset();
+    }
+    reset() {
+        randomSeed(P.seed + this.i * 1000);
+        this.x = random(width);
+        this.y = random(height);
+        this.r = P.blobSize * random(0.5, 1.5);
+        this.vx = random(-1, 1) * 0.8;
+        this.vy = random(-0.5, 0.5) * 0.5;
+        this.ph = random(TWO_PI);
+    }
+    update(e) {
+        this.x += this.vx * (1 + e * 2);
+        this.y += this.vy + sin(frameCount * 0.02 + this.ph) * 0.5;
+        if (this.x < -this.r) this.x = width + this.r;
+        if (this.x > width + this.r) this.x = -this.r;
+        if (this.y < -this.r) this.y = height + this.r;
+        if (this.y > height + this.r) this.y = -this.r;
+    }
+    rad(e) { return this.r * (0.8 + e * 1.5); }
+}
+
+class Column {
+    constructor(i, x, w) {
+        this.i = i; this.x = x; this.w = w;
+        this.b = 0; this.tb = 0;
+    }
+    update(e) {
+        this.tb = P.baseBright + e;
+        this.b += (this.tb - this.b) * 0.15;
+    }
+}
+
+function initSystem() {
+    randomSeed(P.seed);
+    noiseSeed(P.seed);
+    blobs = [];
+    for (let i = 0; i < P.blobCount; i++) blobs.push(new Blob(i));
+    columns = [];
+    const cw = width / P.columnCount;
+    for (let i = 0; i < P.columnCount; i++) {
+        columns.push(new Column(i, i * cw, cw * P.columnWidth));
+    }
+}
+
+function hexRgb(hex) {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [255,0,100];
+}
+
+function lerpC(a, b, t) {
+    return [a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+}
+
+function colColor(idx, br) {
+    const t = idx / P.columnCount;
+    const bass = hexRgb(P.colorBass);
+    const mid = hexRgb(P.colorMid);
+    const treb = hexRgb(P.colorTreble);
+    let c = t < 0.5 ? lerpC(bass, mid, t*2) : lerpC(mid, treb, (t-0.5)*2);
+    return color(c[0]*br, c[1]*br, c[2]*br);
+}
+
+function metaInf(x, y, midE) {
+    let tot = 0;
+    for (let b of blobs) {
+        const dx = x - b.x, dy = y - b.y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        const r = b.rad(midE);
+        if (d < r * 2) tot += Math.pow(r / Math.max(d, 1), 2);
+    }
+    return Math.min(tot, 3);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// P5
+// ═══════════════════════════════════════════════════════════════════
+
+function setup() {
+    createCanvas(1920, 1080);
+    initSystem();
+    noLoop(); // Manual frame control for rendering
+}
+
+function draw() {
+    background(10, 10, 12);
+
+    const a = getAudio();
+
+    for (let b of blobs) b.update(a.mid);
+    for (let i = 0; i < columns.length; i++) columns[i].update(a.spectrum[i] || 0);
+
+    noStroke();
+    const res = 4;
+
+    for (let col of columns) {
+        for (let y = 0; y < height; y += res) {
+            const cx = col.x + col.w / 2;
+            const inf = metaInf(cx, y, a.mid);
+
+            let br = col.b;
+            if (inf > 0.3) br *= (1 + inf * 0.8);
+
+            const vy = 1 - Math.abs(y / height - 0.5) * 0.5;
+            br *= vy;
+
+            let w = col.w;
+            if (inf > 0.5) w *= (1 + inf * 0.3);
+
+            fill(colColor(col.i, Math.min(br, 1.5)));
+            rect(col.x + (col.w - w) / 2, y, w, res + 1);
+        }
+    }
+
+    // Glow
+    if (a.bass > 0.5) {
+        drawingContext.globalCompositeOperation = 'screen';
+        for (let b of blobs) {
+            const r = b.rad(a.mid);
+            const g = drawingContext.createRadialGradient(b.x, b.y, 0, b.x, b.y, r);
+            const bc = hexRgb(P.colorBass);
+            g.addColorStop(0, `rgba(${bc[0]},${bc[1]},${bc[2]},${a.bass*0.3})`);
+            g.addColorStop(1, 'rgba(0,0,0,0)');
+            drawingContext.fillStyle = g;
+            drawingContext.fillRect(b.x - r, b.y - r, r * 2, r * 2);
+        }
+        drawingContext.globalCompositeOperation = 'source-over';
+    }
+
+    // Scanlines
+    stroke(0, 0, 0, 25);
+    for (let y = 0; y < height; y += 3) line(0, y, width, y);
+
+    // Draw overlay
+    if (overlayImg || window.overlayImg) {
+        drawOverlay(a);
+    }
+}
+
+function drawOverlay(audio) {
+    const img = overlayImg || window.overlayImg;
+    if (!img) return;
+
+    const maxDim = Math.max(width, height) * P.overlaySize;
+    const imgAspect = img.width / img.height;
+    let w, h;
+
+    if (imgAspect > 1) {
+        w = maxDim;
+        h = maxDim / imgAspect;
+    } else {
+        h = maxDim;
+        w = maxDim * imgAspect;
+    }
+
+    const margin = 30;
+    let baseX, baseY;
+
+    switch (P.overlayPosition) {
+        case 'center':
+            baseX = (width - w) / 2;
+            baseY = (height - h) / 2;
+            break;
+        case 'top-left':
+            baseX = margin;
+            baseY = margin;
+            break;
+        case 'top-right':
+            baseX = width - w - margin;
+            baseY = margin;
+            break;
+        case 'bottom-left':
+            baseX = margin;
+            baseY = height - h - margin;
+            break;
+        case 'bottom-right':
+        default:
+            baseX = width - w - margin;
+            baseY = height - h - margin;
+    }
+
+    push();
+
+    const intensity = P.overlayIntensity || 0.5;
+    const bass = audio ? audio.bass : 0;
+    const mid = audio ? audio.mid : 0;
+    const spectrum = audio ? audio.spectrum : [];
+
+    if (P.overlayEffect === 'none' || intensity === 0) {
+        tint(255, P.overlayOpacity * 255);
+        image(img, baseX, baseY, w, h);
+    }
+    else if (P.overlayEffect === 'split') {
+        const slices = 20;
+        const sliceW = w / slices;
+        const srcSliceW = img.width / slices;
+
+        for (let i = 0; i < slices; i++) {
+            const specIdx = Math.floor((i / slices) * spectrum.length);
+            const energy = spectrum[specIdx] || 0;
+            const yOffset = (energy * intensity * 60) * Math.sin(frameCount * 0.05 + i * 0.5);
+            const xOffset = (bass * intensity * 20) * Math.sin(i * 0.3);
+            const alpha = P.overlayOpacity * (0.7 + energy * 0.3);
+
+            tint(255, alpha * 255);
+            image(img, baseX + i * sliceW + xOffset, baseY + yOffset, sliceW + 1, h,
+                  i * srcSliceW, 0, srcSliceW, img.height);
+        }
+    }
+    else if (P.overlayEffect === 'pulse') {
+        const scale = 1 + bass * intensity * 0.3;
+        const pulseW = w * scale;
+        const pulseH = h * scale;
+        const pulseX = baseX - (pulseW - w) / 2;
+        const pulseY = baseY - (pulseH - h) / 2;
+
+        if (bass > 0.3) {
+            drawingContext.shadowBlur = bass * intensity * 50;
+            drawingContext.shadowColor = P.colorBass;
+        }
+        tint(255, P.overlayOpacity * 255);
+        image(img, pulseX, pulseY, pulseW, pulseH);
+        drawingContext.shadowBlur = 0;
+    }
+    else if (P.overlayEffect === 'glitch') {
+        const glitchAmount = mid * intensity * 30;
+        tint(255, 0, 0, P.overlayOpacity * 200);
+        image(img, baseX - glitchAmount, baseY, w, h);
+        tint(0, 255, 0, P.overlayOpacity * 200);
+        image(img, baseX, baseY + glitchAmount * 0.5, w, h);
+        tint(0, 0, 255, P.overlayOpacity * 200);
+        image(img, baseX + glitchAmount, baseY, w, h);
+
+        if (bass > 0.6 && random() > 0.7) {
+            const sliceY = random(h);
+            const sliceH = random(10, 40);
+            const displacement = random(-50, 50) * intensity;
+            tint(255, P.overlayOpacity * 255);
+            image(img, baseX + displacement, baseY + sliceY, w, sliceH,
+                  0, (sliceY / h) * img.height, img.width, (sliceH / h) * img.height);
+        }
+    }
+
+    pop();
+}
+
+// Load overlay from URL (for renderer)
+function loadOverlayFromURL(url) {
+    return new Promise((resolve, reject) => {
+        loadImage(url, img => {
+            overlayImg = img;
+            resolve(img);
+        }, reject);
+    });
+}
+
+// Expose for external control
+window.P = P;
+window.initSystem = initSystem;
+window.loadOverlayFromURL = loadOverlayFromURL;
+</script>
+</body>
+</html>
