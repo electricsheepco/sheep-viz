@@ -202,6 +202,7 @@ Standing on the shoulders of:
 - **Electric Sheep** by Scott Draves — Distributed dreams
 - **Winamp** — It really whips the llama's ass
 - **p5.js** — Creative coding for everyone
+- **gpu-io** by [Amanda Ghassaei](https://apps.amandaghassaei.com/gpu-io/examples/fluid/) — Fluid simulation inspiration
 
 ---
 

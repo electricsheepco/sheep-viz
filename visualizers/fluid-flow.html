@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fluid Flow - sheep-viz</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --accent: #6366f1;
+      --accent-dim: #4f46e5;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #app {
+      display: flex;
+      height: 100vh;
+    }
+
+    #canvas-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+      border-left: 1px solid var(--bg-tertiary);
+    }
+
+    .sidebar-hidden #sidebar {
+      display: none;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+    }
+
+    .subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+    }
+
+    .control-group label span:last-child {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dim);
+    }
+
+    .btn-secondary {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+    }
+
+    .btn-secondary:hover {
+      background: #252530;
+    }
+
+    .audio-controls {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .audio-controls .btn {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .shortcuts {
+      font-size: 10px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .shortcuts kbd {
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: inherit;
+    }
+
+    #click-prompt {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 14px;
+      color: var(--text-secondary);
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .color-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .color-picker {
+      flex: 1;
+    }
+
+    .color-picker label {
+      display: block;
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .color-picker input[type="color"] {
+      width: 100%;
+      height: 28px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: var(--bg-tertiary);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="canvas-container">
+      <div id="click-prompt">Click to enable audio</div>
+    </div>
+    <div id="sidebar">
+      <h1>Fluid Flow</h1>
+      <p class="subtitle">Audio-reactive fluid simulation</p>
+
+      <div class="section">
+        <div class="section-title">Audio</div>
+        <div class="audio-controls">
+          <label class="btn btn-secondary">
+            Load File
+            <input type="file" id="audioFile" accept="audio/*">
+          </label>
+          <button class="btn btn-secondary" id="useMic">Use Mic</button>
+        </div>
+        <button class="btn btn-primary" id="playPause">Play</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Fluid</div>
+
+        <div class="control-group">
+          <label>Particle Count <span id="particleCountVal">8000</span></label>
+          <input type="range" id="particleCount" min="1000" max="20000" step="1000" value="8000">
+        </div>
+
+        <div class="control-group">
+          <label>Viscosity <span id="viscosityVal">0.98</span></label>
+          <input type="range" id="viscosity" min="0.9" max="0.999" step="0.001" value="0.98">
+        </div>
+
+        <div class="control-group">
+          <label>Diffusion <span id="diffusionVal">0.5</span></label>
+          <input type="range" id="diffusion" min="0" max="1" step="0.01" value="0.5">
+        </div>
+
+        <div class="control-group">
+          <label>Force Scale <span id="forceScaleVal">50</span></label>
+          <input type="range" id="forceScale" min="10" max="200" step="5" value="50">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Audio Response</div>
+
+        <div class="control-group">
+          <label>Bass Force <span id="bassForceVal">3.0</span></label>
+          <input type="range" id="bassForce" min="0" max="10" step="0.1" value="3.0">
+        </div>
+
+        <div class="control-group">
+          <label>Mid Turbulence <span id="midTurbulenceVal">2.0</span></label>
+          <input type="range" id="midTurbulence" min="0" max="5" step="0.1" value="2.0">
+        </div>
+
+        <div class="control-group">
+          <label>Treble Sparkle <span id="trebleSparkleVal">1.5</span></label>
+          <input type="range" id="trebleSparkle" min="0" max="5" step="0.1" value="1.5">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Colors</div>
+        <div class="color-row">
+          <div class="color-picker">
+            <label>Color 1</label>
+            <input type="color" id="color1" value="#6366f1">
+          </div>
+          <div class="color-picker">
+            <label>Color 2</label>
+            <input type="color" id="color2" value="#ec4899">
+          </div>
+          <div class="color-picker">
+            <label>Color 3</label>
+            <input type="color" id="color3" value="#06b6d4">
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>Trail Length <span id="trailLengthVal">0.92</span></label>
+          <input type="range" id="trailLength" min="0.8" max="0.99" step="0.01" value="0.92">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <button class="btn btn-secondary" id="fullscreen">Fullscreen (F)</button>
+        <button class="btn btn-secondary" id="reset">Reset Particles</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Shortcuts</div>
+        <div class="shortcuts">
+          <kbd>Space</kbd> Play/Pause<br>
+          <kbd>F</kbd> Fullscreen<br>
+          <kbd>H</kbd> Hide UI<br>
+          <kbd>R</kbd> Reset particles
+        </div>
+      </div>
+
+      <div class="section">
+        <p class="subtitle">Inspired by <a href="https://apps.amandaghassaei.com/gpu-io/examples/fluid/" style="color: var(--accent)">gpu-io</a> by Amanda Ghassaei</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.js"></script>
+  <script>
+    // Parameters
+    const params = {
+      particleCount: 8000,
+      viscosity: 0.98,
+      diffusion: 0.5,
+      forceScale: 50,
+      bassForce: 3.0,
+      midTurbulence: 2.0,
+      trebleSparkle: 1.5,
+      trailLength: 0.92,
+      color1: '#6366f1',
+      color2: '#ec4899',
+      color3: '#06b6d4'
+    };
+
+    // Audio
+    let audioContext, analyser, dataArray, source;
+    let audioElement;
+    let bass = 0, mids = 0, treble = 0;
+    let smoothBass = 0, smoothMids = 0, smoothTreble = 0;
+    let audioInitialized = false;
+    let isPlaying = false;
+
+    // Fluid simulation
+    let particles = [];
+    let velocityField;
+    let fieldResolution = 20;
+    let cols, rows;
+
+    // Colors
+    let colors = [];
+
+    function setup() {
+      const container = document.getElementById('canvas-container');
+      const canvas = createCanvas(container.offsetWidth, container.offsetHeight);
+      canvas.parent('canvas-container');
+
+      colorMode(RGB, 255);
+
+      cols = Math.ceil(width / fieldResolution);
+      rows = Math.ceil(height / fieldResolution);
+
+      initVelocityField();
+      initParticles();
+      updateColors();
+
+      // Click to init audio
+      canvas.mouseClicked(initAudio);
+    }
+
+    function initVelocityField() {
+      velocityField = [];
+      for (let i = 0; i < cols; i++) {
+        velocityField[i] = [];
+        for (let j = 0; j < rows; j++) {
+          velocityField[i][j] = createVector(0, 0);
+        }
+      }
+    }
+
+    function initParticles() {
+      particles = [];
+      for (let i = 0; i < params.particleCount; i++) {
+        particles.push({
+          x: random(width),
+          y: random(height),
+          vx: 0,
+          vy: 0,
+          colorIndex: floor(random(3))
+        });
+      }
+    }
+
+    function updateColors() {
+      colors = [
+        hexToRgb(params.color1),
+        hexToRgb(params.color2),
+        hexToRgb(params.color3)
+      ];
+    }
+
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 255, g: 255, b: 255 };
+    }
+
+    function initAudio() {
+      if (audioInitialized) return;
+
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      audioInitialized = true;
+      document.getElementById('click-prompt').style.opacity = '0';
+    }
+
+    function analyzeAudio() {
+      if (!analyser) return;
+
+      analyser.getByteFrequencyData(dataArray);
+
+      const len = dataArray.length;
+      const bassEnd = Math.floor(len * 0.1);
+      const midEnd = Math.floor(len * 0.5);
+
+      let bassSum = 0, midSum = 0, trebleSum = 0;
+
+      for (let i = 0; i < bassEnd; i++) bassSum += dataArray[i];
+      for (let i = bassEnd; i < midEnd; i++) midSum += dataArray[i];
+      for (let i = midEnd; i < len; i++) trebleSum += dataArray[i];
+
+      bass = bassSum / bassEnd / 255;
+      mids = midSum / (midEnd - bassEnd) / 255;
+      treble = trebleSum / (len - midEnd) / 255;
+
+      // Smooth values
+      const smoothing = 0.7;
+      smoothBass = smoothBass * smoothing + bass * (1 - smoothing);
+      smoothMids = smoothMids * smoothing + mids * (1 - smoothing);
+      smoothTreble = smoothTreble * smoothing + treble * (1 - smoothing);
+    }
+
+    function updateVelocityField() {
+      const time = frameCount * 0.01;
+
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          // Base flow from noise
+          const angle = noise(i * 0.1, j * 0.1, time) * TWO_PI * 2;
+
+          // Audio-reactive forces
+          const bassAngle = noise(i * 0.05, j * 0.05, time * 2) * TWO_PI;
+          const bassStrength = smoothBass * params.bassForce * params.forceScale;
+
+          // Turbulence from mids
+          const turbulence = smoothMids * params.midTurbulence;
+          const turbAngle = noise(i * 0.2 + time, j * 0.2) * TWO_PI * turbulence;
+
+          // Combine forces
+          let vx = cos(angle) * 2;
+          let vy = sin(angle) * 2;
+
+          vx += cos(bassAngle) * bassStrength;
+          vy += sin(bassAngle) * bassStrength;
+
+          vx += cos(turbAngle) * turbulence * 5;
+          vy += sin(turbAngle) * turbulence * 5;
+
+          // Apply viscosity (damping)
+          velocityField[i][j].x = velocityField[i][j].x * params.viscosity + vx * (1 - params.viscosity);
+          velocityField[i][j].y = velocityField[i][j].y * params.viscosity + vy * (1 - params.viscosity);
+
+          // Diffusion to neighbors
+          if (params.diffusion > 0 && i > 0 && i < cols - 1 && j > 0 && j < rows - 1) {
+            const diff = params.diffusion * 0.1;
+            velocityField[i][j].x += (velocityField[i-1][j].x + velocityField[i+1][j].x - 2 * velocityField[i][j].x) * diff;
+            velocityField[i][j].y += (velocityField[i][j-1].y + velocityField[i][j+1].y - 2 * velocityField[i][j].y) * diff;
+          }
+        }
+      }
+    }
+
+    function getVelocityAt(x, y) {
+      const i = constrain(floor(x / fieldResolution), 0, cols - 1);
+      const j = constrain(floor(y / fieldResolution), 0, rows - 1);
+      return velocityField[i][j];
+    }
+
+    function draw() {
+      analyzeAudio();
+      updateVelocityField();
+
+      // Trail effect
+      background(0, 0, 0, map(params.trailLength, 0.8, 0.99, 50, 5));
+
+      // Treble sparkle effect
+      const sparkleChance = smoothTreble * params.trebleSparkle * 0.01;
+
+      // Update and draw particles
+      noStroke();
+
+      for (let p of particles) {
+        // Get velocity from field
+        const vel = getVelocityAt(p.x, p.y);
+
+        // Apply velocity
+        p.vx += vel.x * 0.1;
+        p.vy += vel.y * 0.1;
+
+        // Damping
+        p.vx *= 0.98;
+        p.vy *= 0.98;
+
+        // Update position
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Wrap around edges
+        if (p.x < 0) p.x = width;
+        if (p.x > width) p.x = 0;
+        if (p.y < 0) p.y = height;
+        if (p.y > height) p.y = 0;
+
+        // Color based on velocity and audio
+        const speed = sqrt(p.vx * p.vx + p.vy * p.vy);
+        const c = colors[p.colorIndex];
+
+        // Brightness based on speed and bass
+        const brightness = map(speed, 0, 5, 0.3, 1) + smoothBass * 0.5;
+
+        // Sparkle effect
+        const sparkle = random() < sparkleChance ? 1.5 : 1;
+
+        fill(
+          c.r * brightness * sparkle,
+          c.g * brightness * sparkle,
+          c.b * brightness * sparkle,
+          map(speed, 0, 3, 100, 255)
+        );
+
+        const size = map(speed, 0, 5, 1, 3) + smoothBass * 2;
+        ellipse(p.x, p.y, size, size);
+      }
+    }
+
+    function windowResized() {
+      const container = document.getElementById('canvas-container');
+      resizeCanvas(container.offsetWidth, container.offsetHeight);
+      cols = Math.ceil(width / fieldResolution);
+      rows = Math.ceil(height / fieldResolution);
+      initVelocityField();
+    }
+
+    // UI Controls
+    document.getElementById('audioFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      initAudio();
+
+      if (audioElement) {
+        audioElement.pause();
+        audioElement = null;
+      }
+
+      audioElement = new Audio(URL.createObjectURL(file));
+      source = audioContext.createMediaElementSource(audioElement);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      audioElement.play();
+      isPlaying = true;
+      document.getElementById('playPause').textContent = 'Pause';
+    });
+
+    document.getElementById('useMic').addEventListener('click', async () => {
+      initAudio();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micSource = audioContext.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        document.getElementById('useMic').textContent = 'Mic Active';
+      } catch (err) {
+        console.error('Mic error:', err);
+      }
+    });
+
+    document.getElementById('playPause').addEventListener('click', () => {
+      if (!audioElement) return;
+      if (isPlaying) {
+        audioElement.pause();
+        document.getElementById('playPause').textContent = 'Play';
+      } else {
+        audioElement.play();
+        document.getElementById('playPause').textContent = 'Pause';
+      }
+      isPlaying = !isPlaying;
+    });
+
+    // Parameter sliders
+    const sliderParams = [
+      'particleCount', 'viscosity', 'diffusion', 'forceScale',
+      'bassForce', 'midTurbulence', 'trebleSparkle', 'trailLength'
+    ];
+
+    sliderParams.forEach(param => {
+      const slider = document.getElementById(param);
+      const display = document.getElementById(param + 'Val');
+
+      slider.addEventListener('input', () => {
+        const val = parseFloat(slider.value);
+        params[param] = val;
+        display.textContent = val;
+
+        if (param === 'particleCount') {
+          initParticles();
+        }
+      });
+    });
+
+    // Color pickers
+    ['color1', 'color2', 'color3'].forEach(id => {
+      document.getElementById(id).addEventListener('input', (e) => {
+        params[id] = e.target.value;
+        updateColors();
+      });
+    });
+
+    // Action buttons
+    document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('reset').addEventListener('click', () => {
+      initVelocityField();
+      initParticles();
+    });
+
+    function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+
+      switch (e.key.toLowerCase()) {
+        case ' ':
+          e.preventDefault();
+          document.getElementById('playPause').click();
+          break;
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'h':
+          document.getElementById('app').classList.toggle('sidebar-hidden');
+          windowResized();
+          break;
+        case 'r':
+          initVelocityField();
+          initParticles();
+          break;
+      }
+    });
+  </script>
+</body>
+</html>
