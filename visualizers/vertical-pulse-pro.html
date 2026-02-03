@@ -319,7 +319,8 @@
                     <option value="1080x1080">1080×1080 Square</option>
                 </select>
                 <div style="height:8px"></div>
-                <button class="btn primary" id="fullscreen-btn">⛶ Fullscreen</button>
+                <button class="btn primary" id="popout-btn">Pop Out Canvas (P)</button>
+                <button class="btn" id="fullscreen-btn">⛶ Fullscreen</button>
                 <div id="record-status" class="status">Ready</div>
                 <button class="btn" id="record-btn">● Record</button>
                 <button class="btn" id="save-frame">Save Frame</button>
@@ -329,6 +330,7 @@
                 <div class="section-title">MIDI</div>
                 <div id="midi-status" class="status">Connecting...</div>
                 <div class="hotkeys">
+                    <kbd>P</kbd> Pop out &nbsp;
                     <kbd>F</kbd> Fullscreen &nbsp;
                     <kbd>H</kbd> Hide UI<br>
                     <kbd>Space</kbd> Play/Pause &nbsp;
@@ -655,6 +657,77 @@
         document.getElementById('sidebar').classList.toggle('hidden');
     }
 
+    // Pop-out window for dual-screen setup
+    let popoutWindow = null;
+
+    function popOutCanvas() {
+        if (popoutWindow && !popoutWindow.closed) {
+            popoutWindow.focus();
+            return;
+        }
+
+        popoutWindow = window.open('', 'VerticalPulseCanvas', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
+
+        popoutWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Vertical Pulse - Projection</title>
+                <style>
+                    * { margin: 0; padding: 0; }
+                    body { background: #000; overflow: hidden; cursor: none; }
+                    canvas { display: block; width: 100vw; height: 100vh; }
+                    #hint {
+                        position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+                        background: rgba(0,0,0,0.8); color: #fff; padding: 12px 24px;
+                        border-radius: 8px; font-family: monospace; font-size: 14px;
+                        opacity: 1; transition: opacity 1s;
+                    }
+                </style>
+            </head>
+            <body>
+                <div id="hint">Move to projector, then press F for fullscreen</div>
+                <script>
+                    setTimeout(() => {
+                        document.getElementById('hint').style.opacity = '0';
+                        setTimeout(() => document.getElementById('hint').remove(), 1000);
+                    }, 3000);
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key.toLowerCase() === 'f') document.documentElement.requestFullscreen();
+                    });
+                    let cursorTimeout;
+                    document.addEventListener('mousemove', () => {
+                        document.body.style.cursor = 'default';
+                        clearTimeout(cursorTimeout);
+                        cursorTimeout = setTimeout(() => document.body.style.cursor = 'none', 2000);
+                    });
+                </script>
+            </body>
+            </html>
+        `);
+        popoutWindow.document.close();
+
+        const canvas = document.getElementById('defaultCanvas0');
+        if (canvas) {
+            popoutWindow.document.body.appendChild(canvas);
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+        }
+
+        document.getElementById('popout-btn').textContent = 'Canvas Popped Out';
+
+        popoutWindow.addEventListener('beforeunload', () => {
+            const container = document.getElementById('canvas-container');
+            if (canvas && container) {
+                container.appendChild(canvas);
+                canvas.style.width = '';
+                canvas.style.height = '';
+            }
+            document.getElementById('popout-btn').textContent = 'Pop Out Canvas (P)';
+            popoutWindow = null;
+        });
+    }
+
     let recorder, chunks = [], recording = false;
 
     function toggleRecord() {
@@ -703,6 +776,7 @@
 
     document.addEventListener('keydown', e => {
         if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
+        if (e.code === 'KeyP') popOutCanvas();
         if (e.code === 'KeyF') toggleFullscreen();
         if (e.code === 'KeyH') toggleSidebar();
         if (e.code === 'KeyR') toggleRecord();
@@ -718,6 +792,7 @@
         document.getElementById('play-btn').onclick = togglePlay;
         document.getElementById('fullscreen-btn').onclick = toggleFullscreen;
         document.getElementById('toggle-sidebar').onclick = toggleSidebar;
+        document.getElementById('popout-btn').onclick = popOutCanvas;
 
         const sliders = [
             ['columnCount', v => { P.columnCount = +v; initSystem(); }, v => v],

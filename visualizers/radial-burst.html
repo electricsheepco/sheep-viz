@@ -1,582 +1,733 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Radial Burst - Audio Reactive Visualizer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --dark: #141413;
-            --light: #faf9f5;
-            --mid-gray: #b0aea5;
-            --light-gray: #e8e6dc;
-            --orange: #d97757;
-            --blue: #6a9bcc;
-            --green: #788c5d;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Poppins', sans-serif;
-            background: linear-gradient(135deg, var(--light) 0%, #f5f3ee 100%);
-            min-height: 100vh;
-            color: var(--dark);
-        }
-        .container { display: flex; min-height: 100vh; padding: 20px; gap: 20px; }
-        .sidebar {
-            width: 300px;
-            flex-shrink: 0;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
-            overflow-y: auto;
-            max-height: 100vh;
-        }
-        .sidebar h1 { font-family: 'Lora', serif; font-size: 22px; margin-bottom: 6px; }
-        .sidebar .subtitle { color: var(--mid-gray); font-size: 13px; margin-bottom: 20px; line-height: 1.4; }
-        .section { margin-bottom: 20px; }
-        .section h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .section h3::before { content: '•'; color: var(--orange); }
-        .status {
-            background: var(--light);
-            padding: 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            margin-bottom: 10px;
-            border: 1px solid var(--light-gray);
-        }
-        .status.active { border-color: var(--green); background: rgba(120, 140, 93, 0.1); }
-        .control { margin-bottom: 14px; }
-        .control label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 5px; }
-        .slider-row { display: flex; align-items: center; gap: 10px; }
-        .slider-row input[type="range"] { flex: 1; height: 4px; background: var(--light-gray); border-radius: 2px; -webkit-appearance: none; }
-        .slider-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--orange); border-radius: 50%; cursor: pointer; }
-        .val { font-family: monospace; font-size: 11px; color: var(--mid-gray); min-width: 45px; text-align: right; }
-        .color-row { display: flex; align-items: center; gap: 8px; }
-        .color-row input[type="color"] { width: 28px; height: 28px; border: none; border-radius: 4px; cursor: pointer; padding: 0; }
-        .btn {
-            background: var(--orange);
-            color: white;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 6px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            width: 100%;
-            margin-bottom: 8px;
-        }
-        .btn:hover { background: #c86641; }
-        .btn.blue { background: var(--blue); }
-        .btn.green { background: var(--green); }
-        .btn.dark { background: var(--dark); }
-        .btn.rec { background: #c33; animation: pulse 1s infinite; }
-        @keyframes pulse { 50% { opacity: 0.7; } }
-        .btn-row { display: flex; gap: 8px; }
-        .btn-row .btn { flex: 1; margin: 0; }
-        .file-wrap { position: relative; margin-bottom: 8px; }
-        .file-wrap input[type="file"] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; top: 0; left: 0; }
-        .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; }
-        #canvas-container {
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            background: #0a0a0a;
-        }
-        #defaultCanvas0 { display: block; }
-        @media (max-width: 900px) {
-            .container { flex-direction: column; }
-            .sidebar { width: 100%; max-height: none; }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Radial Burst - sheep-viz</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --accent: #ff3366;
+      --accent-dim: #cc2952;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #app { display: flex; height: 100vh; }
+
+    #canvas-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+    }
+
+    canvas { max-width: 100%; max-height: 100%; }
+
+    #sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+      border-left: 1px solid var(--bg-tertiary);
+    }
+
+    .sidebar-hidden #sidebar { display: none; }
+
+    /* Projection Mode */
+    .projection-mode { cursor: none; }
+    .projection-mode #sidebar { display: none; }
+    .projection-mode #canvas-container { background: #000; }
+    .projection-mode canvas {
+      max-width: none !important;
+      max-height: none !important;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+    .projection-mode #click-prompt { display: none; }
+
+    #fullscreen-indicator {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    #fullscreen-indicator.show { opacity: 1; }
+
+    h1 { font-size: 14px; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }
+    .subtitle { font-size: 11px; color: var(--text-secondary); margin-bottom: 24px; }
+
+    .section { margin-bottom: 24px; }
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+    }
+
+    .control-group { margin-bottom: 16px; }
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+    }
+    .control-group label span:last-child {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+    .btn-primary { background: var(--accent); color: white; }
+    .btn-primary:hover { background: var(--accent-dim); }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); }
+    .btn-secondary:hover { background: #252530; }
+    .btn-rec { background: #aa2233; animation: pulse 1s infinite; }
+    @keyframes pulse { 50% { opacity: 0.7; } }
+
+    .audio-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+    .audio-controls .btn { flex: 1; margin-bottom: 0; }
+
+    input[type="file"] { display: none; }
+
+    .shortcuts {
+      font-size: 10px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+    .shortcuts kbd {
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: inherit;
+    }
+
+    #click-prompt {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 14px;
+      color: var(--text-secondary);
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+
+    .color-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .color-picker { flex: 1; }
+    .color-picker label {
+      display: block;
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-bottom: 4px;
+    }
+    .color-picker input[type="color"] {
+      width: 100%;
+      height: 28px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      background: var(--bg-tertiary);
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="sidebar">
-            <h1>Radial Burst</h1>
-            <div class="subtitle">Circular particle explosions synced to beats. Particles burst outward from center.</div>
-
-            <div class="section">
-                <h3>Audio</h3>
-                <div id="audio-status" class="status">Click canvas to enable audio</div>
-                <div class="file-wrap">
-                    <button class="btn dark">Load Audio File</button>
-                    <input type="file" id="audio-file" accept="audio/*">
-                </div>
-                <button class="btn blue" id="mic-btn">Use Microphone</button>
-                <button class="btn green" id="play-btn">Play / Pause</button>
-            </div>
-
-            <div class="section">
-                <h3>Particles</h3>
-                <div class="control">
-                    <label>Burst Size</label>
-                    <div class="slider-row">
-                        <input type="range" id="burstSize" min="20" max="200" value="80">
-                        <span class="val" id="burstSize-v">80</span>
-                    </div>
-                </div>
-                <div class="control">
-                    <label>Particle Count</label>
-                    <div class="slider-row">
-                        <input type="range" id="particleCount" min="50" max="500" value="200">
-                        <span class="val" id="particleCount-v">200</span>
-                    </div>
-                </div>
-                <div class="control">
-                    <label>Trail Length</label>
-                    <div class="slider-row">
-                        <input type="range" id="trailLength" min="0" max="50" value="20">
-                        <span class="val" id="trailLength-v">20</span>
-                    </div>
-                </div>
-                <div class="control">
-                    <label>Decay Speed</label>
-                    <div class="slider-row">
-                        <input type="range" id="decaySpeed" min="90" max="99" value="96">
-                        <span class="val" id="decaySpeed-v">96%</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
-                <h3>Waveform Ring</h3>
-                <div class="control">
-                    <label>Ring Radius</label>
-                    <div class="slider-row">
-                        <input type="range" id="ringRadius" min="50" max="300" value="150">
-                        <span class="val" id="ringRadius-v">150</span>
-                    </div>
-                </div>
-                <div class="control">
-                    <label>Ring Thickness</label>
-                    <div class="slider-row">
-                        <input type="range" id="ringThickness" min="1" max="20" value="4">
-                        <span class="val" id="ringThickness-v">4</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
-                <h3>Audio Response</h3>
-                <div class="control">
-                    <label>Sensitivity</label>
-                    <div class="slider-row">
-                        <input type="range" id="sensitivity" min="50" max="300" value="150">
-                        <span class="val" id="sensitivity-v">1.5x</span>
-                    </div>
-                </div>
-                <div class="control">
-                    <label>Beat Threshold</label>
-                    <div class="slider-row">
-                        <input type="range" id="beatThreshold" min="30" max="80" value="55">
-                        <span class="val" id="beatThreshold-v">55%</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
-                <h3>Colors</h3>
-                <div class="control">
-                    <label>Inner Color</label>
-                    <div class="color-row">
-                        <input type="color" id="colorInner" value="#ff3366">
-                        <span class="val" id="colorInner-v">#ff3366</span>
-                    </div>
-                </div>
-                <div class="control">
-                    <label>Outer Color</label>
-                    <div class="color-row">
-                        <input type="color" id="colorOuter" value="#3366ff">
-                        <span class="val" id="colorOuter-v">#3366ff</span>
-                    </div>
-                </div>
-                <div class="control">
-                    <label>Background</label>
-                    <div class="color-row">
-                        <input type="color" id="colorBg" value="#0a0a0f">
-                        <span class="val" id="colorBg-v">#0a0a0f</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="section">
-                <h3>Resolution</h3>
-                <select id="resolution" style="width:100%;padding:8px;border:1px solid var(--light-gray);border-radius:6px;margin-bottom:8px;">
-                    <option value="1200x800">Default (1200x800)</option>
-                    <optgroup label="Horizontal">
-                        <option value="1920x1080">YouTube / HD (1920x1080)</option>
-                    </optgroup>
-                    <optgroup label="Vertical">
-                        <option value="1080x1920">TikTok / Reels (1080x1920)</option>
-                    </optgroup>
-                    <optgroup label="Square">
-                        <option value="1080x1080">Instagram (1080x1080)</option>
-                    </optgroup>
-                </select>
-            </div>
-
-            <div class="section">
-                <h3>Export</h3>
-                <div id="record-status" class="status">Ready</div>
-                <button class="btn dark" id="record-btn">Start Recording</button>
-                <button class="btn blue" id="save-frame">Save Frame (PNG)</button>
-            </div>
-        </div>
-
-        <div class="canvas-area">
-            <div id="canvas-container"></div>
-        </div>
+  <div id="fullscreen-indicator">Press F to exit fullscreen, H to show controls</div>
+  <div id="app">
+    <div id="canvas-container">
+      <div id="click-prompt">Click to enable audio</div>
     </div>
+    <div id="sidebar">
+      <h1>Radial Burst</h1>
+      <p class="subtitle">Particle explosions synced to beats</p>
 
-    <script>
-    // ═══════════════════════════════════════════════════════════════════
-    // PARAMS
-    // ═══════════════════════════════════════════════════════════════════
+      <div class="section">
+        <div class="section-title">Audio</div>
+        <div class="audio-controls">
+          <label class="btn btn-secondary">
+            Load File
+            <input type="file" id="audioFile" accept="audio/*">
+          </label>
+          <button class="btn btn-secondary" id="useMic">Use Mic</button>
+        </div>
+        <button class="btn btn-primary" id="playPause">Play</button>
+      </div>
 
+      <div class="section">
+        <div class="section-title">Particles</div>
+        <div class="control-group">
+          <label>Burst Size <span id="burstSizeVal">80</span></label>
+          <input type="range" id="burstSize" min="20" max="200" value="80">
+        </div>
+        <div class="control-group">
+          <label>Particle Count <span id="particleCountVal">200</span></label>
+          <input type="range" id="particleCount" min="50" max="500" value="200">
+        </div>
+        <div class="control-group">
+          <label>Trail Length <span id="trailLengthVal">20</span></label>
+          <input type="range" id="trailLength" min="0" max="50" value="20">
+        </div>
+        <div class="control-group">
+          <label>Decay Speed <span id="decaySpeedVal">96%</span></label>
+          <input type="range" id="decaySpeed" min="90" max="99" value="96">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Waveform Ring</div>
+        <div class="control-group">
+          <label>Ring Radius <span id="ringRadiusVal">150</span></label>
+          <input type="range" id="ringRadius" min="50" max="300" value="150">
+        </div>
+        <div class="control-group">
+          <label>Ring Thickness <span id="ringThicknessVal">4</span></label>
+          <input type="range" id="ringThickness" min="1" max="20" value="4">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Audio Response</div>
+        <div class="control-group">
+          <label>Sensitivity <span id="sensitivityVal">1.5x</span></label>
+          <input type="range" id="sensitivity" min="50" max="300" value="150">
+        </div>
+        <div class="control-group">
+          <label>Beat Threshold <span id="beatThresholdVal">55%</span></label>
+          <input type="range" id="beatThreshold" min="30" max="80" value="55">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Colors</div>
+        <div class="color-row">
+          <div class="color-picker">
+            <label>Inner</label>
+            <input type="color" id="colorInner" value="#ff3366">
+          </div>
+          <div class="color-picker">
+            <label>Outer</label>
+            <input type="color" id="colorOuter" value="#3366ff">
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <button class="btn btn-primary" id="popout">Pop Out Canvas (P)</button>
+        <button class="btn btn-secondary" id="fullscreen">Fullscreen (F)</button>
+        <button class="btn btn-secondary" id="recordBtn">Record</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Shortcuts</div>
+        <div class="shortcuts">
+          <kbd>Space</kbd> Play/Pause<br>
+          <kbd>P</kbd> Pop out canvas<br>
+          <kbd>F</kbd> Fullscreen<br>
+          <kbd>H</kbd> Hide UI<br>
+          <kbd>R</kbd> Record
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.js"></script>
+  <script>
+    // Parameters
     const P = {
-        burstSize: 80,
-        particleCount: 200,
-        trailLength: 20,
-        decaySpeed: 0.96,
-        ringRadius: 150,
-        ringThickness: 4,
-        sensitivity: 1.5,
-        beatThreshold: 0.55,
-        colorInner: '#ff3366',
-        colorOuter: '#3366ff',
-        colorBg: '#0a0a0f'
+      burstSize: 80,
+      particleCount: 200,
+      trailLength: 20,
+      decaySpeed: 0.96,
+      ringRadius: 150,
+      ringThickness: 4,
+      sensitivity: 1.5,
+      beatThreshold: 0.55,
+      colorInner: '#ff3366',
+      colorOuter: '#3366ff'
     };
 
-    // ═══════════════════════════════════════════════════════════════════
-    // AUDIO
-    // ═══════════════════════════════════════════════════════════════════
+    // Audio
+    let audioContext, analyser, source, audioElement;
+    let freqData, waveData, smoothed;
+    let audioReady = false, isPlaying = false;
 
-    let actx, analyser, source, audioEl, freqData, waveData, smoothed;
-    let audioReady = false, playing = false;
-
-    function initAudio() {
-        if (actx) return Promise.resolve();
-        actx = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = actx.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.8;
-        freqData = new Uint8Array(analyser.frequencyBinCount);
-        waveData = new Uint8Array(analyser.fftSize);
-        smoothed = new Float32Array(analyser.frequencyBinCount).fill(0);
-        return actx.resume();
-    }
-
-    function loadFile(file) {
-        initAudio().then(() => {
-            if (source) { try { source.disconnect(); } catch(e){} }
-            if (audioEl) audioEl.pause();
-            const url = URL.createObjectURL(file);
-            audioEl = new Audio(url);
-            audioEl.oncanplay = () => {
-                source = actx.createMediaElementSource(audioEl);
-                source.connect(analyser);
-                analyser.connect(actx.destination);
-                audioReady = true;
-                setStatus('audio-status', 'Loaded: ' + file.name, 'active');
-            };
-        });
-    }
-
-    function useMic() {
-        initAudio().then(() => {
-            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                if (source) { try { source.disconnect(); } catch(e){} }
-                source = actx.createMediaStreamSource(stream);
-                source.connect(analyser);
-                audioReady = true;
-                playing = true;
-                setStatus('audio-status', 'Microphone active', 'active');
-            });
-        });
-    }
-
-    function togglePlay() {
-        if (!audioEl) return;
-        initAudio().then(() => {
-            if (playing) { audioEl.pause(); playing = false; }
-            else { audioEl.play(); playing = true; }
-        });
-    }
-
-    function getAudio() {
-        if (!audioReady || !analyser) {
-            return { bass: 0, mid: 0, treble: 0, waveform: [], spectrum: [] };
-        }
-        analyser.getByteFrequencyData(freqData);
-        analyser.getByteTimeDomainData(waveData);
-
-        for (let i = 0; i < freqData.length; i++) {
-            smoothed[i] = smoothed[i] * 0.85 + (freqData[i] / 255) * 0.15;
-        }
-
-        const len = freqData.length;
-        const bassEnd = Math.floor(len * 0.1);
-        const midEnd = Math.floor(len * 0.5);
-
-        let bass = 0, mid = 0, treble = 0;
-        for (let i = 0; i < bassEnd; i++) bass += smoothed[i];
-        for (let i = bassEnd; i < midEnd; i++) mid += smoothed[i];
-        for (let i = midEnd; i < len; i++) treble += smoothed[i];
-
-        bass = (bass / bassEnd) * P.sensitivity;
-        mid = (mid / (midEnd - bassEnd)) * P.sensitivity;
-        treble = (treble / (len - midEnd)) * P.sensitivity;
-
-        // Waveform for ring
-        const waveform = [];
-        for (let i = 0; i < waveData.length; i++) {
-            waveform.push((waveData[i] - 128) / 128);
-        }
-
-        return { bass, mid, treble, waveform, spectrum: Array.from(smoothed) };
-    }
-
-    function setStatus(id, msg, cls) {
-        const el = document.getElementById(id);
-        el.textContent = msg;
-        el.className = 'status' + (cls ? ' ' + cls : '');
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // PARTICLES
-    // ═══════════════════════════════════════════════════════════════════
-
+    // Particles
     let particles = [];
     let prevBass = 0;
     let lastBurstTime = 0;
 
+    // Recording
+    let recorder, chunks = [], recording = false;
+
+    function setup() {
+      const container = document.getElementById('canvas-container');
+      const canvas = createCanvas(container.offsetWidth, container.offsetHeight);
+      canvas.parent('canvas-container');
+      canvas.mouseClicked(initAudio);
+    }
+
+    function initAudio() {
+      if (audioContext) return;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.8;
+      freqData = new Uint8Array(analyser.frequencyBinCount);
+      waveData = new Uint8Array(analyser.fftSize);
+      smoothed = new Float32Array(analyser.frequencyBinCount).fill(0);
+      document.getElementById('click-prompt').style.opacity = '0';
+    }
+
+    function getAudio() {
+      if (!audioReady || !analyser) {
+        return { bass: 0, mid: 0, treble: 0, waveform: [] };
+      }
+      analyser.getByteFrequencyData(freqData);
+      analyser.getByteTimeDomainData(waveData);
+
+      for (let i = 0; i < freqData.length; i++) {
+        smoothed[i] = smoothed[i] * 0.85 + (freqData[i] / 255) * 0.15;
+      }
+
+      const len = freqData.length;
+      const bassEnd = Math.floor(len * 0.1);
+      const midEnd = Math.floor(len * 0.5);
+
+      let bass = 0, mid = 0, treble = 0;
+      for (let i = 0; i < bassEnd; i++) bass += smoothed[i];
+      for (let i = bassEnd; i < midEnd; i++) mid += smoothed[i];
+      for (let i = midEnd; i < len; i++) treble += smoothed[i];
+
+      bass = (bass / bassEnd) * P.sensitivity;
+      mid = (mid / (midEnd - bassEnd)) * P.sensitivity;
+      treble = (treble / (len - midEnd)) * P.sensitivity;
+
+      const waveform = [];
+      for (let i = 0; i < waveData.length; i++) {
+        waveform.push((waveData[i] - 128) / 128);
+      }
+
+      return { bass, mid, treble, waveform };
+    }
+
     class Particle {
-        constructor(x, y, angle, speed, col) {
-            this.x = x;
-            this.y = y;
-            this.vx = cos(angle) * speed;
-            this.vy = sin(angle) * speed;
-            this.life = 1;
-            this.col = col;
-            this.size = random(2, 6);
-            this.trail = [];
+      constructor(x, y, angle, speed, col) {
+        this.x = x;
+        this.y = y;
+        this.vx = cos(angle) * speed;
+        this.vy = sin(angle) * speed;
+        this.life = 1;
+        this.col = col;
+        this.size = random(2, 6);
+        this.trail = [];
+      }
+
+      update() {
+        if (P.trailLength > 0) {
+          this.trail.push({ x: this.x, y: this.y, life: this.life });
+          if (this.trail.length > P.trailLength) this.trail.shift();
         }
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= P.decaySpeed;
+        this.vy *= P.decaySpeed;
+        this.life *= 0.98;
+      }
 
-        update() {
-            // Store trail
-            if (P.trailLength > 0) {
-                this.trail.push({ x: this.x, y: this.y, life: this.life });
-                if (this.trail.length > P.trailLength) this.trail.shift();
-            }
-
-            this.x += this.vx;
-            this.y += this.vy;
-            this.vx *= P.decaySpeed;
-            this.vy *= P.decaySpeed;
-            this.life *= 0.98;
+      draw() {
+        for (let i = 0; i < this.trail.length; i++) {
+          const t = this.trail[i];
+          const alpha = (i / this.trail.length) * t.life * 100;
+          const c = hexRgb(this.col);
+          fill(c[0], c[1], c[2], alpha);
+          noStroke();
+          circle(t.x, t.y, this.size * (i / this.trail.length));
         }
-
-        draw() {
-            // Draw trail
-            for (let i = 0; i < this.trail.length; i++) {
-                const t = this.trail[i];
-                const alpha = (i / this.trail.length) * t.life * 100;
-                const c = hexRgb(this.col);
-                fill(c[0], c[1], c[2], alpha);
-                noStroke();
-                circle(t.x, t.y, this.size * (i / this.trail.length));
-            }
-
-            // Draw particle
-            const c = hexRgb(this.col);
-            fill(c[0], c[1], c[2], this.life * 255);
-            noStroke();
-            circle(this.x, this.y, this.size);
-        }
+        const c = hexRgb(this.col);
+        fill(c[0], c[1], c[2], this.life * 255);
+        noStroke();
+        circle(this.x, this.y, this.size);
+      }
     }
 
     function burst(audio) {
-        const cx = width / 2;
-        const cy = height / 2;
-        const count = P.particleCount;
-        const speed = P.burstSize * (0.5 + audio.bass);
+      const cx = width / 2;
+      const cy = height / 2;
+      const count = P.particleCount;
+      const speed = P.burstSize * (0.5 + audio.bass);
 
-        for (let i = 0; i < count; i++) {
-            const angle = (TWO_PI / count) * i + random(-0.2, 0.2);
-            const s = speed * random(0.5, 1.5);
-            const t = i / count;
-            const col = lerpHex(P.colorInner, P.colorOuter, t);
-            particles.push(new Particle(cx, cy, angle, s, col));
-        }
+      for (let i = 0; i < count; i++) {
+        const angle = (TWO_PI / count) * i + random(-0.2, 0.2);
+        const s = speed * random(0.5, 1.5);
+        const t = i / count;
+        const col = lerpHex(P.colorInner, P.colorOuter, t);
+        particles.push(new Particle(cx, cy, angle, s, col));
+      }
     }
 
     function hexRgb(hex) {
-        const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [255,0,100];
+      const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return r ? [parseInt(r[1],16), parseInt(r[2],16), parseInt(r[3],16)] : [255,0,100];
     }
 
     function lerpHex(c1, c2, t) {
-        const a = hexRgb(c1), b = hexRgb(c2);
-        const r = Math.round(a[0] + (b[0] - a[0]) * t);
-        const g = Math.round(a[1] + (b[1] - a[1]) * t);
-        const bl = Math.round(a[2] + (b[2] - a[2]) * t);
-        return '#' + [r, g, bl].map(x => x.toString(16).padStart(2, '0')).join('');
-    }
-
-    // ═══════════════════════════════════════════════════════════════════
-    // P5
-    // ═══════════════════════════════════════════════════════════════════
-
-    function setup() {
-        const c = createCanvas(1200, 800);
-        c.parent('canvas-container');
-        c.mousePressed(() => initAudio().then(() => setStatus('audio-status', 'Audio enabled', 'active')));
+      const a = hexRgb(c1), b = hexRgb(c2);
+      const r = Math.round(a[0] + (b[0] - a[0]) * t);
+      const g = Math.round(a[1] + (b[1] - a[1]) * t);
+      const bl = Math.round(a[2] + (b[2] - a[2]) * t);
+      return '#' + [r, g, bl].map(x => x.toString(16).padStart(2, '0')).join('');
     }
 
     function draw() {
-        // Background with fade
-        const bg = hexRgb(P.colorBg);
-        fill(bg[0], bg[1], bg[2], 30);
+      background(10, 10, 15, 30);
+
+      const audio = getAudio();
+
+      // Beat detection
+      const now = millis();
+      if (audio.bass > P.beatThreshold && prevBass <= P.beatThreshold && now - lastBurstTime > 150) {
+        burst(audio);
+        lastBurstTime = now;
+      }
+      prevBass = audio.bass;
+
+      // Update and draw particles
+      for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].life < 0.01) particles.splice(i, 1);
+      }
+
+      // Waveform ring
+      if (audio.waveform.length > 0) {
+        const cx = width / 2;
+        const cy = height / 2;
+        const baseR = P.ringRadius + audio.bass * 50;
+
+        stroke(lerpHex(P.colorInner, P.colorOuter, 0.5));
+        strokeWeight(P.ringThickness);
+        noFill();
+
+        beginShape();
+        for (let i = 0; i < audio.waveform.length; i++) {
+          const angle = (TWO_PI / audio.waveform.length) * i - HALF_PI;
+          const amp = audio.waveform[i] * 50 * P.sensitivity;
+          const r = baseR + amp;
+          const x = cx + cos(angle) * r;
+          const y = cy + sin(angle) * r;
+          vertex(x, y);
+        }
+        endShape(CLOSE);
+      }
+
+      // Center glow
+      const glowSize = 50 + audio.bass * 100;
+      const inner = hexRgb(P.colorInner);
+      for (let r = glowSize; r > 0; r -= 5) {
+        const alpha = (1 - r / glowSize) * audio.mid * 100;
+        fill(inner[0], inner[1], inner[2], alpha);
         noStroke();
-        rect(0, 0, width, height);
-
-        const audio = getAudio();
-
-        // Beat detection - trigger burst
-        const now = millis();
-        if (audio.bass > P.beatThreshold && prevBass <= P.beatThreshold && now - lastBurstTime > 150) {
-            burst(audio);
-            lastBurstTime = now;
-        }
-        prevBass = audio.bass;
-
-        // Update and draw particles
-        for (let i = particles.length - 1; i >= 0; i--) {
-            particles[i].update();
-            particles[i].draw();
-            if (particles[i].life < 0.01) particles.splice(i, 1);
-        }
-
-        // Draw waveform ring
-        if (audio.waveform.length > 0) {
-            const cx = width / 2;
-            const cy = height / 2;
-            const baseR = P.ringRadius + audio.bass * 50;
-
-            stroke(lerpHex(P.colorInner, P.colorOuter, 0.5));
-            strokeWeight(P.ringThickness);
-            noFill();
-
-            beginShape();
-            for (let i = 0; i < audio.waveform.length; i++) {
-                const angle = (TWO_PI / audio.waveform.length) * i - HALF_PI;
-                const amp = audio.waveform[i] * 50 * P.sensitivity;
-                const r = baseR + amp;
-                const x = cx + cos(angle) * r;
-                const y = cy + sin(angle) * r;
-                vertex(x, y);
-            }
-            endShape(CLOSE);
-        }
-
-        // Center glow
-        const glowSize = 50 + audio.bass * 100;
-        const inner = hexRgb(P.colorInner);
-        for (let r = glowSize; r > 0; r -= 5) {
-            const alpha = (1 - r / glowSize) * audio.mid * 100;
-            fill(inner[0], inner[1], inner[2], alpha);
-            noStroke();
-            circle(width/2, height/2, r * 2);
-        }
+        circle(width/2, height/2, r * 2);
+      }
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // RECORDING
-    // ═══════════════════════════════════════════════════════════════════
+    function windowResized() {
+      const container = document.getElementById('canvas-container');
+      resizeCanvas(container.offsetWidth, container.offsetHeight);
+    }
 
-    let recorder, chunks = [], recording = false;
+    // UI Controls
+    document.getElementById('audioFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      initAudio();
+      if (audioElement) audioElement.pause();
+      audioElement = new Audio(URL.createObjectURL(file));
+      source = audioContext.createMediaElementSource(audioElement);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+      audioReady = true;
+      audioElement.play();
+      isPlaying = true;
+      document.getElementById('playPause').textContent = 'Pause';
+    });
+
+    document.getElementById('useMic').addEventListener('click', async () => {
+      initAudio();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micSource = audioContext.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        audioReady = true;
+        document.getElementById('useMic').textContent = 'Mic Active';
+      } catch (err) {
+        console.error('Mic error:', err);
+      }
+    });
+
+    document.getElementById('playPause').addEventListener('click', () => {
+      if (!audioElement) return;
+      if (isPlaying) {
+        audioElement.pause();
+        document.getElementById('playPause').textContent = 'Play';
+      } else {
+        audioElement.play();
+        document.getElementById('playPause').textContent = 'Pause';
+      }
+      isPlaying = !isPlaying;
+    });
+
+    // Sliders
+    const sliders = [
+      ['burstSize', v => P.burstSize = +v, v => v],
+      ['particleCount', v => P.particleCount = +v, v => v],
+      ['trailLength', v => P.trailLength = +v, v => v],
+      ['decaySpeed', v => P.decaySpeed = v / 100, v => v + '%'],
+      ['ringRadius', v => P.ringRadius = +v, v => v],
+      ['ringThickness', v => P.ringThickness = +v, v => v],
+      ['sensitivity', v => P.sensitivity = v / 100, v => (v/100).toFixed(1) + 'x'],
+      ['beatThreshold', v => P.beatThreshold = v / 100, v => v + '%']
+    ];
+
+    sliders.forEach(([id, fn, fmt]) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', function() {
+          fn(this.value);
+          document.getElementById(id + 'Val').textContent = fmt(this.value);
+        });
+      }
+    });
+
+    // Colors
+    document.getElementById('colorInner').addEventListener('input', e => P.colorInner = e.target.value);
+    document.getElementById('colorOuter').addEventListener('input', e => P.colorOuter = e.target.value);
+
+    // Fullscreen
+    document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('popout').addEventListener('click', popOutCanvas);
+
+    function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        document.documentElement.requestFullscreen();
+      }
+    }
+
+    // Pop-out window for dual-screen setup
+    let popoutWindow = null;
+
+    function popOutCanvas() {
+      if (popoutWindow && !popoutWindow.closed) {
+        popoutWindow.focus();
+        return;
+      }
+
+      popoutWindow = window.open('', 'RadialBurstCanvas', 'width=1920,height=1080,menubar=no,toolbar=no,location=no,status=no');
+
+      popoutWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Radial Burst - Projection</title>
+          <style>
+            * { margin: 0; padding: 0; }
+            body { background: #000; overflow: hidden; cursor: none; }
+            canvas { display: block; width: 100vw; height: 100vh; }
+            #hint {
+              position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+              background: rgba(0,0,0,0.8); color: #fff; padding: 12px 24px;
+              border-radius: 8px; font-family: monospace; font-size: 14px;
+              opacity: 1; transition: opacity 1s;
+            }
+          </style>
+        </head>
+        <body>
+          <div id="hint">Move to projector, then press F for fullscreen</div>
+          <script>
+            setTimeout(() => {
+              document.getElementById('hint').style.opacity = '0';
+              setTimeout(() => document.getElementById('hint').remove(), 1000);
+            }, 3000);
+            document.addEventListener('keydown', (e) => {
+              if (e.key.toLowerCase() === 'f') document.documentElement.requestFullscreen();
+            });
+            let cursorTimeout;
+            document.addEventListener('mousemove', () => {
+              document.body.style.cursor = 'default';
+              clearTimeout(cursorTimeout);
+              cursorTimeout = setTimeout(() => document.body.style.cursor = 'none', 2000);
+            });
+          </script>
+        </body>
+        </html>
+      `);
+      popoutWindow.document.close();
+
+      const canvas = document.getElementById('defaultCanvas0');
+      if (canvas) {
+        popoutWindow.document.body.appendChild(canvas);
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+      }
+
+      document.getElementById('popout').textContent = 'Canvas Popped Out';
+
+      popoutWindow.addEventListener('beforeunload', () => {
+        const container = document.getElementById('canvas-container');
+        if (canvas && container) {
+          container.appendChild(canvas);
+          canvas.style.width = '';
+          canvas.style.height = '';
+          windowResized();
+        }
+        document.getElementById('popout').textContent = 'Pop Out Canvas (P)';
+        popoutWindow = null;
+      });
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      const indicator = document.getElementById('fullscreen-indicator');
+      if (document.fullscreenElement) {
+        document.body.classList.add('projection-mode');
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 2000);
+        setTimeout(() => windowResized(), 100);
+      } else {
+        document.body.classList.remove('projection-mode');
+        windowResized();
+      }
+    });
+
+    // Recording
+    document.getElementById('recordBtn').addEventListener('click', () => {
+      if (recording) stopRec(); else startRec();
+    });
 
     function startRec() {
-        const canvas = document.getElementById('defaultCanvas0');
-        if (!canvas) return;
-        const stream = canvas.captureStream(60);
-        if (actx && audioReady) {
-            const dest = actx.createMediaStreamDestination();
-            analyser.connect(dest);
-            const at = dest.stream.getAudioTracks()[0];
-            if (at) stream.addTrack(at);
-        }
-        const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-        recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 15000000 });
-        chunks = [];
-        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = () => {
-            const blob = new Blob(chunks, { type: mime });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `radial-burst-${Date.now()}.webm`;
-            a.click();
-            setStatus('record-status', 'Saved!', 'active');
-        };
-        recorder.start(100);
-        recording = true;
-        document.getElementById('record-btn').textContent = 'Stop Recording';
-        document.getElementById('record-btn').className = 'btn rec';
-        setStatus('record-status', 'Recording...', 'active');
+      const canvas = document.getElementById('defaultCanvas0');
+      if (!canvas) return;
+      const stream = canvas.captureStream(60);
+      const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+      recorder = new MediaRecorder(stream, { mimeType: mime, videoBitsPerSecond: 15000000 });
+      chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mime });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `radial-burst-${Date.now()}.webm`;
+        a.click();
+      };
+      recorder.start(100);
+      recording = true;
+      document.getElementById('recordBtn').textContent = 'Stop Recording';
+      document.getElementById('recordBtn').classList.add('btn-rec');
     }
 
     function stopRec() {
-        if (recorder && recorder.state !== 'inactive') recorder.stop();
-        recording = false;
-        document.getElementById('record-btn').textContent = 'Start Recording';
-        document.getElementById('record-btn').className = 'btn dark';
+      if (recorder && recorder.state !== 'inactive') recorder.stop();
+      recording = false;
+      document.getElementById('recordBtn').textContent = 'Record';
+      document.getElementById('recordBtn').classList.remove('btn-rec');
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // UI
-    // ═══════════════════════════════════════════════════════════════════
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      switch (e.key.toLowerCase()) {
+        case ' ':
+          e.preventDefault();
+          document.getElementById('playPause').click();
+          break;
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'h':
+          document.getElementById('app').classList.toggle('sidebar-hidden');
+          if (document.fullscreenElement) {
+            document.body.classList.toggle('projection-mode');
+          }
+          windowResized();
+          break;
+        case 'r':
+          document.getElementById('recordBtn').click();
+          break;
+        case 'p':
+          popOutCanvas();
+          break;
+      }
+    });
 
-    window.onload = function() {
-        document.getElementById('audio-file').onchange = function() { if (this.files.length) loadFile(this.files[0]); };
-        document.getElementById('mic-btn').onclick = useMic;
-        document.getElementById('play-btn').onclick = togglePlay;
-
-        const sliders = [
-            ['burstSize', v => P.burstSize = +v, v => v],
-            ['particleCount', v => P.particleCount = +v, v => v],
-            ['trailLength', v => P.trailLength = +v, v => v],
-            ['decaySpeed', v => P.decaySpeed = v / 100, v => v + '%'],
-            ['ringRadius', v => P.ringRadius = +v, v => v],
-            ['ringThickness', v => P.ringThickness = +v, v => v],
-            ['sensitivity', v => P.sensitivity = v / 100, v => (v/100).toFixed(1) + 'x'],
-            ['beatThreshold', v => P.beatThreshold = v / 100, v => v + '%']
-        ];
-
-        sliders.forEach(([id, fn, fmt]) => {
-            document.getElementById(id).oninput = function() {
-                fn(this.value);
-                document.getElementById(id + '-v').textContent = fmt(this.value);
-            };
-        });
-
-        ['colorInner', 'colorOuter', 'colorBg'].forEach(id => {
-            document.getElementById(id).oninput = function() {
-                P[id] = this.value;
-                document.getElementById(id + '-v').textContent = this.value;
-            };
-        });
-
-        document.getElementById('resolution').onchange = function() {
-            const [w, h] = this.value.split('x').map(Number);
-            resizeCanvas(w, h);
-        };
-
-        document.getElementById('record-btn').onclick = () => recording ? stopRec() : startRec();
-        document.getElementById('save-frame').onclick = () => saveCanvas('radial-burst', 'png');
-    };
-    </script>
+    // Hide cursor in projection mode
+    let cursorTimeout;
+    document.addEventListener('mousemove', () => {
+      if (document.body.classList.contains('projection-mode')) {
+        document.body.style.cursor = 'default';
+        clearTimeout(cursorTimeout);
+        cursorTimeout = setTimeout(() => {
+          document.body.style.cursor = 'none';
+        }, 2000);
+      }
+    });
+  </script>
 </body>
 </html>
