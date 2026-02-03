@@ -1,12 +1,12 @@
 {
-  "name": "sheep",
+  "name": "sheep-viz",
   "version": "1.0.0",
   "description": "Audio-reactive visual generation for music videos and live performances",
   "author": "Electric Sheep Supply Co.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/electric-sheep-supply-co/sheep.git"
+    "url": "https://github.com/electric-sheep-supply-co/sheep-viz.git"
   },
   "keywords": [
     "audio-reactive",
