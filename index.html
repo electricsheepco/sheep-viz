@@ -171,6 +171,50 @@
       </div>
     </a>
 
+    <a href="visualizers/vector-grid.html" class="card">
+      <div class="card-preview">
+        <canvas id="preview-vector"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Vector Grid</h2>
+        <p>Johnny Quest-style wireframe terrain. 3D perspective grid with audio-reactive waves. Green phosphor aesthetic.</p>
+        <span class="tag">Retro 3D</span>
+      </div>
+    </a>
+
+    <a href="visualizers/matrix-rain.html" class="card">
+      <div class="card-preview">
+        <canvas id="preview-matrix"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Matrix Rain</h2>
+        <p>Digital rain with multicolor modes. Japanese katakana characters cascading with audio-reactive glitches.</p>
+        <span class="tag">Cyberpunk</span>
+      </div>
+    </a>
+
+    <a href="visualizers/starfield.html" class="card">
+      <div class="card-preview">
+        <canvas id="preview-starfield"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Starfield</h2>
+        <p>Classic Windows-style star tunnel. Bass boosts warp speed. Multiple color modes from monochrome to rainbow.</p>
+        <span class="tag">Classic</span>
+      </div>
+    </a>
+
+    <a href="visualizers/warp-speed.html" class="card">
+      <div class="card-preview">
+        <canvas id="preview-warp"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Warp Speed</h2>
+        <p>Star Wars hyperspace jump. Controllable direction with WASD/mouse. Core glow and color temperature.</p>
+        <span class="tag">Cinematic</span>
+      </div>
+    </a>
+
     <a href="visualizers/vertical-pulse.html" class="card">
       <div class="card-preview">
         <canvas id="preview-overlay"></canvas>
@@ -179,6 +223,17 @@
         <h2>Vertical Pulse (Full)</h2>
         <p>Extended version with overlay system, color extraction, and resolution presets for video export.</p>
         <span class="tag">Overlays + Export</span>
+      </div>
+    </a>
+
+    <a href="visualizers/llama-bars.html" class="card">
+      <div class="card-preview">
+        <canvas id="preview-llama"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Llama Bars</h2>
+        <p>Classic spectrum analyzer with gravity peaks. Green-yellow-red gradient. 8 style variants from blocks to LED matrix.</p>
+        <span class="tag">Winamp Tribute</span>
       </div>
     </a>
   </div>
@@ -231,8 +286,23 @@
           case 'radial':
             this.drawRadial();
             break;
+          case 'vector':
+            this.drawVector();
+            break;
+          case 'matrix':
+            this.drawMatrix();
+            break;
+          case 'starfield':
+            this.drawStarfield();
+            break;
+          case 'warp':
+            this.drawWarp();
+            break;
           case 'overlay':
             this.drawOverlay();
+            break;
+          case 'llama':
+            this.drawLlama();
             break;
         }
 
@@ -385,6 +455,254 @@
         ctx.fillStyle = `rgba(255, 255, 255, ${0.3 * pulse})`;
         ctx.fill();
       }
+
+      drawVector() {
+        const ctx = this.ctx;
+        ctx.strokeStyle = '#00ff66';
+        ctx.lineWidth = 1;
+
+        const gridSize = 8;
+        const cellW = this.width / gridSize;
+        const cellH = this.height / 3;
+        const offsetY = this.height * 0.3;
+
+        // Draw grid lines
+        for (let i = 0; i <= gridSize; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * cellW, offsetY);
+          for (let j = 0; j <= gridSize; j++) {
+            const wave = Math.sin(i * 0.5 + this.time) * Math.sin(j * 0.5 + this.time) * 30;
+            ctx.lineTo(i * cellW, offsetY + j * (cellH / gridSize) + wave);
+          }
+          ctx.stroke();
+        }
+
+        for (let j = 0; j <= gridSize; j++) {
+          ctx.beginPath();
+          for (let i = 0; i <= gridSize; i++) {
+            const wave = Math.sin(i * 0.5 + this.time) * Math.sin(j * 0.5 + this.time) * 30;
+            const x = i * cellW;
+            const y = offsetY + j * (cellH / gridSize) + wave;
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+      }
+
+      drawMatrix() {
+        const ctx = this.ctx;
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*';
+        const fontSize = 14;
+        const cols = Math.floor(this.width / fontSize);
+
+        if (!this.matrixStreams) {
+          this.matrixStreams = [];
+          for (let i = 0; i < cols; i++) {
+            this.matrixStreams.push({
+              y: Math.random() * this.height,
+              speed: 2 + Math.random() * 4
+            });
+          }
+        }
+
+        ctx.font = `${fontSize}px monospace`;
+
+        for (let i = 0; i < cols; i++) {
+          const s = this.matrixStreams[i];
+          const char = chars[Math.floor(Math.random() * chars.length)];
+          const hue = (this.time * 50 + i * 10) % 360;
+
+          // Head character (bright)
+          ctx.fillStyle = `hsla(${hue}, 100%, 70%, 1)`;
+          ctx.fillText(char, i * fontSize, s.y);
+
+          // Trail
+          ctx.fillStyle = `hsla(${hue}, 100%, 50%, 0.3)`;
+          for (let j = 1; j < 5; j++) {
+            const tc = chars[Math.floor(Math.random() * chars.length)];
+            ctx.fillText(tc, i * fontSize, s.y - j * fontSize);
+          }
+
+          s.y += s.speed;
+          if (s.y > this.height + 100) {
+            s.y = -50;
+            s.speed = 2 + Math.random() * 4;
+          }
+        }
+      }
+
+      drawStarfield() {
+        const ctx = this.ctx;
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+
+        if (!this.stars) {
+          this.stars = [];
+          for (let i = 0; i < 100; i++) {
+            this.stars.push({
+              x: (Math.random() - 0.5) * this.width,
+              y: (Math.random() - 0.5) * this.height,
+              z: Math.random() * this.width
+            });
+          }
+        }
+
+        const speed = 10 + Math.sin(this.time) * 5;
+
+        for (let s of this.stars) {
+          s.z -= speed;
+          if (s.z < 1) {
+            s.x = (Math.random() - 0.5) * this.width;
+            s.y = (Math.random() - 0.5) * this.height;
+            s.z = this.width;
+          }
+
+          const sx = cx + (s.x / s.z) * this.width * 0.5;
+          const sy = cy + (s.y / s.z) * this.height * 0.5;
+          const r = Math.max(0, (1 - s.z / this.width) * 3);
+          const b = Math.max(50, 255 - (s.z / this.width) * 200);
+
+          ctx.beginPath();
+          ctx.arc(sx, sy, r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${b}, ${b}, ${b * 0.95}, 1)`;
+          ctx.fill();
+        }
+      }
+
+      drawLlama() {
+        const ctx = this.ctx;
+        const bars = 24;
+        const barW = this.width / bars;
+        const maxH = this.height * 0.75;
+        const baseY = this.height * 0.85;
+
+        // Initialize bar data
+        if (!this.llamaBars) {
+          this.llamaBars = [];
+          this.llamaPeaks = [];
+          this.llamaPeakVel = [];
+          for (let i = 0; i < bars; i++) {
+            this.llamaBars.push(0);
+            this.llamaPeaks.push(0);
+            this.llamaPeakVel.push(0);
+          }
+        }
+
+        // Simulate audio
+        for (let i = 0; i < bars; i++) {
+          const target = Math.pow(Math.sin(this.time * 2 + i * 0.3) * 0.5 + 0.5, 1.5) * maxH;
+          this.llamaBars[i] += (target - this.llamaBars[i]) * 0.3;
+
+          // Update peaks with gravity
+          if (this.llamaBars[i] > this.llamaPeaks[i]) {
+            this.llamaPeaks[i] = this.llamaBars[i];
+            this.llamaPeakVel[i] = 0;
+          } else {
+            this.llamaPeakVel[i] += 0.5;
+            this.llamaPeaks[i] -= this.llamaPeakVel[i];
+            if (this.llamaPeaks[i] < 0) this.llamaPeaks[i] = 0;
+          }
+        }
+
+        // Draw bars as blocks
+        for (let i = 0; i < bars; i++) {
+          const x = i * barW;
+          const h = this.llamaBars[i];
+          const blockH = 6;
+          const gap = 2;
+          const numBlocks = Math.floor(h / (blockH + gap));
+
+          for (let j = 0; j < numBlocks; j++) {
+            const blockY = baseY - (j + 1) * (blockH + gap);
+            const pct = (j * (blockH + gap)) / maxH;
+            // Green -> Yellow -> Red
+            let r, g, b;
+            if (pct < 0.5) {
+              r = Math.floor(255 * pct * 2);
+              g = 255;
+            } else {
+              r = 255;
+              g = Math.floor(255 * (1 - (pct - 0.5) * 2));
+            }
+            ctx.fillStyle = `rgb(${r}, ${g}, 0)`;
+            ctx.fillRect(x + 1, blockY, barW - 3, blockH);
+          }
+
+          // Draw peak
+          if (this.llamaPeaks[i] > 2) {
+            const peakY = baseY - this.llamaPeaks[i];
+            const pct = this.llamaPeaks[i] / maxH;
+            let r, g;
+            if (pct < 0.5) {
+              r = Math.floor(255 * pct * 2);
+              g = 255;
+            } else {
+              r = 255;
+              g = Math.floor(255 * (1 - (pct - 0.5) * 2));
+            }
+            ctx.fillStyle = `rgb(${r}, ${g}, 0)`;
+            ctx.fillRect(x + 1, peakY - 3, barW - 3, 3);
+          }
+        }
+      }
+
+      drawWarp() {
+        const ctx = this.ctx;
+        const cx = this.width / 2;
+        const cy = this.height / 2;
+
+        if (!this.warpStars) {
+          this.warpStars = [];
+          for (let i = 0; i < 150; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * this.width * 0.4;
+            this.warpStars.push({
+              x: Math.cos(angle) * radius,
+              y: Math.sin(angle) * radius,
+              z: Math.random() * this.width,
+              pz: Math.random() * this.width
+            });
+          }
+        }
+
+        const speed = 20 + Math.sin(this.time * 2) * 10;
+
+        // Core glow
+        const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, 100);
+        gradient.addColorStop(0, 'rgba(100, 150, 255, 0.3)');
+        gradient.addColorStop(1, 'rgba(100, 150, 255, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, this.width, this.height);
+
+        for (let s of this.warpStars) {
+          s.z -= speed;
+          if (s.z < 1) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * this.width * 0.4;
+            s.x = Math.cos(angle) * radius;
+            s.y = Math.sin(angle) * radius;
+            s.z = this.width;
+            s.pz = s.z;
+          }
+
+          const sx = cx + (s.x / s.z) * this.width;
+          const sy = cy + (s.y / s.z) * this.height;
+          const px = cx + (s.x / s.pz) * this.width;
+          const py = cy + (s.y / s.pz) * this.height;
+
+          const b = Math.max(80, 255 - (s.z / this.width) * 175);
+
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(sx, sy);
+          ctx.strokeStyle = `rgba(${b * 0.8}, ${b * 0.9}, 255, 0.8)`;
+          ctx.lineWidth = Math.max(0.5, (1 - s.z / this.width) * 3);
+          ctx.stroke();
+
+          s.pz = s.z + (this.width - s.z) * 0.2;
+        }
+      }
     }
 
     // Initialize all previews
@@ -392,7 +710,12 @@
       new MiniVisualizer('preview-vertical', 'vertical'),
       new MiniVisualizer('preview-fluid', 'fluid'),
       new MiniVisualizer('preview-radial', 'radial'),
-      new MiniVisualizer('preview-overlay', 'overlay')
+      new MiniVisualizer('preview-vector', 'vector'),
+      new MiniVisualizer('preview-matrix', 'matrix'),
+      new MiniVisualizer('preview-starfield', 'starfield'),
+      new MiniVisualizer('preview-warp', 'warp'),
+      new MiniVisualizer('preview-overlay', 'overlay'),
+      new MiniVisualizer('preview-llama', 'llama')
     ];
 
     previews.forEach(p => p.draw());

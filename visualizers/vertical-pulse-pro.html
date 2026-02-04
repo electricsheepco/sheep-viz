@@ -6,6 +6,7 @@
     <title>SHEEP / Vertical Pulse</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../lib/hardware-controls.css">
     <style>
         :root {
             --bg: #0d0d0f;
@@ -224,6 +225,10 @@
                 <select id="vizSelect" onchange="if(this.value) window.location.href=this.value" style="width:100%;padding:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:11px;cursor:pointer;">
                     <option value="">Switch Visualizer...</option>
                     <option value="vertical-pulse-pro.html" selected>Vertical Pulse Pro</option>
+                    <option value="warp-speed.html">Warp Speed</option>
+                    <option value="starfield.html">Starfield</option>
+                    <option value="vector-grid.html">Vector Grid</option>
+                    <option value="matrix-rain.html">Matrix Rain</option>
                     <option value="fluid-flow.html">Fluid Flow</option>
                     <option value="radial-burst.html">Radial Burst</option>
                     <option value="vertical-pulse.html">Vertical Pulse (Full)</option>
@@ -651,8 +656,11 @@
 
     let isFullscreen = false;
 
+    let controlsWindow = null;
+
     function toggleFullscreen() {
         if (!document.fullscreenElement) {
+            popOutControls();
             document.documentElement.requestFullscreen();
             document.body.classList.add('fullscreen');
             isFullscreen = true;
@@ -661,6 +669,52 @@
             document.body.classList.remove('fullscreen');
             isFullscreen = false;
         }
+    }
+
+    function popOutControls() {
+        if (controlsWindow && !controlsWindow.closed) { controlsWindow.focus(); return; }
+        const sidebar = document.getElementById('sidebar');
+        controlsWindow = window.open('', 'PulseControls', 'width=300,height=' + window.innerHeight + ',left=0,top=0');
+        controlsWindow.document.write(`
+            <html><head><title>Vertical Pulse Pro Controls</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { font-family: 'JetBrains Mono', monospace; background: #0d0d0f; color: #f0f0f0; padding: 16px; overflow-y: auto; height: 100vh; }
+                .section { margin-bottom: 16px; }
+                .section-title { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px; }
+                .control-group { margin-bottom: 12px; }
+                .control-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 4px; color: #888; }
+                input[type="range"] { width: 100%; height: 3px; -webkit-appearance: none; background: #1a1a1f; border-radius: 2px; }
+                input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: #a855f7; border-radius: 50%; cursor: pointer; }
+                select, input[type="file"] { width: 100%; padding: 6px 8px; background: #1a1a1f; border: 1px solid #2a2a2f; border-radius: 4px; color: #f0f0f0; font-family: inherit; font-size: 10px; }
+                button { width: 100%; padding: 8px; background: #1a1a1f; border: 1px solid #2a2a2f; border-radius: 4px; color: #f0f0f0; font-family: inherit; font-size: 10px; cursor: pointer; margin-bottom: 6px; }
+                button:hover { background: #a855f7; color: #fff; border-color: #a855f7; }
+                h2 { color: #a855f7; font-size: 13px; margin-bottom: 4px; }
+                .subtitle { color: #666; font-size: 10px; margin-bottom: 16px; }
+            </style></head><body>
+            <h2>VERTICAL PULSE PRO</h2>
+            <p class="subtitle">Controls</p>
+            </body></html>
+        `);
+        controlsWindow.document.close();
+        const cloneSidebar = sidebar.cloneNode(true);
+        cloneSidebar.style.cssText = 'width:100%;border:none;background:transparent;padding:0';
+        cloneSidebar.querySelectorAll('h1, .subtitle, select[id="vizSelect"]').forEach(el => el.parentElement ? el.parentElement.remove() : el.remove());
+        controlsWindow.document.body.appendChild(cloneSidebar);
+        cloneSidebar.querySelectorAll('input[type="range"]').forEach(input => {
+            input.addEventListener('input', () => {
+                const mainInput = document.getElementById(input.id);
+                if (mainInput) { mainInput.value = input.value; mainInput.dispatchEvent(new Event('input')); }
+            });
+        });
+        cloneSidebar.querySelectorAll('select').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const mainSel = document.getElementById(sel.id);
+                if (mainSel) { mainSel.value = sel.value; mainSel.dispatchEvent(new Event('change')); }
+            });
+        });
+        controlsWindow.addEventListener('beforeunload', () => { controlsWindow = null; });
     }
 
     function toggleSidebar() {
@@ -711,7 +765,7 @@
                         clearTimeout(cursorTimeout);
                         cursorTimeout = setTimeout(() => document.body.style.cursor = 'none', 2000);
                     });
-                </script>
+                <\/script>
             </body>
             </html>
         `);
@@ -835,6 +889,52 @@
         document.getElementById('record-btn').onclick = toggleRecord;
         document.getElementById('save-frame').onclick = () => saveCanvas('sheep', 'png');
     };
+    </script>
+    <script src="../lib/hardware-controls.js?v=4"></script>
+    <script>
+    // Hardware Controls Integration
+    const hardware = new HardwareControls({
+        name: 'Vertical Pulse',
+        accentColor: '#ff3366',
+        params: P,
+        knobs: [
+            { id: 'columnCount', label: 'Count', min: 20, max: 100, step: 1 },
+            { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+            { id: 'baseBright', label: 'Bright', min: 0.05, max: 0.5, step: 0.01, decimals: 2 },
+            { id: 'blobSize', label: 'Size', min: 50, max: 300, step: 10 },
+            { id: 'columnWidth', label: 'Width', min: 0.3, max: 1.0, step: 0.05, decimals: 2 },
+            { id: 'blobCount', label: 'Blobs', min: 0, max: 10, step: 1 },
+            { id: 'seed', label: 'Seed', min: 1, max: 999, step: 1 },
+            { id: 'blobSize', label: 'Blob+', min: 50, max: 300, step: 10 }
+        ],
+        faders: [
+            { id: 'columnCount', label: 'Cols', min: 20, max: 100, step: 1 },
+            { id: 'blobCount', label: 'Blobs', min: 0, max: 10, step: 1 },
+            { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+            { id: 'baseBright', label: 'Master', min: 0.05, max: 0.5, step: 0.01, decimals: 2 }
+        ],
+        presets: new Array(8).fill(null),
+        onParamChange: (id, value) => {
+            P[id] = value;
+            // Update the corresponding sidebar slider if it exists
+            const slider = document.getElementById(id);
+            if (slider) {
+                // Handle percentage-based sliders
+                if (id === 'columnWidth') slider.value = value * 100;
+                else if (id === 'baseBright') slider.value = value * 100;
+                else if (id === 'sensitivity') slider.value = value * 100;
+                else slider.value = value;
+                slider.dispatchEvent(new Event('input'));
+            }
+            // Reinit system for structural changes
+            if (['columnCount', 'columnWidth', 'blobCount', 'blobSize', 'seed'].includes(id)) {
+                initSystem();
+            }
+        },
+        onPresetLoad: (index) => {
+            console.log('Load preset', index);
+        }
+    });
     </script>
 </body>
 </html>

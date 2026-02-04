@@ -1,0 +1,2831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Starfield - sheep-viz</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888888;
+            --accent: #00ff88;
+            --accent-dim: #00aa55;
+            --border: #2a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            order: -1;
+            transition: transform 0.3s ease;
+        }
+
+        #sidebar.hidden {
+            transform: translateX(-100%);
+            position: absolute;
+            height: 100%;
+            z-index: 100;
+        }
+
+        #sidebar.hidden + #canvas-container {
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--accent);
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group.selected {
+            background: var(--bg-tertiary);
+            margin: -8px;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--accent-dim);
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        label .key-hint {
+            font-size: 0.6rem;
+            color: var(--accent-dim);
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .value {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        select, input[type="file"], input[type="number"] {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        select:hover, input:hover {
+            border-color: var(--accent-dim);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .button-row button {
+            margin-bottom: 0;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        #canvas-container canvas {
+            display: block;
+        }
+
+        .toggle-btn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            width: auto;
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+
+        .toggle-btn:hover {
+            opacity: 1;
+        }
+
+        .overlay-preview {
+            margin-top: 8px;
+            max-width: 100%;
+            max-height: 60px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .overlay-preview.visible {
+            display: block;
+        }
+
+        .meter {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.1s;
+            border-radius: 2px;
+        }
+
+        .audio-meters {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .audio-meter {
+            text-align: center;
+        }
+
+        .audio-meter span {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .shortcuts-hint {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            margin-top: 12px;
+        }
+
+        .shortcuts-hint kbd {
+            background: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+        }
+
+        .projection-mode #sidebar {
+            display: none;
+        }
+
+        .projection-mode .toggle-btn {
+            display: none;
+        }
+
+        .projection-mode #canvas-container {
+            cursor: none;
+        }
+
+        .preset-btn {
+            width: 100%;
+            padding: 8px 4px;
+            font-size: 0.7rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent-dim);
+        }
+
+        .preset-btn.active {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        .preset-btn.filled {
+            border-color: var(--accent-dim);
+            color: var(--text-primary);
+        }
+
+        #recordBtn.recording {
+            background: #ff4444;
+            border-color: #ff4444;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            50% { opacity: 0.7; }
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════
+           SKEUOMORPHIC HARDWARE CONTROL BAR
+           ═══════════════════════════════════════════════════════════════════ */
+
+        #hardware-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 180px;
+            background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+            border-top: 2px solid #333;
+            padding: 12px 20px;
+            z-index: 1000;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.5);
+        }
+
+        #hardware-bar.visible {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .hardware-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .hardware-section {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            padding: 8px 12px;
+            background: linear-gradient(180deg, #252525 0%, #1a1a1a 100%);
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+
+        .hardware-section-label {
+            position: absolute;
+            top: -18px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 9px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        /* Skeuomorphic Knob */
+        .sknob {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sknob-label {
+            font-size: 8px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            max-width: 50px;
+            text-align: center;
+            line-height: 1.1;
+            height: 18px;
+            overflow: hidden;
+        }
+
+        .sknob-outer {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+            box-shadow:
+                0 4px 8px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.05),
+                inset 0 -1px 0 rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .sknob-inner {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #333, #222);
+            box-shadow:
+                inset 0 2px 4px rgba(0,0,0,0.5),
+                0 1px 0 rgba(255,255,255,0.05);
+            position: relative;
+            transition: transform 0.05s ease-out;
+        }
+
+        .sknob-indicator {
+            position: absolute;
+            width: 3px;
+            height: 10px;
+            background: var(--accent);
+            border-radius: 2px;
+            top: 4px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .sknob-ring {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: #444;
+            top: -3px;
+            left: -3px;
+        }
+
+        .sknob-value {
+            font-size: 9px;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        .sknob:hover .sknob-outer {
+            box-shadow:
+                0 4px 8px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.05),
+                inset 0 -1px 0 rgba(0,0,0,0.3),
+                0 0 10px rgba(0,255,136,0.2);
+        }
+
+        .sknob.active .sknob-indicator {
+            background: #fff;
+            box-shadow: 0 0 10px #fff, 0 0 20px var(--accent);
+        }
+
+        /* Skeuomorphic Fader */
+        .sfader {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .sfader-label {
+            font-size: 8px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .sfader-track {
+            width: 30px;
+            height: 80px;
+            background: linear-gradient(90deg, #1a1a1a, #252525, #1a1a1a);
+            border-radius: 4px;
+            position: relative;
+            box-shadow:
+                inset 0 2px 4px rgba(0,0,0,0.5),
+                0 1px 0 rgba(255,255,255,0.03);
+            cursor: pointer;
+        }
+
+        .sfader-slot {
+            position: absolute;
+            width: 4px;
+            height: 70px;
+            background: #111;
+            left: 50%;
+            top: 5px;
+            transform: translateX(-50%);
+            border-radius: 2px;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .sfader-fill {
+            position: absolute;
+            width: 4px;
+            left: 50%;
+            bottom: 5px;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+            border-radius: 2px;
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .sfader-handle {
+            position: absolute;
+            width: 26px;
+            height: 16px;
+            background: linear-gradient(180deg, #444, #333, #222);
+            left: 2px;
+            border-radius: 3px;
+            box-shadow:
+                0 2px 4px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            cursor: grab;
+        }
+
+        .sfader-handle::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 2px;
+            background: #555;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border-radius: 1px;
+        }
+
+        .sfader-value {
+            font-size: 9px;
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        /* Skeuomorphic Pad */
+        .spad {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .spad-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+            border: 1px solid #333;
+            box-shadow:
+                0 3px 6px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.05);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.1s;
+        }
+
+        .spad-btn:hover {
+            background: linear-gradient(180deg, #333, #252525);
+        }
+
+        .spad-btn:active, .spad-btn.active {
+            background: linear-gradient(180deg, var(--accent-dim), var(--accent));
+            color: #000;
+            box-shadow:
+                0 1px 2px rgba(0,0,0,0.3),
+                0 0 15px var(--accent),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+            transform: translateY(1px);
+        }
+
+        .spad-btn.filled {
+            border-color: var(--accent-dim);
+            color: var(--accent);
+        }
+
+        .spad-label {
+            font-size: 7px;
+            color: #555;
+            text-transform: uppercase;
+        }
+
+        /* Divider */
+        .hardware-divider {
+            width: 1px;
+            height: 100px;
+            background: linear-gradient(180deg, transparent, #333, transparent);
+            margin: 0 10px;
+        }
+
+        /* Mode toggle button */
+        .mode-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1001;
+            padding: 6px 12px;
+            font-size: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-toggle:hover {
+            border-color: var(--accent-dim);
+            color: var(--text-primary);
+        }
+
+        #hardware-bar.visible ~ .mode-toggle {
+            bottom: 190px;
+        }
+
+        /* Adjust canvas when hardware bar is visible */
+        body.hardware-mode .container {
+            height: calc(100vh - 180px);
+        }
+
+        body.hardware-mode #sidebar {
+            max-height: calc(100vh - 180px);
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-btn" onclick="toggleSidebar()">[ ] Controls</button>
+
+    <div class="container">
+        <div id="sidebar">
+            <h1>Starfield</h1>
+            <p class="subtitle">Classic Space Travel</p>
+
+            <div class="section">
+                <div class="section-title">Audio Input</div>
+                <div class="control-group">
+                    <select id="audioSource">
+                        <option value="mic">Microphone</option>
+                        <option value="file">Audio File</option>
+                    </select>
+                </div>
+                <div class="control-group" id="fileInput" style="display: none;">
+                    <input type="file" id="audioFile" accept="audio/*">
+                </div>
+                <div class="audio-meters">
+                    <div class="audio-meter">
+                        <span>Bass</span>
+                        <div class="meter"><div class="meter-fill" id="bassMeter"></div></div>
+                    </div>
+                    <div class="audio-meter">
+                        <span>Mid</span>
+                        <div class="meter"><div class="meter-fill" id="midMeter"></div></div>
+                    </div>
+                    <div class="audio-meter">
+                        <span>Treble</span>
+                        <div class="meter"><div class="meter-fill" id="trebleMeter"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">MIDI Controller</div>
+                <div class="control-group">
+                    <select id="midiDevice">
+                        <option value="">No MIDI Device</option>
+                    </select>
+                </div>
+                <div id="midiStatus" style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 4px;"></div>
+                <div id="midiActivity" style="font-size: 0.6rem; color: var(--accent-dim); margin-top: 4px; font-family: monospace;"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Presets (Pads 1-8)</div>
+                <div class="preset-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px;">
+                    <button class="preset-btn" data-preset="0" onclick="loadPreset(0)">1</button>
+                    <button class="preset-btn" data-preset="1" onclick="loadPreset(1)">2</button>
+                    <button class="preset-btn" data-preset="2" onclick="loadPreset(2)">3</button>
+                    <button class="preset-btn" data-preset="3" onclick="loadPreset(3)">4</button>
+                    <button class="preset-btn" data-preset="4" onclick="loadPreset(4)">5</button>
+                    <button class="preset-btn" data-preset="5" onclick="loadPreset(5)">6</button>
+                    <button class="preset-btn" data-preset="6" onclick="loadPreset(6)">7</button>
+                    <button class="preset-btn" data-preset="7" onclick="loadPreset(7)">8</button>
+                </div>
+                <div class="button-row">
+                    <button onclick="savePresetToSlot()">Save</button>
+                    <button onclick="clearPresetSlot()">Clear</button>
+                </div>
+                <div id="presetStatus" style="font-size: 0.6rem; color: var(--text-secondary); margin-top: 4px;"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Parameters</div>
+
+                <div class="control-group" data-param="starCount" data-index="1">
+                    <label>
+                        <span>Star Count <span class="key-hint">1</span></span>
+                        <span class="value" id="starCountVal">800</span>
+                    </label>
+                    <input type="range" id="starCount" min="100" max="2000" step="50" value="800">
+                </div>
+
+                <div class="control-group" data-param="baseSpeed" data-index="2">
+                    <label>
+                        <span>Base Speed <span class="key-hint">2</span></span>
+                        <span class="value" id="baseSpeedVal">15</span>
+                    </label>
+                    <input type="range" id="baseSpeed" min="1" max="50" step="1" value="15">
+                </div>
+
+                <div class="control-group" data-param="bassBoost" data-index="3">
+                    <label>
+                        <span>Bass Speed Boost <span class="key-hint">3</span></span>
+                        <span class="value" id="bassBoostVal">30</span>
+                    </label>
+                    <input type="range" id="bassBoost" min="0" max="100" step="5" value="30">
+                </div>
+
+                <div class="control-group" data-param="starSize" data-index="4">
+                    <label>
+                        <span>Star Size <span class="key-hint">4</span></span>
+                        <span class="value" id="starSizeVal">3</span>
+                    </label>
+                    <input type="range" id="starSize" min="1" max="8" step="0.5" value="3">
+                </div>
+
+                <div class="control-group" data-param="trailLength" data-index="5">
+                    <label>
+                        <span>Trail Length <span class="key-hint">5</span></span>
+                        <span class="value" id="trailLengthVal">0.5</span>
+                    </label>
+                    <input type="range" id="trailLength" min="0" max="1" step="0.05" value="0.5">
+                </div>
+
+                <div class="control-group" data-param="centerX" data-index="6">
+                    <label>
+                        <span>Center X <span class="key-hint">6</span></span>
+                        <span class="value" id="centerXVal">0.5</span>
+                    </label>
+                    <input type="range" id="centerX" min="0" max="1" step="0.05" value="0.5">
+                </div>
+
+                <div class="control-group" data-param="centerY" data-index="7">
+                    <label>
+                        <span>Center Y <span class="key-hint">7</span></span>
+                        <span class="value" id="centerYVal">0.5</span>
+                    </label>
+                    <input type="range" id="centerY" min="0" max="1" step="0.05" value="0.5">
+                </div>
+
+                <div class="control-group" data-param="colorMode" data-index="8">
+                    <label>
+                        <span>Color Mode <span class="key-hint">8</span></span>
+                        <span class="value" id="colorModeVal">white</span>
+                    </label>
+                    <select id="colorMode">
+                        <option value="white">Classic White</option>
+                        <option value="blue">Blue Shift</option>
+                        <option value="rainbow">Rainbow</option>
+                        <option value="audio">Audio Reactive</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Star Image</div>
+                <div class="control-group">
+                    <label style="margin-bottom: 8px;">Replace stars with image</label>
+                    <input type="file" id="starImage" accept="image/*">
+                    <img id="starImagePreview" class="overlay-preview">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <span>Image Size</span>
+                        <span class="value" id="starImageSizeVal">1.0</span>
+                    </label>
+                    <input type="range" id="starImageSize" min="0.2" max="3" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <span>Rotation</span>
+                        <span class="value" id="starImageRotationVal">none</span>
+                    </label>
+                    <select id="starImageRotation">
+                        <option value="none">None</option>
+                        <option value="fixed">Fixed Angle</option>
+                        <option value="spin">Spinning</option>
+                        <option value="velocity">Follow Velocity</option>
+                    </select>
+                </div>
+                <button onclick="clearStarImage()">Use Default Stars</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Image Overlay</div>
+                <div class="control-group">
+                    <input type="file" id="overlayImage" accept="image/*">
+                    <img id="overlayPreview" class="overlay-preview">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <span>Overlay Size</span>
+                        <span class="value" id="overlaySizeVal">20%</span>
+                    </label>
+                    <input type="range" id="overlaySize" min="5" max="50" value="20">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <span>Overlay Opacity</span>
+                        <span class="value" id="overlayOpacityVal">80%</span>
+                    </label>
+                    <input type="range" id="overlayOpacity" min="10" max="100" value="80">
+                </div>
+                <div class="control-group">
+                    <label>Position</label>
+                    <select id="overlayPosition">
+                        <option value="center">Center</option>
+                        <option value="top-left">Top Left</option>
+                        <option value="top-right">Top Right</option>
+                        <option value="bottom-left">Bottom Left</option>
+                        <option value="bottom-right">Bottom Right</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Effect</label>
+                    <select id="overlayEffect">
+                        <option value="none">Static</option>
+                        <option value="split">Split & Shift</option>
+                        <option value="pulse">Pulse</option>
+                        <option value="glitch">Glitch</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <span>Effect Intensity</span>
+                        <span class="value" id="overlayIntensityVal">50%</span>
+                    </label>
+                    <input type="range" id="overlayIntensity" min="0" max="100" value="50">
+                </div>
+                <div class="button-row">
+                    <button onclick="extractColors()">Extract Colors</button>
+                    <button onclick="clearOverlay()">Clear</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Resolution</div>
+                <div class="control-group">
+                    <select id="resolution" onchange="changeResolution(this.value)">
+                        <option value="auto">Auto (Fill Window)</option>
+                        <option value="1920x1080">YouTube HD (1920x1080)</option>
+                        <option value="2560x1440">YouTube 2K (2560x1440)</option>
+                        <option value="3840x2160">YouTube 4K (3840x2160)</option>
+                        <option value="1080x1920">TikTok/Reels (1080x1920)</option>
+                        <option value="1080x1350">Instagram Portrait (1080x1350)</option>
+                        <option value="1080x1080">Instagram Square (1080x1080)</option>
+                    </select>
+                </div>
+                <div id="resDisplay" style="font-size: 0.65rem; color: var(--text-secondary);"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Export</div>
+                <div id="recordStatus" style="font-size: 0.65rem; color: var(--text-secondary); margin-bottom: 8px;">Ready to record</div>
+                <button id="recordBtn" onclick="toggleRecording()">Start Recording</button>
+                <button onclick="saveFrame()">Save Frame (PNG)</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Display</div>
+                <div class="control-group">
+                    <label>Visualizer</label>
+                    <select id="vizSelector" onchange="switchVisualizer(this.value)">
+                        <option value="starfield.html" selected>Starfield</option>
+                        <option value="warp-speed.html">Warp Speed</option>
+                        <option value="vector-grid.html">Vector Grid</option>
+                        <option value="matrix-rain.html">Matrix Rain</option>
+                        <option value="fluid-flow.html">Fluid Flow</option>
+                        <option value="radial-burst.html">Radial Burst</option>
+                        <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
+                        <option value="vertical-pulse.html">Vertical Pulse (Full)</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button onclick="toggleFullscreen()">Fullscreen</button>
+                    <button onclick="enterProjectionMode()">Project</button>
+                </div>
+                <div class="button-row">
+                    <button onclick="popOutCanvas()">Pop Out</button>
+                    <button onclick="resetParams()">Reset</button>
+                </div>
+            </div>
+
+            <div class="shortcuts-hint">
+                <strong>Keyboard:</strong><br>
+                <kbd>1</kbd>-<kbd>8</kbd> Select param<br>
+                <kbd>arrows</kbd> Adjust value<br>
+                <kbd>H</kbd> Toggle sidebar<br>
+                <kbd>M</kbd> Hardware view<br>
+                <kbd>F</kbd> Fullscreen<br>
+                <kbd>P</kbd> Projection mode<br>
+                <kbd>Esc</kbd> Exit modes
+            </div>
+        </div>
+
+        <div id="canvas-container"></div>
+    </div>
+
+    <!-- Skeuomorphic Hardware Control Bar -->
+    <div id="hardware-bar">
+        <div class="hardware-row">
+            <!-- 8 Knobs -->
+            <div class="hardware-section" style="position: relative;">
+                <span class="hardware-section-label">Knobs (CC 74, 71, 76, 77, 93, 18, 19, 16)</span>
+                <div class="sknob" data-param="starCount" data-index="0">
+                    <span class="sknob-label">Stars</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">800</span>
+                </div>
+                <div class="sknob" data-param="baseSpeed" data-index="1">
+                    <span class="sknob-label">Speed</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">15</span>
+                </div>
+                <div class="sknob" data-param="bassBoost" data-index="2">
+                    <span class="sknob-label">Bass</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">30</span>
+                </div>
+                <div class="sknob" data-param="starSize" data-index="3">
+                    <span class="sknob-label">Size</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">3</span>
+                </div>
+                <div class="sknob" data-param="trailLength" data-index="4">
+                    <span class="sknob-label">Trail</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">0.5</span>
+                </div>
+                <div class="sknob" data-param="centerX" data-index="5">
+                    <span class="sknob-label">X</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">0.5</span>
+                </div>
+                <div class="sknob" data-param="centerY" data-index="6">
+                    <span class="sknob-label">Y</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">0.5</span>
+                </div>
+                <div class="sknob" data-param="starImageSize" data-index="7">
+                    <span class="sknob-label">Img</span>
+                    <div class="sknob-outer">
+                        <div class="sknob-ring"></div>
+                        <div class="sknob-inner">
+                            <div class="sknob-indicator"></div>
+                        </div>
+                    </div>
+                    <span class="sknob-value">1.0</span>
+                </div>
+            </div>
+
+            <div class="hardware-divider"></div>
+
+            <!-- 4 Faders -->
+            <div class="hardware-section" style="position: relative;">
+                <span class="hardware-section-label">Faders (CC 82, 83, 85, 17)</span>
+                <div class="sfader" data-param="overlaySize" data-index="8">
+                    <span class="sfader-label">Size</span>
+                    <div class="sfader-track">
+                        <div class="sfader-slot"></div>
+                        <div class="sfader-fill" style="height: 20%;"></div>
+                        <div class="sfader-handle" style="bottom: 20%;"></div>
+                    </div>
+                    <span class="sfader-value">20%</span>
+                </div>
+                <div class="sfader" data-param="overlayOpacity" data-index="9">
+                    <span class="sfader-label">Opacity</span>
+                    <div class="sfader-track">
+                        <div class="sfader-slot"></div>
+                        <div class="sfader-fill" style="height: 80%;"></div>
+                        <div class="sfader-handle" style="bottom: 80%;"></div>
+                    </div>
+                    <span class="sfader-value">80%</span>
+                </div>
+                <div class="sfader" data-param="overlayIntensity" data-index="10">
+                    <span class="sfader-label">FX</span>
+                    <div class="sfader-track">
+                        <div class="sfader-slot"></div>
+                        <div class="sfader-fill" style="height: 50%;"></div>
+                        <div class="sfader-handle" style="bottom: 50%;"></div>
+                    </div>
+                    <span class="sfader-value">50%</span>
+                </div>
+                <div class="sfader" data-param="overlayOpacity" data-index="11">
+                    <span class="sfader-label">Master</span>
+                    <div class="sfader-track">
+                        <div class="sfader-slot"></div>
+                        <div class="sfader-fill" style="height: 80%;"></div>
+                        <div class="sfader-handle" style="bottom: 80%;"></div>
+                    </div>
+                    <span class="sfader-value">80%</span>
+                </div>
+            </div>
+
+            <div class="hardware-divider"></div>
+
+            <!-- 8 Pads -->
+            <div class="hardware-section" style="position: relative;">
+                <span class="hardware-section-label">Pads (Notes 36-43 Ch.10)</span>
+                <div class="spad" data-preset="0">
+                    <div class="spad-btn" onclick="loadPreset(0)">1</div>
+                    <span class="spad-label">C1</span>
+                </div>
+                <div class="spad" data-preset="1">
+                    <div class="spad-btn" onclick="loadPreset(1)">2</div>
+                    <span class="spad-label">C#1</span>
+                </div>
+                <div class="spad" data-preset="2">
+                    <div class="spad-btn" onclick="loadPreset(2)">3</div>
+                    <span class="spad-label">D1</span>
+                </div>
+                <div class="spad" data-preset="3">
+                    <div class="spad-btn" onclick="loadPreset(3)">4</div>
+                    <span class="spad-label">D#1</span>
+                </div>
+                <div class="spad" data-preset="4">
+                    <div class="spad-btn" onclick="loadPreset(4)">5</div>
+                    <span class="spad-label">E1</span>
+                </div>
+                <div class="spad" data-preset="5">
+                    <div class="spad-btn" onclick="loadPreset(5)">6</div>
+                    <span class="spad-label">F1</span>
+                </div>
+                <div class="spad" data-preset="6">
+                    <div class="spad-btn" onclick="loadPreset(6)">7</div>
+                    <span class="spad-label">F#1</span>
+                </div>
+                <div class="spad" data-preset="7">
+                    <div class="spad-btn" onclick="loadPreset(7)">8</div>
+                    <span class="spad-label">G1</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="mode-toggle" onclick="toggleHardwareMode()">Hardware View</button>
+
+    <script>
+        // Parameters
+        let params = {
+            starCount: 800,
+            baseSpeed: 15,
+            bassBoost: 30,
+            starSize: 3,
+            trailLength: 0.5,
+            centerX: 0.5,
+            centerY: 0.5,
+            colorMode: 'white',
+            overlaySize: 0.2,
+            overlayOpacity: 0.8,
+            overlayPosition: 'center',
+            overlayEffect: 'none',
+            overlayIntensity: 0.5,
+            starImageSize: 1.0,
+            starImageRotation: 'none'
+        };
+
+        const defaultParams = { ...params };
+
+        // MiniLab 3 MIDI Mapping
+        const MINILAB3_MAP = {
+            // 8 Rotary Knobs (Relative Encoders)
+            knobs: { 74: 0, 71: 1, 76: 2, 77: 3, 93: 4, 18: 5, 19: 6, 16: 7 },
+            // 4 Faders (Absolute)
+            faders: { 82: 8, 83: 9, 85: 10, 17: 11 },
+            // 8 Drum Pads (Notes on Channel 10)
+            pads: { 36: 0, 37: 1, 38: 2, 39: 3, 40: 4, 41: 5, 42: 6, 43: 7 }
+        };
+
+        // Parameter mapping for MIDI (index -> param key)
+        const midiParamMap = [
+            'starCount',    // Knob 1 (CC 74)
+            'baseSpeed',    // Knob 2 (CC 71)
+            'bassBoost',    // Knob 3 (CC 76)
+            'starSize',     // Knob 4 (CC 77)
+            'trailLength',  // Knob 5 (CC 93)
+            'centerX',      // Knob 6 (CC 18)
+            'centerY',      // Knob 7 (CC 19)
+            'starImageSize',// Knob 8 (CC 16)
+            'overlaySize',  // Fader 1 (CC 82)
+            'overlayOpacity',// Fader 2 (CC 83)
+            'overlayIntensity',// Fader 3 (CC 85)
+            'overlayOpacity' // Fader 4/Master (CC 17) - master overlay
+        ];
+
+        // Preset storage
+        let presets = JSON.parse(localStorage.getItem('sheep-viz-presets-starfield')) || Array(8).fill(null);
+        let selectedPresetSlot = 0;
+
+        // Audio
+        let audioContext, analyser, dataArray, source;
+        let audioElement;
+        let bass = 0, mids = 0, treble = 0;
+
+        // MIDI
+        let midiInputs = [];
+        let activeMidiInput = null;
+
+        // Keyboard
+        let selectedParamIndex = 0;
+        const paramKeys = ['starCount', 'baseSpeed', 'bassBoost', 'starSize', 'trailLength', 'centerX', 'centerY', 'colorMode'];
+
+        // Overlay
+        let overlayImg = null;
+
+        // Star image (replaces dots)
+        let starImg = null;
+
+        // Stars
+        let stars = [];
+
+        // p5.js
+        let canvas;
+
+        function setup() {
+            const container = document.getElementById('canvas-container');
+            canvas = createCanvas(container.offsetWidth, container.offsetHeight);
+            canvas.parent('canvas-container');
+
+            initStars();
+            initAudio();
+            initMIDI();
+            setupEventListeners();
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < params.starCount; i++) {
+                stars.push(new Star());
+            }
+        }
+
+        class Star {
+            constructor() {
+                this.reset();
+                this.rotation = random(TWO_PI);
+                this.spinSpeed = random(-0.1, 0.1);
+            }
+
+            reset() {
+                this.x = random(-width / 2, width / 2);
+                this.y = random(-height / 2, height / 2);
+                this.z = random(width);
+                this.pz = this.z;
+                this.rotation = random(TWO_PI);
+                this.spinSpeed = random(-0.1, 0.1);
+            }
+
+            update(speed) {
+                this.z -= speed;
+                if (this.z < 1) {
+                    this.reset();
+                    this.z = width;
+                    this.pz = this.z;
+                }
+                // Update rotation for spinning mode
+                if (params.starImageRotation === 'spin') {
+                    this.rotation += this.spinSpeed;
+                }
+            }
+
+            draw() {
+                const centerOffsetX = (params.centerX - 0.5) * width;
+                const centerOffsetY = (params.centerY - 0.5) * height;
+
+                const sx = map(this.x / this.z, -1, 1, -width / 2, width / 2) + centerOffsetX;
+                const sy = map(this.y / this.z, -1, 1, -height / 2, height / 2) + centerOffsetY;
+
+                const r = map(this.z, 0, width, params.starSize * 2, 0);
+
+                // Previous position for trail
+                const px = map(this.x / this.pz, -1, 1, -width / 2, width / 2) + centerOffsetX;
+                const py = map(this.y / this.pz, -1, 1, -height / 2, height / 2) + centerOffsetY;
+
+                // Trail (only for dots, not images - images get motion blur effect instead)
+                if (params.trailLength > 0 && !starImg) {
+                    const col = getStarColor(this.z, 150);
+                    stroke(col);
+                    strokeWeight(r * 0.5);
+                    line(px, py, sx, sy);
+                }
+
+                // Draw star (image or ellipse)
+                if (starImg) {
+                    const imgSize = r * 8 * params.starImageSize;
+                    const alpha = map(this.z, 0, width, 255, 30);
+
+                    push();
+                    translate(sx, sy);
+
+                    // Calculate rotation based on mode
+                    let angle = 0;
+                    if (params.starImageRotation === 'fixed') {
+                        angle = 0;
+                    } else if (params.starImageRotation === 'spin') {
+                        angle = this.rotation;
+                    } else if (params.starImageRotation === 'velocity') {
+                        angle = atan2(sy - py, sx - px);
+                    }
+
+                    rotate(angle);
+                    tint(255, alpha);
+                    imageMode(CENTER);
+                    image(starImg, 0, 0, imgSize, imgSize);
+                    noTint();
+                    pop();
+                } else {
+                    // Default star (ellipse)
+                    const col = getStarColor(this.z, 255);
+                    noStroke();
+                    fill(col);
+                    ellipse(sx, sy, r, r);
+                }
+
+                this.pz = this.z + (width - this.z) * (1 - params.trailLength);
+            }
+        }
+
+        function getStarColor(z, alpha) {
+            const brightness = map(z, 0, width, 255, 50);
+
+            switch (params.colorMode) {
+                case 'white':
+                    return color(brightness, brightness, brightness * 0.95, alpha);
+                case 'blue':
+                    const blueShift = map(z, 0, width, 255, 100);
+                    return color(brightness * 0.7, brightness * 0.8, blueShift, alpha);
+                case 'rainbow':
+                    const hue = map(z, 0, width, 0, 360);
+                    colorMode(HSB);
+                    const c = color(hue, 80, brightness, alpha / 255);
+                    colorMode(RGB);
+                    return c;
+                case 'audio':
+                    return color(
+                        brightness * (0.5 + bass * 0.5),
+                        brightness * (0.5 + mids * 0.5),
+                        brightness * (0.5 + treble * 0.5),
+                        alpha
+                    );
+                default:
+                    return color(brightness, alpha);
+            }
+        }
+
+        function draw() {
+            // Fade effect for trails
+            background(0, map(params.trailLength, 0, 1, 255, 20));
+
+            updateAudio();
+            updateMeters();
+
+            const speed = params.baseSpeed + (bass * params.bassBoost);
+
+            translate(width / 2, height / 2);
+
+            // Adjust star count if needed
+            while (stars.length < params.starCount) {
+                stars.push(new Star());
+            }
+            while (stars.length > params.starCount) {
+                stars.pop();
+            }
+
+            // Update and draw stars
+            for (let star of stars) {
+                star.update(speed);
+                star.draw();
+            }
+
+            // Reset transform for overlay
+            resetMatrix();
+
+            // Draw overlay with effects
+            if (overlayImg) {
+                drawOverlayEnhanced();
+            }
+        }
+
+        // Audio functions
+        async function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+            } catch (e) {
+                console.log('Audio init failed:', e);
+            }
+        }
+
+        function updateAudio() {
+            if (!analyser) return;
+
+            analyser.getByteFrequencyData(dataArray);
+
+            const bassRange = dataArray.slice(0, 10);
+            const midRange = dataArray.slice(10, 50);
+            const trebleRange = dataArray.slice(50, 128);
+
+            bass = bassRange.reduce((a, b) => a + b, 0) / bassRange.length / 255;
+            mids = midRange.reduce((a, b) => a + b, 0) / midRange.length / 255;
+            treble = trebleRange.reduce((a, b) => a + b, 0) / trebleRange.length / 255;
+        }
+
+        function updateMeters() {
+            document.getElementById('bassMeter').style.width = (bass * 100) + '%';
+            document.getElementById('midMeter').style.width = (mids * 100) + '%';
+            document.getElementById('trebleMeter').style.width = (treble * 100) + '%';
+        }
+
+        // Audio file handling
+        document.getElementById('audioSource').addEventListener('change', function(e) {
+            document.getElementById('fileInput').style.display = e.target.value === 'file' ? 'block' : 'none';
+            if (e.target.value === 'mic') {
+                initAudio();
+            }
+        });
+
+        document.getElementById('audioFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (audioElement) audioElement.pause();
+                audioElement = new Audio(URL.createObjectURL(file));
+                audioElement.crossOrigin = 'anonymous';
+
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 256;
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                }
+
+                source = audioContext.createMediaElementSource(audioElement);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                audioElement.play();
+            }
+        });
+
+        // MIDI
+        async function initMIDI() {
+            try {
+                const access = await navigator.requestMIDIAccess();
+                midiInputs = Array.from(access.inputs.values());
+
+                const select = document.getElementById('midiDevice');
+                const status = document.getElementById('midiStatus');
+
+                if (midiInputs.length > 0) {
+                    midiInputs.forEach((input, i) => {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = input.name || `Device ${i + 1}`;
+                        select.appendChild(option);
+                    });
+                    status.textContent = `${midiInputs.length} device(s) found`;
+
+                    // Auto-connect first
+                    select.value = '0';
+                    connectMIDI(0);
+                } else {
+                    status.textContent = 'No MIDI devices';
+                }
+
+                select.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        connectMIDI(parseInt(e.target.value));
+                    }
+                });
+            } catch (e) {
+                document.getElementById('midiStatus').textContent = 'MIDI not supported';
+            }
+        }
+
+        function connectMIDI(index) {
+            if (activeMidiInput) {
+                activeMidiInput.onmidimessage = null;
+            }
+            activeMidiInput = midiInputs[index];
+            if (activeMidiInput) {
+                activeMidiInput.onmidimessage = handleMIDI;
+                document.getElementById('midiStatus').textContent = `Connected: ${activeMidiInput.name}`;
+            }
+        }
+
+        function handleMIDI(msg) {
+            const [status, data1, data2] = msg.data;
+            const channel = status & 0x0F;
+            const type = status & 0xF0;
+
+            // Show activity
+            const activity = document.getElementById('midiActivity');
+            activity.textContent = `CH${channel + 1} ${type === 0xB0 ? 'CC' : 'Note'}${data1}=${data2}`;
+            setTimeout(() => activity.textContent = '', 500);
+
+            if (type === 0xB0) { // CC message
+                // Check knobs
+                let paramIndex = MINILAB3_MAP.knobs[data1];
+                let isKnob = paramIndex !== undefined;
+                if (paramIndex === undefined) {
+                    // Check faders
+                    paramIndex = MINILAB3_MAP.faders[data1];
+                }
+
+                if (paramIndex !== undefined && midiParamMap[paramIndex]) {
+                    const param = midiParamMap[paramIndex];
+                    const slider = document.getElementById(param);
+                    if (slider) {
+                        const normalized = data2 / 127;
+                        const min = parseFloat(slider.min);
+                        const max = parseFloat(slider.max);
+                        const newValue = min + normalized * (max - min);
+                        slider.value = newValue;
+                        updateParam(param, newValue);
+
+                        // Update hardware bar visuals
+                        if (hardwareMode) {
+                            if (isKnob) {
+                                const knob = document.querySelector(`.sknob[data-index="${paramIndex}"]`);
+                                if (knob) {
+                                    updateKnobVisual(knob, param);
+                                    // Flash highlight
+                                    knob.classList.add('active');
+                                    setTimeout(() => knob.classList.remove('active'), 150);
+                                }
+                            } else {
+                                const fader = document.querySelector(`.sfader[data-index="${paramIndex}"]`);
+                                if (fader) updateFaderVisual(fader, param);
+                            }
+                        }
+                    }
+                }
+            } else if (type === 0x90 && channel === 9) { // Note On, Channel 10 (pads)
+                const presetIndex = MINILAB3_MAP.pads[data1];
+                if (presetIndex !== undefined && data2 > 0) {
+                    loadPreset(presetIndex);
+
+                    // Flash pad in hardware bar
+                    if (hardwareMode) {
+                        const pad = document.querySelector(`.spad[data-preset="${presetIndex}"] .spad-btn`);
+                        if (pad) {
+                            pad.classList.add('active');
+                            setTimeout(() => updateHardwarePresetUI(), 200);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            // Sliders
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                slider.addEventListener('input', (e) => {
+                    updateParam(e.target.id, e.target.value);
+                });
+            });
+
+            // Color mode select
+            document.getElementById('colorMode').addEventListener('change', (e) => {
+                params.colorMode = e.target.value;
+                document.getElementById('colorModeVal').textContent = e.target.value;
+            });
+
+            // Star image (replaces stars with custom image)
+            document.getElementById('starImage').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    loadImage(url, img => {
+                        starImg = img;
+                        document.getElementById('starImagePreview').src = url;
+                        document.getElementById('starImagePreview').classList.add('visible');
+                    });
+                }
+            });
+
+            // Star image size
+            document.getElementById('starImageSize').addEventListener('input', (e) => {
+                params.starImageSize = parseFloat(e.target.value);
+                document.getElementById('starImageSizeVal').textContent = params.starImageSize.toFixed(1);
+            });
+
+            // Star image rotation
+            document.getElementById('starImageRotation').addEventListener('change', (e) => {
+                params.starImageRotation = e.target.value;
+                document.getElementById('starImageRotationVal').textContent = e.target.value;
+            });
+
+            // Overlay image
+            document.getElementById('overlayImage').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    loadImage(url, img => {
+                        overlayImg = img;
+                        document.getElementById('overlayPreview').src = url;
+                        document.getElementById('overlayPreview').classList.add('visible');
+                    });
+                }
+            });
+
+            // Keyboard
+            document.addEventListener('keydown', handleKeyboard);
+        }
+
+        function clearStarImage() {
+            starImg = null;
+            document.getElementById('starImage').value = '';
+            document.getElementById('starImagePreview').classList.remove('visible');
+        }
+
+        function handleKeyboard(e) {
+            // Number keys 1-8 select parameter
+            if (e.key >= '1' && e.key <= '8') {
+                e.preventDefault();
+                selectParam(parseInt(e.key) - 1);
+                return;
+            }
+
+            // Arrow keys adjust selected parameter
+            if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                adjustSelectedParam(1);
+                return;
+            }
+            if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                adjustSelectedParam(-1);
+                return;
+            }
+
+            // Other shortcuts
+            switch (e.key.toLowerCase()) {
+                case 'h':
+                    toggleSidebar();
+                    break;
+                case 'f':
+                    toggleFullscreen();
+                    break;
+                case 'p':
+                    enterProjectionMode();
+                    break;
+                case 'm':
+                    toggleHardwareMode();
+                    break;
+                case 'escape':
+                    exitProjectionMode();
+                    break;
+            }
+        }
+
+        function selectParam(index) {
+            // Remove previous selection
+            document.querySelectorAll('.control-group').forEach(g => g.classList.remove('selected'));
+
+            selectedParamIndex = index;
+            const group = document.querySelector(`.control-group[data-index="${index + 1}"]`);
+            if (group) {
+                group.classList.add('selected');
+                group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function adjustSelectedParam(direction) {
+            const param = paramKeys[selectedParamIndex];
+            if (!param) return;
+
+            if (param === 'colorMode') {
+                const select = document.getElementById('colorMode');
+                const options = Array.from(select.options);
+                let idx = select.selectedIndex + direction;
+                idx = (idx + options.length) % options.length;
+                select.selectedIndex = idx;
+                params.colorMode = select.value;
+                document.getElementById('colorModeVal').textContent = select.value;
+                return;
+            }
+
+            const slider = document.getElementById(param);
+            if (slider) {
+                const step = parseFloat(slider.step) || 1;
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+                let val = parseFloat(slider.value) + (direction * step);
+                val = constrain(val, min, max);
+                slider.value = val;
+                updateParam(param, val);
+            }
+        }
+
+        function updateParam(param, value) {
+            params[param] = parseFloat(value);
+            const display = document.getElementById(param + 'Val');
+            if (display) {
+                display.textContent = parseFloat(value).toFixed(param.includes('Speed') || param === 'starCount' ? 0 :
+                    (param.includes('center') || param === 'trailLength' || param === 'overlayOpacity') ? 2 : 1);
+            }
+            // Sync hardware bar and popout
+            if (hardwareMode) syncHardwareFromParams();
+            if (controlsWindow && !controlsWindow.closed) syncPopoutFromParams();
+        }
+
+        function clearOverlay() {
+            overlayImg = null;
+            document.getElementById('overlayImage').value = '';
+            document.getElementById('overlayPreview').classList.remove('visible');
+        }
+
+        function resetParams() {
+            Object.assign(params, defaultParams);
+            syncUIFromParams();
+            document.getElementById('colorModeVal').textContent = 'white';
+            initStars();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('hidden');
+        }
+
+        let controlsWindow = null;
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                popOutControls();
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function popOutControls() {
+            if (controlsWindow && !controlsWindow.closed) { controlsWindow.focus(); return; }
+
+            // Open horizontal strip window at bottom of screen
+            const winWidth = window.screen.availWidth;
+            const winHeight = 200;
+            const winTop = window.screen.availHeight - winHeight;
+            controlsWindow = window.open('', 'StarfieldHardware', `width=${winWidth},height=${winHeight},left=0,top=${winTop},menubar=no,toolbar=no`);
+
+            controlsWindow.document.write(`
+                <html><head><title>Starfield - Hardware Controls</title>
+                <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+                <style>
+                    :root {
+                        --bg-primary: #0a0a0a;
+                        --accent: #00ff88;
+                        --accent-dim: #00aa55;
+                    }
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: 'JetBrains Mono', monospace;
+                        background: linear-gradient(180deg, #1a1a1a 0%, #0d0d0d 100%);
+                        color: #e0e0e0;
+                        height: 100vh;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 12px 20px;
+                        user-select: none;
+                    }
+                    .hardware-row {
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 8px;
+                    }
+                    .hardware-section {
+                        display: flex;
+                        align-items: flex-end;
+                        gap: 6px;
+                        padding: 8px 12px;
+                        background: linear-gradient(180deg, #252525 0%, #1a1a1a 100%);
+                        border-radius: 8px;
+                        border: 1px solid #333;
+                        position: relative;
+                    }
+                    .hardware-section-label {
+                        position: absolute;
+                        top: -16px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        font-size: 9px;
+                        color: #555;
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        white-space: nowrap;
+                    }
+                    .hardware-divider {
+                        width: 1px;
+                        height: 120px;
+                        background: linear-gradient(180deg, transparent, #333, transparent);
+                        margin: 0 10px;
+                    }
+                    /* Skeuomorphic Knob */
+                    .sknob {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 4px;
+                    }
+                    .sknob-label {
+                        font-size: 8px;
+                        color: #888;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                        max-width: 50px;
+                        text-align: center;
+                        line-height: 1.1;
+                        height: 18px;
+                        overflow: hidden;
+                    }
+                    .sknob-outer {
+                        width: 44px;
+                        height: 44px;
+                        border-radius: 50%;
+                        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+                        box-shadow:
+                            0 4px 8px rgba(0,0,0,0.4),
+                            inset 0 1px 0 rgba(255,255,255,0.05),
+                            inset 0 -1px 0 rgba(0,0,0,0.3);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        position: relative;
+                    }
+                    .sknob-inner {
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 50%;
+                        background: linear-gradient(145deg, #333, #222);
+                        box-shadow:
+                            inset 0 2px 4px rgba(0,0,0,0.5),
+                            0 1px 0 rgba(255,255,255,0.05);
+                        position: relative;
+                        transition: transform 0.05s ease-out;
+                    }
+                    .sknob-indicator {
+                        position: absolute;
+                        width: 3px;
+                        height: 10px;
+                        background: var(--accent);
+                        border-radius: 2px;
+                        top: 4px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        box-shadow: 0 0 6px var(--accent);
+                    }
+                    .sknob-ring {
+                        position: absolute;
+                        width: 50px;
+                        height: 50px;
+                        border-radius: 50%;
+                        border: 2px solid transparent;
+                        border-top-color: #444;
+                        top: -3px;
+                        left: -3px;
+                    }
+                    .sknob-value {
+                        font-size: 9px;
+                        color: var(--accent);
+                        font-weight: 500;
+                    }
+                    .sknob:hover .sknob-outer {
+                        box-shadow:
+                            0 4px 8px rgba(0,0,0,0.4),
+                            inset 0 1px 0 rgba(255,255,255,0.05),
+                            inset 0 -1px 0 rgba(0,0,0,0.3),
+                            0 0 10px rgba(0,255,136,0.2);
+                    }
+                    .sknob.active .sknob-indicator {
+                        background: #fff;
+                        box-shadow: 0 0 10px #fff, 0 0 20px var(--accent);
+                    }
+                    /* Skeuomorphic Fader */
+                    .sfader {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 4px;
+                    }
+                    .sfader-label {
+                        font-size: 8px;
+                        color: #888;
+                        text-transform: uppercase;
+                        letter-spacing: 0.5px;
+                    }
+                    .sfader-track {
+                        width: 30px;
+                        height: 80px;
+                        background: linear-gradient(90deg, #1a1a1a, #252525, #1a1a1a);
+                        border-radius: 4px;
+                        position: relative;
+                        box-shadow:
+                            inset 0 2px 4px rgba(0,0,0,0.5),
+                            0 1px 0 rgba(255,255,255,0.03);
+                        cursor: pointer;
+                    }
+                    .sfader-slot {
+                        position: absolute;
+                        width: 4px;
+                        height: 70px;
+                        background: #111;
+                        left: 50%;
+                        top: 5px;
+                        transform: translateX(-50%);
+                        border-radius: 2px;
+                        box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+                    }
+                    .sfader-fill {
+                        position: absolute;
+                        width: 4px;
+                        left: 50%;
+                        bottom: 5px;
+                        transform: translateX(-50%);
+                        background: linear-gradient(180deg, var(--accent), var(--accent-dim));
+                        border-radius: 2px;
+                        box-shadow: 0 0 8px var(--accent);
+                    }
+                    .sfader-handle {
+                        position: absolute;
+                        width: 26px;
+                        height: 16px;
+                        background: linear-gradient(180deg, #444, #333, #222);
+                        left: 2px;
+                        border-radius: 3px;
+                        box-shadow:
+                            0 2px 4px rgba(0,0,0,0.4),
+                            inset 0 1px 0 rgba(255,255,255,0.1);
+                        cursor: grab;
+                    }
+                    .sfader-handle::after {
+                        content: '';
+                        position: absolute;
+                        width: 16px;
+                        height: 2px;
+                        background: #555;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        border-radius: 1px;
+                    }
+                    .sfader-value {
+                        font-size: 9px;
+                        color: var(--accent);
+                        font-weight: 500;
+                    }
+                    /* Skeuomorphic Pad */
+                    .spad {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 2px;
+                    }
+                    .spad-btn {
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 4px;
+                        background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+                        border: 1px solid #333;
+                        box-shadow:
+                            0 3px 6px rgba(0,0,0,0.3),
+                            inset 0 1px 0 rgba(255,255,255,0.05);
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 11px;
+                        font-weight: 600;
+                        color: #666;
+                        transition: all 0.1s;
+                    }
+                    .spad-btn:hover {
+                        background: linear-gradient(180deg, #333, #252525);
+                    }
+                    .spad-btn:active, .spad-btn.active {
+                        background: linear-gradient(180deg, var(--accent-dim), var(--accent));
+                        color: #000;
+                        box-shadow:
+                            0 1px 2px rgba(0,0,0,0.3),
+                            0 0 15px var(--accent),
+                            inset 0 1px 0 rgba(255,255,255,0.2);
+                        transform: translateY(1px);
+                    }
+                    .spad-btn.filled {
+                        border-color: var(--accent-dim);
+                        color: var(--accent);
+                    }
+                    .spad-label {
+                        font-size: 7px;
+                        color: #555;
+                        text-transform: uppercase;
+                    }
+                    .title {
+                        position: absolute;
+                        top: 8px;
+                        left: 20px;
+                        font-size: 11px;
+                        color: var(--accent);
+                        font-weight: 600;
+                        letter-spacing: 1px;
+                    }
+                </style></head>
+                <body>
+                    <span class="title">STARFIELD</span>
+                    <div class="hardware-row" id="hardware-content"></div>
+                </body></html>
+            `);
+            controlsWindow.document.close();
+
+            // Clone hardware bar content
+            const hardwareBar = document.getElementById('hardware-bar');
+            const hardwareRow = hardwareBar.querySelector('.hardware-row');
+            if (hardwareRow) {
+                const clone = hardwareRow.cloneNode(true);
+                controlsWindow.document.getElementById('hardware-content').innerHTML = clone.innerHTML;
+            }
+
+            // Sync visuals
+            syncPopoutFromParams();
+
+            // Setup event listeners in popup
+            setupPopoutListeners();
+
+            controlsWindow.addEventListener('beforeunload', () => { controlsWindow = null; });
+        }
+
+        function syncPopoutFromParams() {
+            if (!controlsWindow || controlsWindow.closed) return;
+
+            // Sync knobs
+            controlsWindow.document.querySelectorAll('.sknob').forEach(knob => {
+                const param = knob.dataset.param;
+                const slider = document.getElementById(param);
+                if (!slider || params[param] === undefined) return;
+
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+                const value = params[param];
+                const normalized = (value - min) / (max - min);
+                const rotation = -135 + (normalized * 270);
+
+                const inner = knob.querySelector('.sknob-inner');
+                if (inner) inner.style.transform = `rotate(${rotation}deg)`;
+
+                const valueEl = knob.querySelector('.sknob-value');
+                if (valueEl) {
+                    if (param === 'starCount' || param === 'baseSpeed' || param === 'bassBoost') {
+                        valueEl.textContent = Math.round(value);
+                    } else {
+                        valueEl.textContent = value.toFixed(1);
+                    }
+                }
+            });
+
+            // Sync faders
+            controlsWindow.document.querySelectorAll('.sfader').forEach(fader => {
+                const param = fader.dataset.param;
+                const slider = document.getElementById(param);
+                if (!slider) return;
+
+                let displayValue = params[param];
+                if (param === 'overlaySize' || param === 'overlayOpacity' || param === 'overlayIntensity') {
+                    displayValue = params[param];
+                }
+
+                const normalized = (displayValue - parseFloat(slider.min)) / (parseFloat(slider.max) - parseFloat(slider.min));
+                const percentage = normalized * 100;
+
+                const fill = fader.querySelector('.sfader-fill');
+                const handle = fader.querySelector('.sfader-handle');
+                if (fill) fill.style.height = percentage + '%';
+                if (handle) handle.style.bottom = `calc(${percentage}% - 8px)`;
+
+                const valueEl = fader.querySelector('.sfader-value');
+                if (valueEl) valueEl.textContent = Math.round(percentage) + '%';
+            });
+
+            // Sync pads
+            controlsWindow.document.querySelectorAll('.spad').forEach((pad, i) => {
+                const btn = pad.querySelector('.spad-btn');
+                if (btn) {
+                    btn.classList.toggle('filled', presets[i] !== null);
+                    btn.classList.toggle('active', i === selectedPresetSlot);
+                }
+            });
+        }
+
+        function setupPopoutListeners() {
+            if (!controlsWindow || controlsWindow.closed) return;
+
+            let popActiveKnob = null;
+            let popActiveFader = null;
+            let popDragStartY = 0;
+            let popDragStartValue = 0;
+
+            // Knob interactions
+            controlsWindow.document.querySelectorAll('.sknob').forEach(knob => {
+                const outer = knob.querySelector('.sknob-outer');
+
+                outer.addEventListener('mousedown', (e) => {
+                    popActiveKnob = knob;
+                    popDragStartY = e.clientY;
+                    const param = knob.dataset.param;
+                    const slider = document.getElementById(param);
+                    if (slider) popDragStartValue = parseFloat(slider.value);
+                    knob.classList.add('active');
+                    e.preventDefault();
+                });
+
+                outer.addEventListener('wheel', (e) => {
+                    const param = knob.dataset.param;
+                    const slider = document.getElementById(param);
+                    if (!slider) return;
+
+                    const step = parseFloat(slider.step) || 1;
+                    const delta = e.deltaY > 0 ? -step : step;
+                    let newValue = parseFloat(slider.value) + delta;
+                    newValue = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newValue));
+
+                    slider.value = newValue;
+                    slider.dispatchEvent(new Event('input'));
+                    syncPopoutFromParams();
+                    e.preventDefault();
+                });
+            });
+
+            // Fader interactions
+            controlsWindow.document.querySelectorAll('.sfader').forEach(fader => {
+                const track = fader.querySelector('.sfader-track');
+
+                track.addEventListener('mousedown', (e) => {
+                    popActiveFader = fader;
+                    updatePopoutFader(fader, e);
+                    e.preventDefault();
+                });
+            });
+
+            // Pad clicks
+            controlsWindow.document.querySelectorAll('.spad-btn').forEach((btn, i) => {
+                btn.addEventListener('click', () => {
+                    loadPreset(i);
+                    syncPopoutFromParams();
+                });
+            });
+
+            // Mouse move/up
+            controlsWindow.document.addEventListener('mousemove', (e) => {
+                if (popActiveKnob) {
+                    const param = popActiveKnob.dataset.param;
+                    const slider = document.getElementById(param);
+                    if (!slider) return;
+
+                    const sensitivity = 0.5;
+                    const deltaY = popDragStartY - e.clientY;
+                    const range = parseFloat(slider.max) - parseFloat(slider.min);
+                    const delta = (deltaY * sensitivity * range) / 100;
+
+                    let newValue = popDragStartValue + delta;
+                    newValue = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newValue));
+                    slider.value = newValue;
+                    slider.dispatchEvent(new Event('input'));
+                    syncPopoutFromParams();
+                }
+
+                if (popActiveFader) {
+                    updatePopoutFader(popActiveFader, e);
+                }
+            });
+
+            controlsWindow.document.addEventListener('mouseup', () => {
+                if (popActiveKnob) {
+                    popActiveKnob.classList.remove('active');
+                    popActiveKnob = null;
+                }
+                popActiveFader = null;
+            });
+
+            function updatePopoutFader(fader, e) {
+                const track = fader.querySelector('.sfader-track');
+                const rect = track.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                const height = rect.height;
+                const normalized = 1 - Math.max(0, Math.min(1, y / height));
+
+                const param = fader.dataset.param;
+                const slider = document.getElementById(param);
+                if (!slider) return;
+
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+                const newValue = min + normalized * (max - min);
+
+                slider.value = newValue;
+                slider.dispatchEvent(new Event('input'));
+                syncPopoutFromParams();
+            }
+        }
+
+        function enterProjectionMode() {
+            document.body.classList.add('projection-mode');
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            }
+        }
+
+        function exitProjectionMode() {
+            document.body.classList.remove('projection-mode');
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        function popOutCanvas() {
+            const w = window.open('', 'starfield_canvas', 'width=1280,height=720');
+            w.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Starfield - Projection</title>
+                    <style>
+                        body { margin: 0; background: #000; overflow: hidden; }
+                        canvas { display: block; }
+                    </style>
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>
+                </head>
+                <body>
+                    <script>
+                        const parent = window.opener;
+                        let stars = [];
+
+                        function setup() {
+                            createCanvas(windowWidth, windowHeight);
+                            initStars();
+                        }
+
+                        function initStars() {
+                            stars = [];
+                            for (let i = 0; i < 800; i++) {
+                                stars.push({
+                                    x: random(-width/2, width/2),
+                                    y: random(-height/2, height/2),
+                                    z: random(width),
+                                    pz: random(width)
+                                });
+                            }
+                        }
+
+                        function draw() {
+                            const params = parent.params || { baseSpeed: 15, starSize: 3, trailLength: 0.5, centerX: 0.5, centerY: 0.5 };
+                            const bass = parent.bass || 0;
+                            const speed = params.baseSpeed + (bass * (params.bassBoost || 30));
+
+                            background(0, map(params.trailLength, 0, 1, 255, 20));
+                            translate(width/2, height/2);
+
+                            const cx = (params.centerX - 0.5) * width;
+                            const cy = (params.centerY - 0.5) * height;
+
+                            for (let s of stars) {
+                                s.z -= speed;
+                                if (s.z < 1) {
+                                    s.x = random(-width/2, width/2);
+                                    s.y = random(-height/2, height/2);
+                                    s.z = width;
+                                    s.pz = s.z;
+                                }
+
+                                const sx = map(s.x / s.z, -1, 1, -width/2, width/2) + cx;
+                                const sy = map(s.y / s.z, -1, 1, -height/2, height/2) + cy;
+                                const r = map(s.z, 0, width, params.starSize * 2, 0);
+                                const b = map(s.z, 0, width, 255, 50);
+
+                                if (params.trailLength > 0) {
+                                    const px = map(s.x / s.pz, -1, 1, -width/2, width/2) + cx;
+                                    const py = map(s.y / s.pz, -1, 1, -height/2, height/2) + cy;
+                                    stroke(b, 150);
+                                    strokeWeight(r * 0.5);
+                                    line(px, py, sx, sy);
+                                }
+
+                                noStroke();
+                                fill(b);
+                                ellipse(sx, sy, r, r);
+
+                                s.pz = s.z + (width - s.z) * (1 - params.trailLength);
+                            }
+                        }
+
+                        function windowResized() {
+                            resizeCanvas(windowWidth, windowHeight);
+                            initStars();
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `);
+        }
+
+        function switchVisualizer(viz) {
+            window.location.href = viz;
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // PRESET SYSTEM
+        // ═══════════════════════════════════════════════════════════════════
+        function loadPreset(index) {
+            selectedPresetSlot = index;
+            updatePresetUI();
+
+            if (presets[index]) {
+                Object.assign(params, presets[index]);
+                syncUIFromParams();
+                if (hardwareMode) syncHardwareFromParams();
+                document.getElementById('presetStatus').textContent = `Loaded preset ${index + 1}`;
+            } else {
+                document.getElementById('presetStatus').textContent = `Preset ${index + 1} empty`;
+            }
+        }
+
+        function savePresetToSlot() {
+            presets[selectedPresetSlot] = { ...params };
+            localStorage.setItem('sheep-viz-presets-starfield', JSON.stringify(presets));
+            updatePresetUI();
+            document.getElementById('presetStatus').textContent = `Saved to preset ${selectedPresetSlot + 1}`;
+        }
+
+        function clearPresetSlot() {
+            presets[selectedPresetSlot] = null;
+            localStorage.setItem('sheep-viz-presets-starfield', JSON.stringify(presets));
+            updatePresetUI();
+            document.getElementById('presetStatus').textContent = `Cleared preset ${selectedPresetSlot + 1}`;
+        }
+
+        function updatePresetUI() {
+            // Update sidebar preset buttons
+            document.querySelectorAll('.preset-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', i === selectedPresetSlot);
+                btn.classList.toggle('filled', presets[i] !== null);
+            });
+
+            // Update hardware bar pads
+            if (hardwareMode) {
+                updateHardwarePresetUI();
+            }
+        }
+
+        function syncUIFromParams() {
+            Object.keys(params).forEach(key => {
+                const el = document.getElementById(key);
+                if (el) {
+                    if (el.type === 'range') {
+                        el.value = params[key];
+                    } else if (el.tagName === 'SELECT') {
+                        el.value = params[key];
+                    }
+                    updateParamDisplay(key, params[key]);
+                }
+            });
+        }
+
+        function updateParamDisplay(param, value) {
+            const display = document.getElementById(param + 'Val');
+            if (display) {
+                if (param === 'starCount' || param === 'baseSpeed' || param === 'bassBoost') {
+                    display.textContent = Math.round(value);
+                } else if (param === 'overlaySize' || param === 'overlayOpacity' || param === 'overlayIntensity') {
+                    display.textContent = Math.round(value) + '%';
+                } else if (typeof value === 'number') {
+                    display.textContent = value.toFixed(1);
+                } else {
+                    display.textContent = value;
+                }
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RESOLUTION
+        // ═══════════════════════════════════════════════════════════════════
+        let fixedResolution = null;
+
+        function changeResolution(value) {
+            if (value === 'auto') {
+                fixedResolution = null;
+                const container = document.getElementById('canvas-container');
+                resizeCanvas(container.offsetWidth, container.offsetHeight);
+            } else {
+                const [w, h] = value.split('x').map(Number);
+                fixedResolution = { w, h };
+                resizeCanvas(w, h);
+            }
+            document.getElementById('resDisplay').textContent = `${width} x ${height}`;
+            initStars();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // RECORDING
+        // ═══════════════════════════════════════════════════════════════════
+        let recorder, chunks = [], recording = false;
+
+        function toggleRecording() {
+            if (recording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        function startRecording() {
+            const canvasEl = document.querySelector('#canvas-container canvas');
+            if (!canvasEl) return;
+
+            const stream = canvasEl.captureStream(60);
+
+            // Add audio if available
+            if (audioContext && analyser) {
+                try {
+                    const dest = audioContext.createMediaStreamDestination();
+                    analyser.connect(dest);
+                    const audioTrack = dest.stream.getAudioTracks()[0];
+                    if (audioTrack) stream.addTrack(audioTrack);
+                } catch (e) {
+                    console.log('Could not add audio track:', e);
+                }
+            }
+
+            const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+                ? 'video/webm;codecs=vp9' : 'video/webm';
+
+            recorder = new MediaRecorder(stream, {
+                mimeType: mimeType,
+                videoBitsPerSecond: 15000000
+            });
+
+            chunks = [];
+            recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: mimeType });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `starfield-${Date.now()}.webm`;
+                a.click();
+                document.getElementById('recordStatus').textContent = 'Saved!';
+                setTimeout(() => {
+                    document.getElementById('recordStatus').textContent = 'Ready to record';
+                }, 2000);
+            };
+
+            recorder.start(100);
+            recording = true;
+            document.getElementById('recordBtn').textContent = 'Stop Recording';
+            document.getElementById('recordBtn').classList.add('recording');
+            document.getElementById('recordStatus').textContent = 'Recording...';
+        }
+
+        function stopRecording() {
+            if (recorder && recorder.state !== 'inactive') {
+                recorder.stop();
+            }
+            recording = false;
+            document.getElementById('recordBtn').textContent = 'Start Recording';
+            document.getElementById('recordBtn').classList.remove('recording');
+        }
+
+        function saveFrame() {
+            saveCanvas('starfield-' + Date.now(), 'png');
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // ENHANCED OVERLAY
+        // ═══════════════════════════════════════════════════════════════════
+        function drawOverlayEnhanced() {
+            if (!overlayImg) return;
+
+            const maxDim = Math.max(width, height) * params.overlaySize;
+            const imgAspect = overlayImg.width / overlayImg.height;
+            let w, h;
+
+            if (imgAspect > 1) {
+                w = maxDim;
+                h = maxDim / imgAspect;
+            } else {
+                h = maxDim;
+                w = maxDim * imgAspect;
+            }
+
+            const margin = 30;
+            let baseX, baseY;
+
+            switch (params.overlayPosition) {
+                case 'center':
+                    baseX = (width - w) / 2;
+                    baseY = (height - h) / 2;
+                    break;
+                case 'top-left':
+                    baseX = margin;
+                    baseY = margin;
+                    break;
+                case 'top-right':
+                    baseX = width - w - margin;
+                    baseY = margin;
+                    break;
+                case 'bottom-left':
+                    baseX = margin;
+                    baseY = height - h - margin;
+                    break;
+                case 'bottom-right':
+                default:
+                    baseX = width - w - margin;
+                    baseY = height - h - margin;
+            }
+
+            push();
+            const intensity = params.overlayIntensity;
+            const alpha = params.overlayOpacity * 255;
+
+            if (params.overlayEffect === 'none' || intensity === 0) {
+                // Static overlay
+                tint(255, alpha);
+                image(overlayImg, baseX, baseY, w, h);
+            }
+            else if (params.overlayEffect === 'split') {
+                // Split into vertical slices that shift based on audio
+                const slices = 20;
+                const sliceW = w / slices;
+                const srcSliceW = overlayImg.width / slices;
+
+                for (let i = 0; i < slices; i++) {
+                    const energy = (i < slices / 3) ? bass : (i < slices * 2 / 3) ? mids : treble;
+                    const yOffset = (energy * intensity * 60) * Math.sin(frameCount * 0.05 + i * 0.5);
+                    const xOffset = (bass * intensity * 20) * Math.sin(i * 0.3);
+
+                    tint(255, alpha * (0.7 + energy * 0.3));
+                    image(overlayImg, baseX + i * sliceW + xOffset, baseY + yOffset, sliceW + 1, h,
+                          i * srcSliceW, 0, srcSliceW, overlayImg.height);
+                }
+            }
+            else if (params.overlayEffect === 'pulse') {
+                // Scale and opacity pulse with bass
+                const scale = 1 + bass * intensity * 0.3;
+                const pulseW = w * scale;
+                const pulseH = h * scale;
+                const pulseX = baseX - (pulseW - w) / 2;
+                const pulseY = baseY - (pulseH - h) / 2;
+
+                if (bass > 0.3) {
+                    drawingContext.shadowBlur = bass * intensity * 50;
+                    drawingContext.shadowColor = '#00ff88';
+                }
+
+                tint(255, alpha);
+                image(overlayImg, pulseX, pulseY, pulseW, pulseH);
+                drawingContext.shadowBlur = 0;
+            }
+            else if (params.overlayEffect === 'glitch') {
+                // Glitch effect - RGB split and displacement
+                const glitchAmount = mids * intensity * 30;
+
+                tint(255, 0, 0, alpha * 0.8);
+                image(overlayImg, baseX - glitchAmount, baseY, w, h);
+
+                tint(0, 255, 0, alpha * 0.8);
+                image(overlayImg, baseX, baseY + glitchAmount * 0.5, w, h);
+
+                tint(0, 0, 255, alpha * 0.8);
+                image(overlayImg, baseX + glitchAmount, baseY, w, h);
+
+                // Random slice displacement on high energy
+                if (bass > 0.6 && random() > 0.7) {
+                    const sliceY = random(h);
+                    const sliceH = random(10, 40);
+                    const displacement = random(-50, 50) * intensity;
+
+                    tint(255, alpha);
+                    image(overlayImg, baseX + displacement, baseY + sliceY, w, sliceH,
+                          0, (sliceY / h) * overlayImg.height, overlayImg.width, (sliceH / h) * overlayImg.height);
+                }
+            }
+
+            pop();
+        }
+
+        function extractColors() {
+            if (!overlayImg) {
+                alert('Load an overlay image first');
+                return;
+            }
+            // Simple color extraction - set colorMode to 'audio' which uses bass/mids/treble
+            params.colorMode = 'audio';
+            document.getElementById('colorMode').value = 'audio';
+            document.getElementById('colorModeVal').textContent = 'audio';
+            document.getElementById('presetStatus').textContent = 'Set to Audio Reactive colors';
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // SETUP ADDITIONAL EVENT LISTENERS
+        // ═══════════════════════════════════════════════════════════════════
+        function setupOverlayListeners() {
+            document.getElementById('overlaySize').addEventListener('input', (e) => {
+                params.overlaySize = parseFloat(e.target.value) / 100;
+                document.getElementById('overlaySizeVal').textContent = e.target.value + '%';
+            });
+
+            document.getElementById('overlayOpacity').addEventListener('input', (e) => {
+                params.overlayOpacity = parseFloat(e.target.value) / 100;
+                document.getElementById('overlayOpacityVal').textContent = e.target.value + '%';
+            });
+
+            document.getElementById('overlayPosition').addEventListener('change', (e) => {
+                params.overlayPosition = e.target.value;
+            });
+
+            document.getElementById('overlayEffect').addEventListener('change', (e) => {
+                params.overlayEffect = e.target.value;
+            });
+
+            document.getElementById('overlayIntensity').addEventListener('input', (e) => {
+                params.overlayIntensity = parseFloat(e.target.value) / 100;
+                document.getElementById('overlayIntensityVal').textContent = e.target.value + '%';
+            });
+        }
+
+        // ═══════════════════════════════════════════════════════════════════
+        // HARDWARE BAR CONTROLS
+        // ═══════════════════════════════════════════════════════════════════
+        let hardwareMode = false;
+        let activeKnob = null;
+        let activeFader = null;
+        let dragStartY = 0;
+        let dragStartValue = 0;
+
+        function toggleHardwareMode() {
+            hardwareMode = !hardwareMode;
+            document.body.classList.toggle('hardware-mode', hardwareMode);
+            document.getElementById('hardware-bar').classList.toggle('visible', hardwareMode);
+            document.querySelector('.mode-toggle').textContent = hardwareMode ? 'Sidebar View' : 'Hardware View';
+
+            if (hardwareMode) {
+                syncHardwareFromParams();
+            }
+
+            // Resize canvas
+            windowResized();
+        }
+
+        function syncHardwareFromParams() {
+            // Update knobs
+            document.querySelectorAll('.sknob').forEach(knob => {
+                const param = knob.dataset.param;
+                if (params[param] !== undefined) {
+                    updateKnobVisual(knob, param);
+                }
+            });
+
+            // Update faders
+            document.querySelectorAll('.sfader').forEach(fader => {
+                const param = fader.dataset.param;
+                if (params[param] !== undefined) {
+                    updateFaderVisual(fader, param);
+                }
+            });
+
+            // Update pad states
+            updateHardwarePresetUI();
+        }
+
+        function updateKnobVisual(knob, param) {
+            const slider = document.getElementById(param);
+            if (!slider) return;
+
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const value = params[param];
+            const normalized = (value - min) / (max - min);
+
+            // Rotate knob indicator (270 degrees range, starting from -135)
+            const rotation = -135 + (normalized * 270);
+            const inner = knob.querySelector('.sknob-inner');
+            if (inner) {
+                inner.style.transform = `rotate(${rotation}deg)`;
+            }
+
+            // Update value display
+            const valueEl = knob.querySelector('.sknob-value');
+            if (valueEl) {
+                if (param === 'starCount' || param === 'baseSpeed' || param === 'bassBoost') {
+                    valueEl.textContent = Math.round(value);
+                } else {
+                    valueEl.textContent = value.toFixed(1);
+                }
+            }
+        }
+
+        function updateFaderVisual(fader, param) {
+            const slider = document.getElementById(param);
+            if (!slider) return;
+
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const value = params[param];
+
+            // For percentage params stored as 0-1, scale appropriately
+            let displayValue = value;
+            if (param === 'overlaySize' || param === 'overlayOpacity' || param === 'overlayIntensity') {
+                displayValue = value * 100;
+            }
+
+            const normalized = (displayValue - parseFloat(slider.min)) / (parseFloat(slider.max) - parseFloat(slider.min));
+            const percentage = normalized * 100;
+
+            const fill = fader.querySelector('.sfader-fill');
+            const handle = fader.querySelector('.sfader-handle');
+            if (fill) fill.style.height = percentage + '%';
+            if (handle) handle.style.bottom = `calc(${percentage}% - 8px)`;
+
+            const valueEl = fader.querySelector('.sfader-value');
+            if (valueEl) {
+                valueEl.textContent = Math.round(percentage) + '%';
+            }
+        }
+
+        function updateHardwarePresetUI() {
+            document.querySelectorAll('.spad').forEach((pad, i) => {
+                const btn = pad.querySelector('.spad-btn');
+                btn.classList.toggle('filled', presets[i] !== null);
+                btn.classList.toggle('active', i === selectedPresetSlot);
+            });
+        }
+
+        function setupHardwareListeners() {
+            // Knob drag handling
+            document.querySelectorAll('.sknob').forEach(knob => {
+                const outer = knob.querySelector('.sknob-outer');
+
+                outer.addEventListener('mousedown', (e) => {
+                    activeKnob = knob;
+                    dragStartY = e.clientY;
+                    const param = knob.dataset.param;
+                    const slider = document.getElementById(param);
+                    if (slider) {
+                        dragStartValue = parseFloat(slider.value);
+                    }
+                    knob.classList.add('active');
+                    e.preventDefault();
+                });
+
+                // Mouse wheel for knobs
+                outer.addEventListener('wheel', (e) => {
+                    const param = knob.dataset.param;
+                    const slider = document.getElementById(param);
+                    if (!slider) return;
+
+                    const step = parseFloat(slider.step) || 1;
+                    const min = parseFloat(slider.min);
+                    const max = parseFloat(slider.max);
+                    const delta = e.deltaY > 0 ? -step : step;
+
+                    let newValue = parseFloat(slider.value) + delta;
+                    newValue = Math.max(min, Math.min(max, newValue));
+                    slider.value = newValue;
+                    updateParam(param, newValue);
+                    updateKnobVisual(knob, param);
+
+                    e.preventDefault();
+                });
+            });
+
+            // Fader drag handling
+            document.querySelectorAll('.sfader').forEach(fader => {
+                const track = fader.querySelector('.sfader-track');
+
+                track.addEventListener('mousedown', (e) => {
+                    activeFader = fader;
+                    updateFaderFromMouse(fader, e);
+                    e.preventDefault();
+                });
+            });
+
+            // Global mouse move/up
+            document.addEventListener('mousemove', (e) => {
+                if (activeKnob) {
+                    const param = activeKnob.dataset.param;
+                    const slider = document.getElementById(param);
+                    if (!slider) return;
+
+                    const sensitivity = 0.5;
+                    const deltaY = dragStartY - e.clientY;
+                    const range = parseFloat(slider.max) - parseFloat(slider.min);
+                    const delta = (deltaY * sensitivity * range) / 100;
+
+                    let newValue = dragStartValue + delta;
+                    newValue = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), newValue));
+                    slider.value = newValue;
+                    updateParam(param, newValue);
+                    updateKnobVisual(activeKnob, param);
+                }
+
+                if (activeFader) {
+                    updateFaderFromMouse(activeFader, e);
+                }
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (activeKnob) {
+                    activeKnob.classList.remove('active');
+                    activeKnob = null;
+                }
+                activeFader = null;
+            });
+        }
+
+        function updateFaderFromMouse(fader, e) {
+            const track = fader.querySelector('.sfader-track');
+            const rect = track.getBoundingClientRect();
+            const y = e.clientY - rect.top;
+            const height = rect.height;
+            const normalized = 1 - Math.max(0, Math.min(1, y / height));
+
+            const param = fader.dataset.param;
+            const slider = document.getElementById(param);
+            if (!slider) return;
+
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const newValue = min + normalized * (max - min);
+
+            slider.value = newValue;
+
+            // Handle percentage params
+            if (param === 'overlaySize' || param === 'overlayOpacity' || param === 'overlayIntensity') {
+                params[param] = newValue / 100;
+            } else {
+                updateParam(param, newValue);
+            }
+
+            updateFaderVisual(fader, param);
+        }
+
+        // Initialize preset UI and overlay listeners on load
+        window.addEventListener('load', () => {
+            updatePresetUI();
+            setupOverlayListeners();
+            setupHardwareListeners();
+            document.getElementById('resDisplay').textContent = `${width} x ${height}`;
+        });
+
+        function windowResized() {
+            if (fixedResolution) {
+                resizeCanvas(fixedResolution.w, fixedResolution.h);
+            } else {
+                const container = document.getElementById('canvas-container');
+                resizeCanvas(container.offsetWidth, container.offsetHeight);
+            }
+            document.getElementById('resDisplay').textContent = `${width} x ${height}`;
+        }
+    </script>
+</body>
+</html>

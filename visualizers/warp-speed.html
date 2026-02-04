@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warp Speed - sheep-viz</title>
+    <link rel="stylesheet" href="../lib/hardware-controls.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888888;
+            --accent: #00aaff;
+            --accent-dim: #0077aa;
+            --border: #2a2a2a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            order: -1;
+            transition: transform 0.3s ease;
+        }
+
+        #sidebar.hidden {
+            transform: translateX(-100%);
+            position: absolute;
+            height: 100%;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--accent);
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-group.selected {
+            background: var(--bg-tertiary);
+            margin: -8px;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid var(--accent-dim);
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        label .key-hint {
+            font-size: 0.6rem;
+            color: var(--accent-dim);
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .value {
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        select, input[type="file"], input[type="number"] {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        select:hover, input:hover {
+            border-color: var(--accent-dim);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        button:hover {
+            background: var(--accent);
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        .button-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .button-row button {
+            margin-bottom: 0;
+        }
+
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        .toggle-btn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            width: auto;
+            padding: 8px 12px;
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+
+        .toggle-btn:hover {
+            opacity: 1;
+        }
+
+        .overlay-preview {
+            margin-top: 8px;
+            max-width: 100%;
+            max-height: 60px;
+            border-radius: 4px;
+            display: none;
+        }
+
+        .overlay-preview.visible {
+            display: block;
+        }
+
+        .meter {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.1s;
+            border-radius: 2px;
+        }
+
+        .audio-meters {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .audio-meter {
+            text-align: center;
+        }
+
+        .audio-meter span {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        .shortcuts-hint {
+            font-size: 0.6rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            margin-top: 12px;
+        }
+
+        .shortcuts-hint kbd {
+            background: var(--bg-primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            border: 1px solid var(--border);
+        }
+
+        .projection-mode #sidebar {
+            display: none;
+        }
+
+        .projection-mode .toggle-btn {
+            display: none;
+        }
+
+        .projection-mode #canvas-container {
+            cursor: none;
+        }
+
+        .direction-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .direction-pad button {
+            padding: 8px;
+            margin: 0;
+            font-size: 0.8rem;
+        }
+
+        .direction-pad .center {
+            background: var(--accent-dim);
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-btn" onclick="toggleSidebar()">[ ] Controls</button>
+
+    <div class="container">
+        <div id="sidebar">
+            <h1>Warp Speed</h1>
+            <p class="subtitle">Hyperspace Jump</p>
+
+            <div class="section">
+                <div class="section-title">Audio Input</div>
+                <div class="control-group">
+                    <select id="audioSource">
+                        <option value="mic">Microphone</option>
+                        <option value="file">Audio File</option>
+                    </select>
+                </div>
+                <div class="control-group" id="fileInput" style="display: none;">
+                    <input type="file" id="audioFile" accept="audio/*">
+                </div>
+                <div class="audio-meters">
+                    <div class="audio-meter">
+                        <span>Bass</span>
+                        <div class="meter"><div class="meter-fill" id="bassMeter"></div></div>
+                    </div>
+                    <div class="audio-meter">
+                        <span>Mid</span>
+                        <div class="meter"><div class="meter-fill" id="midMeter"></div></div>
+                    </div>
+                    <div class="audio-meter">
+                        <span>Treble</span>
+                        <div class="meter"><div class="meter-fill" id="trebleMeter"></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">MIDI Controller</div>
+                <div class="control-group">
+                    <select id="midiDevice">
+                        <option value="">No MIDI Device</option>
+                    </select>
+                </div>
+                <div id="midiStatus" style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 4px;"></div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Parameters</div>
+
+                <div class="control-group" data-param="warpSpeed" data-index="1">
+                    <label>
+                        <span>Warp Speed <span class="key-hint">1</span></span>
+                        <span class="value" id="warpSpeedVal">50</span>
+                    </label>
+                    <input type="range" id="warpSpeed" min="5" max="150" step="5" value="50">
+                </div>
+
+                <div class="control-group" data-param="starCount" data-index="2">
+                    <label>
+                        <span>Star Count <span class="key-hint">2</span></span>
+                        <span class="value" id="starCountVal">1500</span>
+                    </label>
+                    <input type="range" id="starCount" min="500" max="4000" step="100" value="1500">
+                </div>
+
+                <div class="control-group" data-param="streakLength" data-index="3">
+                    <label>
+                        <span>Streak Length <span class="key-hint">3</span></span>
+                        <span class="value" id="streakLengthVal">0.8</span>
+                    </label>
+                    <input type="range" id="streakLength" min="0.1" max="1" step="0.05" value="0.8">
+                </div>
+
+                <div class="control-group" data-param="bassBoost" data-index="4">
+                    <label>
+                        <span>Bass Speed Boost <span class="key-hint">4</span></span>
+                        <span class="value" id="bassBoostVal">50</span>
+                    </label>
+                    <input type="range" id="bassBoost" min="0" max="150" step="5" value="50">
+                </div>
+
+                <div class="control-group" data-param="coreGlow" data-index="5">
+                    <label>
+                        <span>Core Glow <span class="key-hint">5</span></span>
+                        <span class="value" id="coreGlowVal">0.5</span>
+                    </label>
+                    <input type="range" id="coreGlow" min="0" max="1" step="0.05" value="0.5">
+                </div>
+
+                <div class="control-group" data-param="tunnelRadius" data-index="6">
+                    <label>
+                        <span>Tunnel Radius <span class="key-hint">6</span></span>
+                        <span class="value" id="tunnelRadiusVal">0.8</span>
+                    </label>
+                    <input type="range" id="tunnelRadius" min="0.3" max="1.5" step="0.05" value="0.8">
+                </div>
+
+                <div class="control-group" data-param="colorTemp" data-index="7">
+                    <label>
+                        <span>Color Temp <span class="key-hint">7</span></span>
+                        <span class="value" id="colorTempVal">6500</span>
+                    </label>
+                    <input type="range" id="colorTemp" min="2000" max="12000" step="500" value="6500">
+                </div>
+
+                <div class="control-group" data-param="directionMode" data-index="8">
+                    <label>
+                        <span>Direction Mode <span class="key-hint">8</span></span>
+                        <span class="value" id="directionModeVal">forward</span>
+                    </label>
+                    <select id="directionMode">
+                        <option value="forward">Forward</option>
+                        <option value="reverse">Reverse</option>
+                        <option value="mouse">Mouse Control</option>
+                        <option value="audio">Audio Reactive</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>Direction Pad</label>
+                    <div class="direction-pad">
+                        <button onclick="setDirection(-1, -1)">&#8598;</button>
+                        <button onclick="setDirection(0, -1)">&#8593;</button>
+                        <button onclick="setDirection(1, -1)">&#8599;</button>
+                        <button onclick="setDirection(-1, 0)">&#8592;</button>
+                        <button class="center" onclick="setDirection(0, 0)">&#9679;</button>
+                        <button onclick="setDirection(1, 0)">&#8594;</button>
+                        <button onclick="setDirection(-1, 1)">&#8601;</button>
+                        <button onclick="setDirection(0, 1)">&#8595;</button>
+                        <button onclick="setDirection(1, 1)">&#8600;</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Star Image</div>
+                <div class="control-group">
+                    <label style="margin-bottom: 8px;">Replace stars with image</label>
+                    <input type="file" id="starImage" accept="image/*">
+                    <img id="starImagePreview" class="overlay-preview">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <span>Image Size</span>
+                        <span class="value" id="starImageSizeVal">1.0</span>
+                    </label>
+                    <input type="range" id="starImageSize" min="0.2" max="3" step="0.1" value="1.0">
+                </div>
+                <div class="control-group">
+                    <label>
+                        <span>Rotation</span>
+                        <span class="value" id="starImageRotationVal">none</span>
+                    </label>
+                    <select id="starImageRotation">
+                        <option value="none">None</option>
+                        <option value="fixed">Fixed Angle</option>
+                        <option value="spin">Spinning</option>
+                        <option value="velocity">Follow Velocity</option>
+                    </select>
+                </div>
+                <button onclick="clearStarImage()">Use Default Stars</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Image Overlay</div>
+                <div class="control-group">
+                    <input type="file" id="overlayImage" accept="image/*">
+                    <img id="overlayPreview" class="overlay-preview">
+                </div>
+                <div class="control-group" data-param="overlayOpacity">
+                    <label>
+                        <span>Overlay Opacity</span>
+                        <span class="value" id="overlayOpacityVal">0.3</span>
+                    </label>
+                    <input type="range" id="overlayOpacity" min="0" max="1" step="0.05" value="0.3">
+                </div>
+                <button onclick="clearOverlay()">Clear Overlay</button>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Display</div>
+                <div class="control-group">
+                    <label>Visualizer</label>
+                    <select id="vizSelector" onchange="switchVisualizer(this.value)">
+                        <option value="warp-speed.html" selected>Warp Speed</option>
+                        <option value="starfield.html">Starfield</option>
+                        <option value="vector-grid.html">Vector Grid</option>
+                        <option value="matrix-rain.html">Matrix Rain</option>
+                        <option value="fluid-flow.html">Fluid Flow</option>
+                        <option value="radial-burst.html">Radial Burst</option>
+                        <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
+                    </select>
+                </div>
+                <div class="button-row">
+                    <button onclick="toggleFullscreen()">Fullscreen</button>
+                    <button onclick="enterProjectionMode()">Project</button>
+                </div>
+                <div class="button-row">
+                    <button onclick="popOutCanvas()">Pop Out</button>
+                    <button onclick="resetParams()">Reset</button>
+                </div>
+            </div>
+
+            <div class="shortcuts-hint">
+                <strong>Keyboard:</strong><br>
+                <kbd>1</kbd>-<kbd>8</kbd> Select param<br>
+                <kbd>arrows</kbd> Adjust value<br>
+                <kbd>WASD</kbd> Direction control<br>
+                <kbd>H</kbd> Toggle controls<br>
+                <kbd>F</kbd> Fullscreen<br>
+                <kbd>P</kbd> Projection mode<br>
+                <kbd>Esc</kbd> Exit modes
+            </div>
+        </div>
+
+        <div id="canvas-container"></div>
+    </div>
+
+    <script>
+        // Parameters
+        let params = {
+            warpSpeed: 50,
+            starCount: 1500,
+            streakLength: 0.8,
+            bassBoost: 50,
+            coreGlow: 0.5,
+            tunnelRadius: 0.8,
+            colorTemp: 6500,
+            directionMode: 'forward',
+            overlayOpacity: 0.3,
+            starImageSize: 1.0,
+            starImageRotation: 'none'
+        };
+
+        // Direction control
+        let dirX = 0, dirY = 0;
+        let targetDirX = 0, targetDirY = 0;
+
+        // Star image (replaces dots)
+        let starImg = null;
+
+        // Audio
+        let audioContext, analyser, dataArray, source;
+        let audioElement;
+        let bass = 0, mids = 0, treble = 0;
+
+        // MIDI
+        let midiInputs = [];
+        let activeMidiInput = null;
+
+        // Keyboard
+        let selectedParamIndex = 0;
+        const paramKeys = ['warpSpeed', 'starCount', 'streakLength', 'bassBoost', 'coreGlow', 'tunnelRadius', 'colorTemp', 'directionMode'];
+
+        // Overlay
+        let overlayImg = null;
+
+        // Stars
+        let stars = [];
+
+        // p5.js
+        let canvas;
+
+        function setup() {
+            const container = document.getElementById('canvas-container');
+            canvas = createCanvas(container.offsetWidth, container.offsetHeight);
+            canvas.parent('canvas-container');
+
+            initStars();
+            initAudio();
+            initMIDI();
+            setupEventListeners();
+        }
+
+        function initStars() {
+            stars = [];
+            for (let i = 0; i < params.starCount; i++) {
+                stars.push(new WarpStar());
+            }
+        }
+
+        class WarpStar {
+            constructor() {
+                this.reset();
+                this.rotation = random(TWO_PI);
+                this.spinSpeed = random(-0.1, 0.1);
+            }
+
+            reset() {
+                // Cylindrical distribution for tunnel effect
+                const angle = random(TWO_PI);
+                const radius = random(0.1, params.tunnelRadius) * min(width, height) / 2;
+                this.x = cos(angle) * radius;
+                this.y = sin(angle) * radius;
+                this.z = random(width);
+                this.pz = this.z;
+
+                // Store original angle for spiral motion
+                this.angle = angle;
+                this.radius = radius;
+                this.rotation = random(TWO_PI);
+                this.spinSpeed = random(-0.1, 0.1);
+            }
+
+            update(speed, dx, dy) {
+                // Apply direction offset
+                this.x += dx * speed * 0.1;
+                this.y += dy * speed * 0.1;
+
+                // Move toward camera
+                this.z -= speed;
+
+                if (this.z < 1) {
+                    this.reset();
+                    this.z = width;
+                    this.pz = this.z;
+                }
+
+                // Update rotation for spinning mode
+                if (params.starImageRotation === 'spin') {
+                    this.rotation += this.spinSpeed;
+                }
+            }
+
+            draw() {
+                // Project to screen
+                const sx = map(this.x / this.z, -1, 1, 0, width);
+                const sy = map(this.y / this.z, -1, 1, 0, height);
+
+                // Previous position for streak
+                const px = map(this.x / this.pz, -1, 1, 0, width);
+                const py = map(this.y / this.pz, -1, 1, 0, height);
+
+                // Size based on z
+                const r = map(this.z, 0, width, 4, 0);
+
+                // Color based on temperature and speed
+                const col = getStarColor(this.z);
+
+                // Draw streak (only for default stars)
+                if (!starImg) {
+                    stroke(col);
+                    strokeWeight(r);
+                    line(px, py, sx, sy);
+
+                    // Draw star point
+                    noStroke();
+                    fill(255, 255, 255, map(this.z, 0, width, 255, 50));
+                    ellipse(sx, sy, r * 1.5, r * 1.5);
+                } else {
+                    // Draw custom star image
+                    const imgSize = r * 10 * params.starImageSize;
+                    const alpha = map(this.z, 0, width, 255, 30);
+
+                    push();
+                    translate(sx, sy);
+
+                    // Calculate rotation based on mode
+                    let angle = 0;
+                    if (params.starImageRotation === 'fixed') {
+                        angle = 0;
+                    } else if (params.starImageRotation === 'spin') {
+                        angle = this.rotation;
+                    } else if (params.starImageRotation === 'velocity') {
+                        angle = atan2(sy - py, sx - px);
+                    }
+
+                    rotate(angle);
+                    tint(255, alpha);
+                    imageMode(CENTER);
+                    image(starImg, 0, 0, imgSize, imgSize);
+                    noTint();
+                    pop();
+                }
+
+                // Update previous z for streak length
+                this.pz = this.z + (width - this.z) * (1 - params.streakLength);
+            }
+        }
+
+        function getStarColor(z) {
+            const brightness = map(z, 0, width, 255, 80);
+            const temp = params.colorTemp;
+
+            // Kelvin to RGB approximation
+            let r, g, b;
+
+            if (temp <= 6600) {
+                r = 255;
+                g = temp / 100 - 2;
+                g = 99.4708025861 * log(g) - 161.1195681661;
+                if (temp <= 2000) {
+                    b = 0;
+                } else {
+                    b = temp / 100 - 10;
+                    b = 138.5177312231 * log(b) - 305.0447927307;
+                }
+            } else {
+                r = temp / 100 - 55;
+                r = 329.698727446 * pow(r, -0.1332047592);
+                g = temp / 100 - 50;
+                g = 288.1221695283 * pow(g, -0.0755148492);
+                b = 255;
+            }
+
+            r = constrain(r, 0, 255) * brightness / 255;
+            g = constrain(g, 0, 255) * brightness / 255;
+            b = constrain(b, 0, 255) * brightness / 255;
+
+            return color(r, g, b, map(z, 0, width, 255, 100));
+        }
+
+        function draw() {
+            // Deep space black with slight fade
+            background(0, 0, 10, 50);
+
+            updateAudio();
+            updateMeters();
+
+            // Calculate speed
+            const speed = params.warpSpeed + (bass * params.bassBoost);
+
+            // Update direction based on mode
+            updateDirection();
+
+            // Smooth direction change
+            dirX = lerp(dirX, targetDirX, 0.1);
+            dirY = lerp(dirY, targetDirY, 0.1);
+
+            // Adjust star count
+            while (stars.length < params.starCount) {
+                stars.push(new WarpStar());
+            }
+            while (stars.length > params.starCount) {
+                stars.pop();
+            }
+
+            // Draw core glow
+            if (params.coreGlow > 0) {
+                drawCoreGlow();
+            }
+
+            // Update and draw stars
+            for (let star of stars) {
+                star.update(speed, dirX, dirY);
+                star.draw();
+            }
+
+            // Draw overlay
+            if (overlayImg) {
+                push();
+                tint(255, params.overlayOpacity * 255);
+                image(overlayImg, 0, 0, width, height);
+                pop();
+            }
+        }
+
+        function drawCoreGlow() {
+            const centerX = width / 2 + dirX * 100;
+            const centerY = height / 2 + dirY * 100;
+            const glowSize = min(width, height) * 0.3 * params.coreGlow;
+
+            // Multiple layers for soft glow
+            noStroke();
+            for (let i = 5; i > 0; i--) {
+                const alpha = 20 * params.coreGlow / i;
+                const size = glowSize * i / 2;
+
+                // Use color temperature
+                const col = getStarColor(width * 0.8);
+                col.setAlpha(alpha);
+                fill(col);
+                ellipse(centerX, centerY, size, size);
+            }
+
+            // Bright center
+            fill(255, 255, 255, 100 * params.coreGlow);
+            ellipse(centerX, centerY, glowSize * 0.1, glowSize * 0.1);
+        }
+
+        function updateDirection() {
+            switch (params.directionMode) {
+                case 'forward':
+                    targetDirX = 0;
+                    targetDirY = 0;
+                    break;
+                case 'reverse':
+                    // Already handled in star update
+                    break;
+                case 'mouse':
+                    targetDirX = map(mouseX, 0, width, -1, 1);
+                    targetDirY = map(mouseY, 0, height, -1, 1);
+                    break;
+                case 'audio':
+                    // Bass moves left/right, treble moves up/down
+                    targetDirX = map(bass - mids, -1, 1, -1, 1);
+                    targetDirY = map(treble - mids, -1, 1, -1, 1);
+                    break;
+            }
+        }
+
+        function setDirection(x, y) {
+            targetDirX = x * 0.5;
+            targetDirY = y * 0.5;
+            // Temporarily switch to forward mode to use manual direction
+            if (params.directionMode === 'mouse' || params.directionMode === 'audio') {
+                params.directionMode = 'forward';
+                document.getElementById('directionMode').value = 'forward';
+                document.getElementById('directionModeVal').textContent = 'forward';
+            }
+        }
+
+        // Audio functions
+        async function initAudio() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+            } catch (e) {
+                console.log('Audio init failed:', e);
+            }
+        }
+
+        function updateAudio() {
+            if (!analyser) return;
+
+            analyser.getByteFrequencyData(dataArray);
+
+            const bassRange = dataArray.slice(0, 10);
+            const midRange = dataArray.slice(10, 50);
+            const trebleRange = dataArray.slice(50, 128);
+
+            bass = bassRange.reduce((a, b) => a + b, 0) / bassRange.length / 255;
+            mids = midRange.reduce((a, b) => a + b, 0) / midRange.length / 255;
+            treble = trebleRange.reduce((a, b) => a + b, 0) / trebleRange.length / 255;
+        }
+
+        function updateMeters() {
+            document.getElementById('bassMeter').style.width = (bass * 100) + '%';
+            document.getElementById('midMeter').style.width = (mids * 100) + '%';
+            document.getElementById('trebleMeter').style.width = (treble * 100) + '%';
+        }
+
+        // Audio file handling
+        document.getElementById('audioSource').addEventListener('change', function(e) {
+            document.getElementById('fileInput').style.display = e.target.value === 'file' ? 'block' : 'none';
+            if (e.target.value === 'mic') {
+                initAudio();
+            }
+        });
+
+        document.getElementById('audioFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (audioElement) audioElement.pause();
+                audioElement = new Audio(URL.createObjectURL(file));
+                audioElement.crossOrigin = 'anonymous';
+
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 256;
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                }
+
+                source = audioContext.createMediaElementSource(audioElement);
+                source.connect(analyser);
+                analyser.connect(audioContext.destination);
+                audioElement.play();
+            }
+        });
+
+        // MIDI
+        async function initMIDI() {
+            try {
+                const access = await navigator.requestMIDIAccess();
+                midiInputs = Array.from(access.inputs.values());
+
+                const select = document.getElementById('midiDevice');
+                const status = document.getElementById('midiStatus');
+
+                if (midiInputs.length > 0) {
+                    midiInputs.forEach((input, i) => {
+                        const option = document.createElement('option');
+                        option.value = i;
+                        option.textContent = input.name || `Device ${i + 1}`;
+                        select.appendChild(option);
+                    });
+                    status.textContent = `${midiInputs.length} device(s) found`;
+
+                    select.value = '0';
+                    connectMIDI(0);
+                } else {
+                    status.textContent = 'No MIDI devices';
+                }
+
+                select.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        connectMIDI(parseInt(e.target.value));
+                    }
+                });
+            } catch (e) {
+                document.getElementById('midiStatus').textContent = 'MIDI not supported';
+            }
+        }
+
+        function connectMIDI(index) {
+            if (activeMidiInput) {
+                activeMidiInput.onmidimessage = null;
+            }
+            activeMidiInput = midiInputs[index];
+            if (activeMidiInput) {
+                activeMidiInput.onmidimessage = handleMIDI;
+                document.getElementById('midiStatus').textContent = `Connected: ${activeMidiInput.name}`;
+            }
+        }
+
+        function handleMIDI(msg) {
+            const [status, cc, value] = msg.data;
+            if (status === 176) {
+                const normalized = value / 127;
+                const param = paramKeys[cc % paramKeys.length];
+                if (param) {
+                    const slider = document.getElementById(param);
+                    if (slider && slider.type === 'range') {
+                        const min = parseFloat(slider.min);
+                        const max = parseFloat(slider.max);
+                        slider.value = min + normalized * (max - min);
+                        updateParam(param, slider.value);
+                    }
+                }
+            }
+        }
+
+        // Event listeners
+        function setupEventListeners() {
+            document.querySelectorAll('input[type="range"]').forEach(slider => {
+                slider.addEventListener('input', (e) => {
+                    updateParam(e.target.id, e.target.value);
+                });
+            });
+
+            document.getElementById('directionMode').addEventListener('change', (e) => {
+                params.directionMode = e.target.value;
+                document.getElementById('directionModeVal').textContent = e.target.value;
+            });
+
+            // Star image (replaces stars with custom image)
+            document.getElementById('starImage').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    loadImage(url, img => {
+                        starImg = img;
+                        document.getElementById('starImagePreview').src = url;
+                        document.getElementById('starImagePreview').classList.add('visible');
+                    });
+                }
+            });
+
+            // Star image size
+            document.getElementById('starImageSize').addEventListener('input', (e) => {
+                params.starImageSize = parseFloat(e.target.value);
+                document.getElementById('starImageSizeVal').textContent = params.starImageSize.toFixed(1);
+            });
+
+            // Star image rotation
+            document.getElementById('starImageRotation').addEventListener('change', (e) => {
+                params.starImageRotation = e.target.value;
+                document.getElementById('starImageRotationVal').textContent = e.target.value;
+            });
+
+            document.getElementById('overlayImage').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const url = URL.createObjectURL(file);
+                    loadImage(url, img => {
+                        overlayImg = img;
+                        document.getElementById('overlayPreview').src = url;
+                        document.getElementById('overlayPreview').classList.add('visible');
+                    });
+                }
+            });
+
+            document.addEventListener('keydown', handleKeyboard);
+        }
+
+        function clearStarImage() {
+            starImg = null;
+            document.getElementById('starImage').value = '';
+            document.getElementById('starImagePreview').classList.remove('visible');
+        }
+
+        function handleKeyboard(e) {
+            // Number keys 1-8 select parameter
+            if (e.key >= '1' && e.key <= '8') {
+                e.preventDefault();
+                selectParam(parseInt(e.key) - 1);
+                return;
+            }
+
+            // Arrow keys adjust selected parameter
+            if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
+                e.preventDefault();
+                adjustSelectedParam(1);
+                return;
+            }
+            if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                adjustSelectedParam(-1);
+                return;
+            }
+
+            // WASD for direction control
+            switch (e.key.toLowerCase()) {
+                case 'w':
+                    setDirection(targetDirX, -1);
+                    return;
+                case 's':
+                    setDirection(targetDirX, 1);
+                    return;
+                case 'a':
+                    setDirection(-1, targetDirY);
+                    return;
+                case 'd':
+                    setDirection(1, targetDirY);
+                    return;
+            }
+
+            // Other shortcuts
+            switch (e.key.toLowerCase()) {
+                case 'h':
+                    toggleSidebar();
+                    break;
+                case 'f':
+                    toggleFullscreen();
+                    break;
+                case 'p':
+                    enterProjectionMode();
+                    break;
+                case 'escape':
+                    exitProjectionMode();
+                    break;
+            }
+        }
+
+        function selectParam(index) {
+            document.querySelectorAll('.control-group').forEach(g => g.classList.remove('selected'));
+
+            selectedParamIndex = index;
+            const group = document.querySelector(`.control-group[data-index="${index + 1}"]`);
+            if (group) {
+                group.classList.add('selected');
+                group.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function adjustSelectedParam(direction) {
+            const param = paramKeys[selectedParamIndex];
+            if (!param) return;
+
+            if (param === 'directionMode') {
+                const select = document.getElementById('directionMode');
+                const options = Array.from(select.options);
+                let idx = select.selectedIndex + direction;
+                idx = (idx + options.length) % options.length;
+                select.selectedIndex = idx;
+                params.directionMode = select.value;
+                document.getElementById('directionModeVal').textContent = select.value;
+                return;
+            }
+
+            const slider = document.getElementById(param);
+            if (slider) {
+                const step = parseFloat(slider.step) || 1;
+                const min = parseFloat(slider.min);
+                const max = parseFloat(slider.max);
+                let val = parseFloat(slider.value) + (direction * step);
+                val = constrain(val, min, max);
+                slider.value = val;
+                updateParam(param, val);
+            }
+        }
+
+        function updateParam(param, value) {
+            params[param] = parseFloat(value);
+            const display = document.getElementById(param + 'Val');
+            if (display) {
+                const decimals = param === 'colorTemp' || param === 'starCount' || param === 'warpSpeed' || param === 'bassBoost' ? 0 :
+                    (param.includes('streak') || param.includes('core') || param.includes('tunnel') || param === 'overlayOpacity') ? 2 : 1;
+                display.textContent = parseFloat(value).toFixed(decimals);
+            }
+
+            if (param === 'tunnelRadius') {
+                // Reinitialize stars with new tunnel radius
+                initStars();
+            }
+        }
+
+        function clearOverlay() {
+            overlayImg = null;
+            document.getElementById('overlayImage').value = '';
+            document.getElementById('overlayPreview').classList.remove('visible');
+        }
+
+        function resetParams() {
+            params = {
+                warpSpeed: 50,
+                starCount: 1500,
+                streakLength: 0.8,
+                bassBoost: 50,
+                coreGlow: 0.5,
+                tunnelRadius: 0.8,
+                colorTemp: 6500,
+                directionMode: 'forward',
+                overlayOpacity: 0.3
+            };
+
+            targetDirX = 0;
+            targetDirY = 0;
+
+            Object.keys(params).forEach(key => {
+                const el = document.getElementById(key);
+                if (el) {
+                    el.value = params[key];
+                    updateParam(key, params[key]);
+                }
+            });
+            document.getElementById('directionModeVal').textContent = 'forward';
+            initStars();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('hidden');
+        }
+
+        let controlsWindow = null;
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                popOutControls();
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function popOutControls() {
+            if (controlsWindow && !controlsWindow.closed) { controlsWindow.focus(); return; }
+            const sidebar = document.getElementById('sidebar');
+            controlsWindow = window.open('', 'WarpControls', 'width=300,height=' + window.innerHeight + ',left=0,top=0');
+            controlsWindow.document.write(`
+                <html><head><title>Warp Speed Controls</title>
+                <style>
+                    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body { font-family: 'JetBrains Mono', monospace; background: #111; color: #e0e0e0; padding: 20px; overflow-y: auto; height: 100vh; }
+                    .section { margin-bottom: 20px; }
+                    .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 10px; border-bottom: 1px solid #2a2a2a; padding-bottom: 6px; }
+                    .control-group { margin-bottom: 14px; }
+                    .control-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: #888; }
+                    .control-group label .value { color: #00aaff; font-weight: 500; }
+                    input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: #1a1a1a; border-radius: 2px; }
+                    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: #00aaff; border-radius: 50%; cursor: pointer; }
+                    select, input[type="file"] { width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; color: #e0e0e0; font-family: inherit; font-size: 11px; }
+                    button { width: 100%; padding: 10px; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 4px; color: #e0e0e0; font-family: inherit; font-size: 11px; cursor: pointer; margin-bottom: 8px; }
+                    button:hover { background: #00aaff; color: #000; border-color: #00aaff; }
+                    h2 { color: #00aaff; font-size: 14px; margin-bottom: 4px; }
+                    .subtitle { color: #888; font-size: 11px; margin-bottom: 20px; }
+                    .direction-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+                    .direction-pad button { padding: 8px; margin: 0; }
+                </style></head><body>
+                <h2>WARP SPEED</h2>
+                <p class="subtitle">Controls</p>
+                </body></html>
+            `);
+            controlsWindow.document.close();
+            const cloneSidebar = sidebar.cloneNode(true);
+            cloneSidebar.style.cssText = 'width:100%;border:none;background:transparent;order:0';
+            cloneSidebar.querySelectorAll('h1, .subtitle, select[id="vizSelector"]').forEach(el => el.parentElement ? el.parentElement.remove() : el.remove());
+            controlsWindow.document.body.appendChild(cloneSidebar);
+            // Sync range inputs
+            cloneSidebar.querySelectorAll('input[type="range"]').forEach(input => {
+                input.addEventListener('input', () => {
+                    const mainInput = document.getElementById(input.id);
+                    if (mainInput) { mainInput.value = input.value; mainInput.dispatchEvent(new Event('input')); }
+                });
+            });
+            // Sync selects
+            cloneSidebar.querySelectorAll('select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const mainSel = document.getElementById(sel.id);
+                    if (mainSel) { mainSel.value = sel.value; mainSel.dispatchEvent(new Event('change')); }
+                });
+            });
+            // Sync direction buttons
+            cloneSidebar.querySelectorAll('.direction-pad button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const onclick = btn.getAttribute('onclick');
+                    if (onclick) eval(onclick);
+                });
+            });
+            controlsWindow.addEventListener('beforeunload', () => { controlsWindow = null; });
+        }
+
+        function enterProjectionMode() {
+            document.body.classList.add('projection-mode');
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            }
+        }
+
+        function exitProjectionMode() {
+            document.body.classList.remove('projection-mode');
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        }
+
+        function popOutCanvas() {
+            const w = window.open('', 'warp_canvas', 'width=1280,height=720');
+            w.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Warp Speed - Projection</title>
+                    <style>
+                        body { margin: 0; background: #000; overflow: hidden; }
+                        canvas { display: block; }
+                    </style>
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>
+                </head>
+                <body>
+                    <script>
+                        const parent = window.opener;
+                        let stars = [];
+
+                        function setup() {
+                            createCanvas(windowWidth, windowHeight);
+                            initStars();
+                        }
+
+                        function initStars() {
+                            stars = [];
+                            const radius = 0.8 * min(width, height) / 2;
+                            for (let i = 0; i < 1500; i++) {
+                                const angle = random(TWO_PI);
+                                const r = random(0.1, 1) * radius;
+                                stars.push({
+                                    x: cos(angle) * r,
+                                    y: sin(angle) * r,
+                                    z: random(width),
+                                    pz: random(width)
+                                });
+                            }
+                        }
+
+                        function draw() {
+                            const params = parent.params || { warpSpeed: 50, streakLength: 0.8, coreGlow: 0.5 };
+                            const bass = parent.bass || 0;
+                            const speed = params.warpSpeed + (bass * (params.bassBoost || 50));
+                            const dirX = parent.dirX || 0;
+                            const dirY = parent.dirY || 0;
+
+                            background(0, 0, 10, 50);
+
+                            // Core glow
+                            if (params.coreGlow > 0) {
+                                const cx = width/2 + dirX * 100;
+                                const cy = height/2 + dirY * 100;
+                                const gs = min(width, height) * 0.3 * params.coreGlow;
+                                noStroke();
+                                for (let i = 5; i > 0; i--) {
+                                    fill(100, 150, 255, 20 * params.coreGlow / i);
+                                    ellipse(cx, cy, gs * i / 2, gs * i / 2);
+                                }
+                            }
+
+                            for (let s of stars) {
+                                s.x += dirX * speed * 0.1;
+                                s.y += dirY * speed * 0.1;
+                                s.z -= speed;
+
+                                if (s.z < 1) {
+                                    const angle = random(TWO_PI);
+                                    const r = random(0.1, 0.8) * min(width, height) / 2;
+                                    s.x = cos(angle) * r;
+                                    s.y = sin(angle) * r;
+                                    s.z = width;
+                                    s.pz = s.z;
+                                }
+
+                                const sx = map(s.x / s.z, -1, 1, 0, width);
+                                const sy = map(s.y / s.z, -1, 1, 0, height);
+                                const px = map(s.x / s.pz, -1, 1, 0, width);
+                                const py = map(s.y / s.pz, -1, 1, 0, height);
+                                const r = map(s.z, 0, width, 4, 0);
+                                const b = map(s.z, 0, width, 255, 80);
+
+                                stroke(b * 0.8, b * 0.9, 255, map(s.z, 0, width, 255, 100));
+                                strokeWeight(r);
+                                line(px, py, sx, sy);
+
+                                noStroke();
+                                fill(255, map(s.z, 0, width, 255, 50));
+                                ellipse(sx, sy, r * 1.5, r * 1.5);
+
+                                s.pz = s.z + (width - s.z) * (1 - params.streakLength);
+                            }
+                        }
+
+                        function windowResized() {
+                            resizeCanvas(windowWidth, windowHeight);
+                            initStars();
+                        }
+                    <\/script>
+                </body>
+                </html>
+            `);
+        }
+
+        function switchVisualizer(viz) {
+            window.location.href = viz;
+        }
+
+        function windowResized() {
+            const container = document.getElementById('canvas-container');
+            resizeCanvas(container.offsetWidth, container.offsetHeight);
+            initStars();
+        }
+    </script>
+    <script src="../lib/hardware-controls.js?v=4"></script>
+    <script>
+      // Hardware Controls Integration
+      const hardware = new HardwareControls({
+        name: 'Warp Speed',
+        accentColor: '#00aaff',
+        params: params,
+        knobs: [
+          { id: 'starCount', label: 'Stars', min: 500, max: 4000, step: 100 },
+          { id: 'warpSpeed', label: 'Speed', min: 5, max: 150, step: 5 },
+          { id: 'bassBoost', label: 'Bass', min: 0, max: 150, step: 5 },
+          { id: 'tunnelRadius', label: 'Radius', min: 0.3, max: 1.5, step: 0.05, decimals: 2 },
+          { id: 'streakLength', label: 'Streak', min: 0.1, max: 1, step: 0.05, decimals: 2 },
+          { id: 'coreGlow', label: 'Glow', min: 0, max: 1, step: 0.05, decimals: 2 },
+          { id: 'colorTemp', label: 'Temp', min: 2000, max: 12000, step: 500 },
+          { id: 'overlayOpacity', label: 'Overlay', min: 0, max: 1, step: 0.05, decimals: 2 }
+        ],
+        faders: [
+          { id: 'warpSpeed', label: 'Speed', min: 5, max: 150, step: 5 },
+          { id: 'starCount', label: 'Stars', min: 500, max: 4000, step: 100 },
+          { id: 'bassBoost', label: 'Bass', min: 0, max: 150, step: 5 },
+          { id: 'coreGlow', label: 'Glow', min: 0, max: 1, step: 0.05, decimals: 2 }
+        ],
+        presets: new Array(8).fill(null),
+        onParamChange: (id, value) => {
+          params[id] = value;
+          updateParam(id, value);
+          if (id === 'tunnelRadius' || id === 'starCount') initStars();
+        },
+        onPresetLoad: (index) => console.log('Load preset', index)
+      });
+    </script>
+</body>
+</html>
