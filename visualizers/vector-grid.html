@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vector Grid - sheep-viz</title>
+  <link rel="stylesheet" href="../lib/hardware-controls.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a24;
+      --text-primary: #e8e8ed;
+      --text-secondary: #8888a0;
+      --accent: #00ff41;
+      --accent-dim: #00cc33;
+    }
+    body { font-family: 'JetBrains Mono', monospace; background: var(--bg-primary); color: var(--text-primary); overflow: hidden; height: 100vh; }
+    #app { display: flex; height: 100vh; }
+    #canvas-container { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; position: relative; }
+    canvas { max-width: 100%; max-height: 100%; }
+    #sidebar { width: 280px; background: var(--bg-secondary); padding: 20px; overflow-y: auto; border-right: 1px solid var(--bg-tertiary); order: -1; }
+    .sidebar-hidden #sidebar { display: none; }
+    .projection-mode { cursor: none; }
+    .projection-mode #sidebar { display: none; }
+    .projection-mode canvas { max-width: none !important; max-height: none !important; width: 100vw !important; height: 100vh !important; }
+    #fullscreen-indicator { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 12px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 1000; }
+    #fullscreen-indicator.show { opacity: 1; }
+    .viz-selector { margin-bottom: 16px; }
+    .viz-selector select { width: 100%; padding: 10px 12px; font-family: inherit; font-size: 11px; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--bg-tertiary); border-radius: 6px; cursor: pointer; }
+    h1 { font-size: 14px; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; color: var(--accent); }
+    .subtitle { font-size: 11px; color: var(--text-secondary); margin-bottom: 24px; }
+    .section { margin-bottom: 24px; }
+    .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 12px; }
+    .control-group { margin-bottom: 16px; }
+    .control-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: var(--text-secondary); }
+    .control-group label span:last-child { color: var(--text-primary); font-weight: 500; }
+    .control-group.selected label { color: var(--accent) !important; }
+    input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: var(--bg-tertiary); border-radius: 2px; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: var(--accent); border-radius: 50%; cursor: pointer; }
+    .btn { width: 100%; padding: 10px; font-family: inherit; font-size: 11px; font-weight: 500; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-bottom: 8px; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); }
+    .audio-controls { display: flex; gap: 8px; margin-bottom: 12px; }
+    .audio-controls .btn { flex: 1; margin-bottom: 0; }
+    input[type="file"] { display: none; }
+    .shortcuts { font-size: 10px; color: var(--text-secondary); line-height: 1.8; }
+    .shortcuts kbd { background: var(--bg-tertiary); padding: 2px 6px; border-radius: 3px; }
+    #click-prompt { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; color: var(--accent); pointer-events: none; }
+    .selected-param { margin-top: 8px; padding: 8px; background: var(--accent); color: #000; border-radius: 4px; font-size: 11px; text-align: center; }
+    .color-picker { margin-bottom: 8px; }
+    .color-picker label { display: block; font-size: 10px; color: var(--text-secondary); margin-bottom: 4px; }
+    .color-picker input[type="color"] { width: 100%; height: 28px; border: none; border-radius: 4px; cursor: pointer; background: var(--bg-tertiary); }
+  </style>
+</head>
+<body>
+  <div id="fullscreen-indicator">Press F to exit fullscreen</div>
+  <div id="app">
+    <div id="canvas-container">
+      <div id="click-prompt">Click to enable audio</div>
+    </div>
+    <div id="sidebar">
+      <div class="viz-selector">
+        <select id="vizSelect" onchange="if(this.value) window.location.href=this.value">
+          <option value="">Switch Visualizer...</option>
+          <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
+          <option value="fluid-flow.html">Fluid Flow</option>
+          <option value="radial-burst.html">Radial Burst</option>
+          <option value="vector-grid.html" selected>Vector Grid</option>
+          <option value="matrix-rain.html">Matrix Rain</option>
+          <option value="starfield.html">Starfield</option>
+          <option value="warp-speed.html">Warp Speed</option>
+        </select>
+      </div>
+      <h1>VECTOR GRID</h1>
+      <p class="subtitle">Johnny Quest style wireframe</p>
+
+      <div class="section">
+        <div class="section-title">Audio</div>
+        <div class="audio-controls">
+          <label class="btn btn-secondary">Load<input type="file" id="audioFile" accept="audio/*"></label>
+          <button class="btn btn-secondary" id="useMic">Mic</button>
+        </div>
+        <button class="btn btn-primary" id="playPause">Play</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">MIDI Controller</div>
+        <select id="midiDevice" style="width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--bg-tertiary);border-radius:6px;color:var(--text-primary);font-family:inherit;font-size:11px;">
+          <option value="">No MIDI Device</option>
+        </select>
+        <div id="midiStatus" style="font-size:10px;color:var(--text-secondary);margin-top:6px;"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Grid</div>
+        <div class="control-group">
+          <label>Grid Size <span id="gridSizeVal">20</span></label>
+          <input type="range" id="gridSize" min="10" max="50" value="20">
+        </div>
+        <div class="control-group">
+          <label>Perspective <span id="perspectiveVal">500</span></label>
+          <input type="range" id="perspective" min="200" max="1000" value="500">
+        </div>
+        <div class="control-group">
+          <label>Rotation Speed <span id="rotationVal">1.0</span></label>
+          <input type="range" id="rotation" min="0" max="50" value="10">
+        </div>
+        <div class="control-group">
+          <label>Wave Height <span id="waveHeightVal">50</span></label>
+          <input type="range" id="waveHeight" min="0" max="150" value="50">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Audio Response</div>
+        <div class="control-group">
+          <label>Bass Wave <span id="bassWaveVal">2.0</span></label>
+          <input type="range" id="bassWave" min="0" max="50" value="20">
+        </div>
+        <div class="control-group">
+          <label>Mid Distort <span id="midDistortVal">1.0</span></label>
+          <input type="range" id="midDistort" min="0" max="30" value="10">
+        </div>
+        <div class="control-group">
+          <label>Line Glow <span id="lineGlowVal">1.0</span></label>
+          <input type="range" id="lineGlow" min="1" max="5" step="0.1" value="1">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Colors</div>
+        <div class="color-picker">
+          <label>Line Color</label>
+          <input type="color" id="lineColor" value="#00ff41">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Actions</div>
+        <button class="btn btn-primary" id="popout">Pop Out (P)</button>
+        <button class="btn btn-secondary" id="fullscreen">Fullscreen (F)</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Keyboard</div>
+        <div class="shortcuts">
+          <kbd>1-7</kbd> Select param | <kbd>↑↓</kbd> Adjust<br>
+          <kbd>Space</kbd> Play | <kbd>P</kbd> Pop out<br>
+          <kbd>F</kbd> Fullscreen | <kbd>H</kbd> Hide UI
+        </div>
+        <div id="selectedParam" class="selected-param">Press 1-7</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.js"></script>
+  <script>
+    const params = {
+      gridSize: 20,
+      perspective: 500,
+      rotation: 0.1,
+      waveHeight: 50,
+      bassWave: 2.0,
+      midDistort: 1.0,
+      lineGlow: 1,
+      lineColor: '#00ff41'
+    };
+
+    let audioContext, analyser, dataArray, source, audioElement;
+    let bass = 0, mids = 0, treble = 0;
+    let audioReady = false, isPlaying = false;
+    let angleX = 0, angleY = 0;
+
+    // MIDI
+    let midiInputs = [];
+    let activeMidiInput = null;
+
+    function setup() {
+      const container = document.getElementById('canvas-container');
+      const canvas = createCanvas(container.offsetWidth, container.offsetHeight, WEBGL);
+      canvas.parent('canvas-container');
+      canvas.mouseClicked(initAudio);
+    }
+
+    function initAudio() {
+      if (audioContext) return;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      document.getElementById('click-prompt').style.opacity = '0';
+    }
+
+    function analyzeAudio() {
+      if (!analyser) return;
+      analyser.getByteFrequencyData(dataArray);
+      const len = dataArray.length;
+      const bassEnd = Math.floor(len * 0.1);
+      const midEnd = Math.floor(len * 0.5);
+      let b = 0, m = 0, t = 0;
+      for (let i = 0; i < bassEnd; i++) b += dataArray[i];
+      for (let i = bassEnd; i < midEnd; i++) m += dataArray[i];
+      for (let i = midEnd; i < len; i++) t += dataArray[i];
+      bass = (b / bassEnd / 255) * 0.3 + bass * 0.7;
+      mids = (m / (midEnd - bassEnd) / 255) * 0.3 + mids * 0.7;
+      treble = (t / (len - midEnd) / 255) * 0.3 + treble * 0.7;
+    }
+
+    function draw() {
+      analyzeAudio();
+      background(0);
+
+      angleX += params.rotation * 0.001;
+      angleY += params.rotation * 0.002;
+
+      rotateX(angleX + bass * params.bassWave * 0.1);
+      rotateY(angleY);
+
+      const col = hexToRgb(params.lineColor);
+      const glowIntensity = params.lineGlow + treble * 2;
+
+      stroke(col.r, col.g, col.b, 255);
+      strokeWeight(glowIntensity);
+      noFill();
+
+      const gridSize = params.gridSize;
+      const spacing = 40;
+      const halfGrid = (gridSize * spacing) / 2;
+
+      // Draw grid lines
+      for (let i = 0; i <= gridSize; i++) {
+        beginShape();
+        for (let j = 0; j <= gridSize; j++) {
+          const x = i * spacing - halfGrid;
+          const z = j * spacing - halfGrid;
+          const wave = sin(i * 0.3 + frameCount * 0.02) * cos(j * 0.3 + frameCount * 0.02);
+          const audioWave = bass * params.bassWave * 30;
+          const distort = sin(i * 0.5 + j * 0.5 + frameCount * 0.05) * mids * params.midDistort * 20;
+          const y = wave * params.waveHeight + audioWave + distort;
+          vertex(x, y, z);
+        }
+        endShape();
+      }
+
+      for (let j = 0; j <= gridSize; j++) {
+        beginShape();
+        for (let i = 0; i <= gridSize; i++) {
+          const x = i * spacing - halfGrid;
+          const z = j * spacing - halfGrid;
+          const wave = sin(i * 0.3 + frameCount * 0.02) * cos(j * 0.3 + frameCount * 0.02);
+          const audioWave = bass * params.bassWave * 30;
+          const distort = sin(i * 0.5 + j * 0.5 + frameCount * 0.05) * mids * params.midDistort * 20;
+          const y = wave * params.waveHeight + audioWave + distort;
+          vertex(x, y, z);
+        }
+        endShape();
+      }
+    }
+
+    function hexToRgb(hex) {
+      const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return r ? { r: parseInt(r[1], 16), g: parseInt(r[2], 16), b: parseInt(r[3], 16) } : { r: 0, g: 255, b: 65 };
+    }
+
+    function windowResized() {
+      const container = document.getElementById('canvas-container');
+      resizeCanvas(container.offsetWidth, container.offsetHeight);
+    }
+
+    // Audio controls
+    document.getElementById('audioFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      initAudio();
+      if (audioElement) audioElement.pause();
+      audioElement = new Audio(URL.createObjectURL(file));
+      source = audioContext.createMediaElementSource(audioElement);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+      audioReady = true;
+      audioElement.play();
+      isPlaying = true;
+      document.getElementById('playPause').textContent = 'Pause';
+    });
+
+    document.getElementById('useMic').addEventListener('click', async () => {
+      initAudio();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const micSource = audioContext.createMediaStreamSource(stream);
+      micSource.connect(analyser);
+      audioReady = true;
+      document.getElementById('useMic').textContent = 'Mic On';
+    });
+
+    document.getElementById('playPause').addEventListener('click', () => {
+      if (!audioElement) return;
+      if (isPlaying) { audioElement.pause(); document.getElementById('playPause').textContent = 'Play'; }
+      else { audioElement.play(); document.getElementById('playPause').textContent = 'Pause'; }
+      isPlaying = !isPlaying;
+    });
+
+    // Sliders
+    const paramList = [
+      { id: 'gridSize', key: 'gridSize', min: 10, max: 50, step: 1 },
+      { id: 'perspective', key: 'perspective', min: 200, max: 1000, step: 10 },
+      { id: 'rotation', key: 'rotation', min: 0, max: 50, step: 1, scale: 0.1 },
+      { id: 'waveHeight', key: 'waveHeight', min: 0, max: 150, step: 1 },
+      { id: 'bassWave', key: 'bassWave', min: 0, max: 50, step: 1, scale: 0.1 },
+      { id: 'midDistort', key: 'midDistort', min: 0, max: 30, step: 1, scale: 0.1 },
+      { id: 'lineGlow', key: 'lineGlow', min: 1, max: 5, step: 0.1 }
+    ];
+
+    paramList.forEach(p => {
+      const el = document.getElementById(p.id);
+      if (el) {
+        el.addEventListener('input', function() {
+          const val = parseFloat(this.value);
+          params[p.key] = p.scale ? val * p.scale : val;
+          document.getElementById(p.id + 'Val').textContent = p.scale ? (val * p.scale).toFixed(1) : val;
+        });
+      }
+    });
+
+    document.getElementById('lineColor').addEventListener('input', e => params.lineColor = e.target.value);
+
+    // Actions
+    document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('popout').addEventListener('click', popOutCanvas);
+
+    let controlsWindow = null;
+
+    function toggleFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      } else {
+        popOutControls();
+        document.documentElement.requestFullscreen();
+      }
+    }
+
+    function popOutControls() {
+      if (controlsWindow && !controlsWindow.closed) { controlsWindow.focus(); return; }
+      const sidebar = document.getElementById('sidebar');
+      controlsWindow = window.open('', 'VectorControls', 'width=300,height=' + window.innerHeight + ',left=0,top=0');
+      controlsWindow.document.write(`
+        <html><head><title>Vector Grid Controls</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'JetBrains Mono', monospace; background: #12121a; color: #e8e8ed; padding: 20px; overflow-y: auto; height: 100vh; }
+          .section { margin-bottom: 20px; }
+          .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8888a0; margin-bottom: 10px; }
+          .control-group { margin-bottom: 14px; }
+          .control-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: #8888a0; }
+          input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: #1a1a24; border-radius: 2px; }
+          input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: #00ff41; border-radius: 50%; cursor: pointer; }
+          input[type="color"] { width: 100%; height: 32px; border: none; border-radius: 4px; cursor: pointer; }
+          h2 { color: #00ff41; font-size: 14px; margin-bottom: 4px; }
+          .subtitle { color: #8888a0; font-size: 11px; margin-bottom: 20px; }
+          select { width: 100%; padding: 8px; background: #1a1a24; border: 1px solid #1a1a24; border-radius: 6px; color: #e8e8ed; font-family: inherit; font-size: 11px; }
+        </style></head><body>
+        <h2>VECTOR GRID</h2>
+        <p class="subtitle">Controls</p>
+        </body></html>
+      `);
+      controlsWindow.document.close();
+      const cloneSidebar = sidebar.cloneNode(true);
+      cloneSidebar.style.cssText = 'width:100%;border:none;background:transparent';
+      cloneSidebar.querySelectorAll('.viz-selector, h1, .subtitle').forEach(el => el.remove());
+      controlsWindow.document.body.appendChild(cloneSidebar);
+      cloneSidebar.querySelectorAll('input[type="range"], input[type="color"]').forEach(input => {
+        input.addEventListener('input', () => {
+          const mainInput = document.getElementById(input.id);
+          if (mainInput) { mainInput.value = input.value; mainInput.dispatchEvent(new Event('input')); }
+        });
+      });
+      controlsWindow.addEventListener('beforeunload', () => { controlsWindow = null; });
+    }
+
+    let popoutWindow = null;
+    function popOutCanvas() {
+      if (popoutWindow && !popoutWindow.closed) { popoutWindow.focus(); return; }
+      popoutWindow = window.open('', 'VectorGrid', 'width=1920,height=1080');
+      popoutWindow.document.write('<html><head><title>Vector Grid</title><style>*{margin:0;padding:0}body{background:#000;overflow:hidden;cursor:none}canvas{width:100vw;height:100vh}</style></head><body></body></html>');
+      popoutWindow.document.close();
+      const canvas = document.getElementById('defaultCanvas0');
+      if (canvas) { popoutWindow.document.body.appendChild(canvas); canvas.style.width = '100vw'; canvas.style.height = '100vh'; }
+      document.getElementById('popout').textContent = 'Popped Out';
+      popoutWindow.addEventListener('beforeunload', () => {
+        document.getElementById('canvas-container').appendChild(canvas);
+        canvas.style.width = ''; canvas.style.height = '';
+        windowResized();
+        document.getElementById('popout').textContent = 'Pop Out (P)';
+        popoutWindow = null;
+      });
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      if (document.fullscreenElement) { document.body.classList.add('projection-mode'); setTimeout(windowResized, 100); }
+      else { document.body.classList.remove('projection-mode'); windowResized(); }
+    });
+
+    // MIDI
+    async function initMIDI() {
+      try {
+        const access = await navigator.requestMIDIAccess();
+        midiInputs = Array.from(access.inputs.values());
+        const select = document.getElementById('midiDevice');
+        const status = document.getElementById('midiStatus');
+        if (midiInputs.length > 0) {
+          midiInputs.forEach((input, i) => {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = input.name || `Device ${i + 1}`;
+            select.appendChild(option);
+          });
+          status.textContent = `${midiInputs.length} device(s) found`;
+          select.value = '0';
+          connectMIDI(0);
+        } else {
+          status.textContent = 'No MIDI devices';
+        }
+        select.addEventListener('change', (e) => {
+          if (e.target.value !== '') connectMIDI(parseInt(e.target.value));
+        });
+      } catch (e) {
+        document.getElementById('midiStatus').textContent = 'MIDI not supported';
+      }
+    }
+
+    function connectMIDI(index) {
+      if (activeMidiInput) activeMidiInput.onmidimessage = null;
+      activeMidiInput = midiInputs[index];
+      if (activeMidiInput) {
+        activeMidiInput.onmidimessage = handleMIDI;
+        document.getElementById('midiStatus').textContent = `Connected: ${activeMidiInput.name}`;
+      }
+    }
+
+    function handleMIDI(msg) {
+      const [status, cc, value] = msg.data;
+      if (status === 176) {
+        const normalized = value / 127;
+        const param = paramList[cc % paramList.length];
+        if (param) {
+          const el = document.getElementById(param.id);
+          if (el) {
+            el.value = param.min + normalized * (param.max - param.min);
+            el.dispatchEvent(new Event('input'));
+          }
+        }
+      }
+    }
+
+    initMIDI();
+
+    // Keyboard
+    let selectedParamIndex = -1;
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+      if (e.key >= '1' && e.key <= '7') {
+        selectedParamIndex = parseInt(e.key) - 1;
+        document.querySelectorAll('.control-group').forEach(g => g.classList.remove('selected'));
+        const p = paramList[selectedParamIndex];
+        document.getElementById('selectedParam').textContent = `${e.key}: ${p.id}`;
+        document.getElementById(p.id).closest('.control-group').classList.add('selected');
+        return;
+      }
+      if (e.key === 'ArrowUp' && selectedParamIndex >= 0) {
+        e.preventDefault();
+        const p = paramList[selectedParamIndex];
+        const el = document.getElementById(p.id);
+        el.value = Math.min(p.max, parseFloat(el.value) + p.step * 5);
+        el.dispatchEvent(new Event('input'));
+      }
+      if (e.key === 'ArrowDown' && selectedParamIndex >= 0) {
+        e.preventDefault();
+        const p = paramList[selectedParamIndex];
+        const el = document.getElementById(p.id);
+        el.value = Math.max(p.min, parseFloat(el.value) - p.step * 5);
+        el.dispatchEvent(new Event('input'));
+      }
+      if (e.key === ' ') { e.preventDefault(); document.getElementById('playPause').click(); }
+      if (e.key.toLowerCase() === 'f') toggleFullscreen();
+      if (e.key.toLowerCase() === 'h') { document.getElementById('app').classList.toggle('sidebar-hidden'); windowResized(); }
+      if (e.key.toLowerCase() === 'p') popOutCanvas();
+    });
+  </script>
+  <script src="../lib/hardware-controls.js?v=4"></script>
+  <script>
+    // Hardware Controls Integration
+    const hardware = new HardwareControls({
+      name: 'Vector Grid',
+      accentColor: '#00ff41',
+      params: params,
+      knobs: [
+        { id: 'gridSize', label: 'Grid', min: 10, max: 50, step: 1 },
+        { id: 'rotation', label: 'Speed', min: 0, max: 5, step: 0.1, decimals: 1 },
+        { id: 'bassWave', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
+        { id: 'waveHeight', label: 'Height', min: 0, max: 150, step: 5 },
+        { id: 'midDistort', label: 'Distort', min: 0, max: 3, step: 0.1, decimals: 1 },
+        { id: 'lineGlow', label: 'Glow', min: 1, max: 5, step: 0.1, decimals: 1 },
+        { id: 'perspective', label: 'Persp', min: 200, max: 1000, step: 50 },
+        { id: 'waveHeight', label: 'Wave+', min: 0, max: 150, step: 5 }
+      ],
+      faders: [
+        { id: 'gridSize', label: 'Grid', min: 10, max: 50, step: 1 },
+        { id: 'waveHeight', label: 'Wave', min: 0, max: 150, step: 5 },
+        { id: 'bassWave', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
+        { id: 'lineGlow', label: 'Glow', min: 1, max: 5, step: 0.1, decimals: 1 }
+      ],
+      presets: new Array(8).fill(null),
+      onParamChange: (id, value) => {
+        params[id] = value;
+        const slider = document.getElementById(id);
+        if (slider) {
+          if (id === 'rotation') slider.value = value * 10;
+          else if (id === 'bassWave') slider.value = value * 10;
+          else if (id === 'midDistort') slider.value = value * 10;
+          else slider.value = value;
+          const valEl = document.getElementById(id + 'Val');
+          if (valEl) valEl.textContent = typeof value === 'number' && value % 1 !== 0 ? value.toFixed(1) : value;
+        }
+      },
+      onPresetLoad: (index) => console.log('Load preset', index)
+    });
+  </script>
+</body>
+</html>

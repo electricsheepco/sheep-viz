@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Radial Burst - sheep-viz</title>
+  <link rel="stylesheet" href="../lib/hardware-controls.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -45,7 +46,8 @@
       background: var(--bg-secondary);
       padding: 20px;
       overflow-y: auto;
-      border-left: 1px solid var(--bg-tertiary);
+      border-right: 1px solid var(--bg-tertiary);
+      order: -1;
     }
 
     .sidebar-hidden #sidebar { display: none; }
@@ -205,9 +207,13 @@
       <div class="viz-selector">
         <select id="vizSelect" onchange="if(this.value) window.location.href=this.value">
           <option value="">Switch Visualizer...</option>
-          <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
-          <option value="fluid-flow.html">Fluid Flow</option>
           <option value="radial-burst.html" selected>Radial Burst</option>
+          <option value="warp-speed.html">Warp Speed</option>
+          <option value="starfield.html">Starfield</option>
+          <option value="vector-grid.html">Vector Grid</option>
+          <option value="matrix-rain.html">Matrix Rain</option>
+          <option value="fluid-flow.html">Fluid Flow</option>
+          <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
           <option value="vertical-pulse.html">Vertical Pulse (Full)</option>
         </select>
       </div>
@@ -224,6 +230,14 @@
           <button class="btn btn-secondary" id="useMic">Use Mic</button>
         </div>
         <button class="btn btn-primary" id="playPause">Play</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">MIDI Controller</div>
+        <select id="midiDevice" style="width:100%;padding:8px;background:var(--bg-tertiary);border:1px solid var(--bg-tertiary);border-radius:6px;color:var(--text-primary);font-family:inherit;font-size:11px;">
+          <option value="">No MIDI Device</option>
+        </select>
+        <div id="midiStatus" style="font-size:10px;color:var(--text-secondary);margin-top:6px;"></div>
       </div>
 
       <div class="section">
@@ -324,6 +338,10 @@
     let audioContext, analyser, source, audioElement;
     let freqData, waveData, smoothed;
     let audioReady = false, isPlaying = false;
+
+    // MIDI
+    let midiInputs = [];
+    let activeMidiInput = null;
 
     // Particles
     let particles = [];
@@ -581,12 +599,57 @@
     document.getElementById('fullscreen').addEventListener('click', toggleFullscreen);
     document.getElementById('popout').addEventListener('click', popOutCanvas);
 
+    let controlsWindow = null;
+
     function toggleFullscreen() {
       if (document.fullscreenElement) {
         document.exitFullscreen();
       } else {
+        popOutControls();
         document.documentElement.requestFullscreen();
       }
+    }
+
+    function popOutControls() {
+      if (controlsWindow && !controlsWindow.closed) { controlsWindow.focus(); return; }
+      const sidebar = document.getElementById('sidebar');
+      controlsWindow = window.open('', 'RadialControls', 'width=300,height=' + window.innerHeight + ',left=0,top=0');
+      controlsWindow.document.write(`
+        <html><head><title>Radial Burst Controls</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'JetBrains Mono', monospace; background: #12121a; color: #e8e8ed; padding: 20px; overflow-y: auto; height: 100vh; }
+          .section { margin-bottom: 20px; }
+          .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8888a0; margin-bottom: 10px; }
+          .control-group { margin-bottom: 14px; }
+          .control-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: #8888a0; }
+          input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: #1a1a24; border-radius: 2px; }
+          input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: #ff3366; border-radius: 50%; cursor: pointer; }
+          input[type="color"] { width: 100%; height: 32px; border: none; border-radius: 4px; cursor: pointer; }
+          h2 { color: #ff3366; font-size: 14px; margin-bottom: 4px; }
+          .subtitle { color: #8888a0; font-size: 11px; margin-bottom: 20px; }
+          select { width: 100%; padding: 8px; background: #1a1a24; border: 1px solid #1a1a24; border-radius: 6px; color: #e8e8ed; font-family: inherit; font-size: 11px; }
+          .color-row { display: flex; gap: 12px; }
+          .color-picker { flex: 1; }
+          .color-picker label { display: block; font-size: 10px; margin-bottom: 4px; color: #8888a0; }
+        </style></head><body>
+        <h2>RADIAL BURST</h2>
+        <p class="subtitle">Controls</p>
+        </body></html>
+      `);
+      controlsWindow.document.close();
+      const cloneSidebar = sidebar.cloneNode(true);
+      cloneSidebar.style.cssText = 'width:100%;border:none;background:transparent';
+      cloneSidebar.querySelectorAll('.viz-selector, h1, .subtitle').forEach(el => el.remove());
+      controlsWindow.document.body.appendChild(cloneSidebar);
+      cloneSidebar.querySelectorAll('input[type="range"], input[type="color"]').forEach(input => {
+        input.addEventListener('input', () => {
+          const mainInput = document.getElementById(input.id);
+          if (mainInput) { mainInput.value = input.value; mainInput.dispatchEvent(new Event('input')); }
+        });
+      });
+      controlsWindow.addEventListener('beforeunload', () => { controlsWindow = null; });
     }
 
     // Pop-out window for dual-screen setup
@@ -633,7 +696,7 @@
               clearTimeout(cursorTimeout);
               cursorTimeout = setTimeout(() => document.body.style.cursor = 'none', 2000);
             });
-          </script>
+          <\/script>
         </body>
         </html>
       `);
@@ -744,6 +807,106 @@
           document.body.style.cursor = 'none';
         }, 2000);
       }
+    });
+
+    // MIDI
+    async function initMIDI() {
+      try {
+        const access = await navigator.requestMIDIAccess();
+        midiInputs = Array.from(access.inputs.values());
+        const select = document.getElementById('midiDevice');
+        const status = document.getElementById('midiStatus');
+        if (midiInputs.length > 0) {
+          midiInputs.forEach((input, i) => {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = input.name || `Device ${i + 1}`;
+            select.appendChild(option);
+          });
+          status.textContent = `${midiInputs.length} device(s) found`;
+          select.value = '0';
+          connectMIDI(0);
+        } else {
+          status.textContent = 'No MIDI devices';
+        }
+        select.addEventListener('change', (e) => {
+          if (e.target.value !== '') connectMIDI(parseInt(e.target.value));
+        });
+      } catch (e) {
+        document.getElementById('midiStatus').textContent = 'MIDI not supported';
+      }
+    }
+
+    function connectMIDI(index) {
+      if (activeMidiInput) activeMidiInput.onmidimessage = null;
+      activeMidiInput = midiInputs[index];
+      if (activeMidiInput) {
+        activeMidiInput.onmidimessage = handleMIDI;
+        document.getElementById('midiStatus').textContent = `Connected: ${activeMidiInput.name}`;
+      }
+    }
+
+    function handleMIDI(msg) {
+      const [status, cc, value] = msg.data;
+      if (status === 176) {
+        const normalized = value / 127;
+        const slider = sliders[cc % sliders.length];
+        if (slider) {
+          const el = document.getElementById(slider[0]);
+          if (el) {
+            const min = parseFloat(el.min);
+            const max = parseFloat(el.max);
+            el.value = min + normalized * (max - min);
+            el.dispatchEvent(new Event('input'));
+          }
+        }
+      }
+    }
+
+    initMIDI();
+  </script>
+  <script src="../lib/hardware-controls.js?v=4"></script>
+  <script>
+    // Hardware Controls Integration
+    const hardware = new HardwareControls({
+      name: 'Radial Burst',
+      accentColor: '#ff3366',
+      params: P,
+      knobs: [
+        { id: 'particleCount', label: 'Count', min: 50, max: 500, step: 10 },
+        { id: 'burstSize', label: 'Burst', min: 20, max: 200, step: 5 },
+        { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+        { id: 'ringRadius', label: 'Ring', min: 50, max: 300, step: 10 },
+        { id: 'trailLength', label: 'Trail', min: 0, max: 50, step: 1 },
+        { id: 'ringThickness', label: 'Thick', min: 1, max: 20, step: 1 },
+        { id: 'beatThreshold', label: 'Beat', min: 0.3, max: 0.8, step: 0.05, decimals: 2 },
+        { id: 'decaySpeed', label: 'Decay', min: 0.9, max: 0.99, step: 0.01, decimals: 2 }
+      ],
+      faders: [
+        { id: 'burstSize', label: 'Burst', min: 20, max: 200, step: 5 },
+        { id: 'particleCount', label: 'Parts', min: 50, max: 500, step: 10 },
+        { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+        { id: 'ringRadius', label: 'Ring', min: 50, max: 300, step: 10 }
+      ],
+      presets: new Array(8).fill(null),
+      onParamChange: (id, value) => {
+        P[id] = value;
+        const slider = document.getElementById(id);
+        if (slider) {
+          if (id === 'sensitivity') slider.value = value * 100;
+          else if (id === 'beatThreshold') slider.value = value * 100;
+          else if (id === 'decaySpeed') slider.value = value * 100;
+          else slider.value = value;
+          const valEl = document.getElementById(id + 'Val');
+          if (valEl) {
+            if (id === 'sensitivity') valEl.textContent = value.toFixed(1) + 'x';
+            else if (id === 'beatThreshold') valEl.textContent = Math.round(value * 100) + '%';
+            else if (id === 'decaySpeed') valEl.textContent = Math.round(value * 100) + '%';
+            else valEl.textContent = value;
+          }
+        }
+      },
+      onPresetLoad: (index) => console.log('Load preset', index)
     });
   </script>
 </body>

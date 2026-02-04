@@ -55,7 +55,8 @@
       background: var(--bg-secondary);
       padding: 20px;
       overflow-y: auto;
-      border-left: 1px solid var(--bg-tertiary);
+      border-right: 1px solid var(--bg-tertiary);
+      order: -1;
     }
 
     .sidebar-hidden #sidebar {
@@ -288,7 +289,53 @@
       cursor: pointer;
       background: var(--bg-tertiary);
     }
+
+    .midi-select {
+      width: 100%;
+      padding: 8px;
+      font-family: inherit;
+      font-size: 11px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--bg-tertiary);
+      border-radius: 6px;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+
+    .midi-status {
+      font-size: 10px;
+      color: var(--text-secondary);
+      padding: 6px 8px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+    }
+
+    .midi-status.connected {
+      color: #4ade80;
+      background: rgba(74, 222, 128, 0.1);
+    }
+
+    .selected-param {
+      margin-top: 8px;
+      padding: 8px;
+      background: var(--accent);
+      color: white;
+      border-radius: 4px;
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .control-group.selected label {
+      color: var(--accent) !important;
+    }
+
+    .control-group.selected input[type="range"]::-webkit-slider-thumb {
+      background: #fff;
+      box-shadow: 0 0 8px var(--accent);
+    }
   </style>
+  <link rel="stylesheet" href="../lib/hardware-controls.css">
 </head>
 <body>
   <div id="fullscreen-indicator">Press F to exit fullscreen, H to show controls</div>
@@ -300,9 +347,13 @@
       <div class="viz-selector">
         <select id="vizSelect" onchange="if(this.value) window.location.href=this.value">
           <option value="">Switch Visualizer...</option>
-          <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
           <option value="fluid-flow.html" selected>Fluid Flow</option>
+          <option value="warp-speed.html">Warp Speed</option>
+          <option value="starfield.html">Starfield</option>
+          <option value="vector-grid.html">Vector Grid</option>
+          <option value="matrix-rain.html">Matrix Rain</option>
           <option value="radial-burst.html">Radial Burst</option>
+          <option value="vertical-pulse-pro.html">Vertical Pulse Pro</option>
           <option value="vertical-pulse.html">Vertical Pulse (Full)</option>
         </select>
       </div>
@@ -395,14 +446,24 @@
       </div>
 
       <div class="section">
-        <div class="section-title">Shortcuts</div>
+        <div class="section-title">MIDI</div>
+        <select id="midiDevice" class="midi-select">
+          <option value="">Select MIDI Device...</option>
+        </select>
+        <div id="midiStatus" class="midi-status">Scanning...</div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Keyboard Control</div>
         <div class="shortcuts">
+          <kbd>1-8</kbd> Select parameter<br>
+          <kbd>↑↓</kbd> Adjust value<br>
           <kbd>Space</kbd> Play/Pause<br>
-          <kbd>P</kbd> Pop out canvas<br>
+          <kbd>P</kbd> Pop out<br>
           <kbd>F</kbd> Fullscreen<br>
-          <kbd>H</kbd> Hide UI<br>
-          <kbd>R</kbd> Reset particles
+          <kbd>H</kbd> Hide UI
         </div>
+        <div id="selectedParam" class="selected-param">Press 1-8 to select</div>
       </div>
 
       <div class="section">
@@ -412,6 +473,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.js"></script>
+  <script src="../lib/hardware-controls.js?v=4"></script>
   <script>
     // Parameters
     const params = {
@@ -793,7 +855,7 @@
               clearTimeout(cursorTimeout);
               cursorTimeout = setTimeout(() => document.body.style.cursor = 'none', 2000);
             });
-          </script>
+          <\/script>
         </body>
         </html>
       `);
@@ -825,12 +887,61 @@
       });
     }
 
+    let controlsWindow = null;
+
     function toggleFullscreen() {
       if (document.fullscreenElement) {
         document.exitFullscreen();
       } else {
+        popOutControls();
         document.documentElement.requestFullscreen();
       }
+    }
+
+    function popOutControls() {
+      if (controlsWindow && !controlsWindow.closed) { controlsWindow.focus(); return; }
+      const sidebar = document.getElementById('sidebar');
+      controlsWindow = window.open('', 'FluidControls', 'width=300,height=' + window.innerHeight + ',left=0,top=0');
+      controlsWindow.document.write(`
+        <html><head><title>Fluid Flow Controls</title>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { font-family: 'JetBrains Mono', monospace; background: #12121a; color: #e8e8ed; padding: 20px; overflow-y: auto; height: 100vh; }
+          .section { margin-bottom: 20px; }
+          .section-title { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #8888a0; margin-bottom: 10px; }
+          .control-group { margin-bottom: 14px; }
+          .control-group label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 6px; color: #8888a0; }
+          input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: #1a1a24; border-radius: 2px; }
+          input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; background: #6366f1; border-radius: 50%; cursor: pointer; }
+          select, input[type="file"] { width: 100%; padding: 8px; background: #1a1a24; border: 1px solid #1a1a24; border-radius: 6px; color: #e8e8ed; font-family: inherit; font-size: 11px; }
+          button { width: 100%; padding: 10px; background: #1a1a24; border: 1px solid #1a1a24; border-radius: 6px; color: #e8e8ed; font-family: inherit; font-size: 11px; cursor: pointer; margin-bottom: 8px; }
+          button:hover { background: #6366f1; color: #fff; }
+          h2 { color: #6366f1; font-size: 14px; margin-bottom: 4px; }
+          .subtitle { color: #8888a0; font-size: 11px; margin-bottom: 20px; }
+        </style></head><body>
+        <h2>FLUID FLOW</h2>
+        <p class="subtitle">Controls</p>
+        </body></html>
+      `);
+      controlsWindow.document.close();
+      const cloneSidebar = sidebar.cloneNode(true);
+      cloneSidebar.style.cssText = 'width:100%;border:none;background:transparent';
+      cloneSidebar.querySelectorAll('.viz-selector, h1, .subtitle').forEach(el => el.remove());
+      controlsWindow.document.body.appendChild(cloneSidebar);
+      cloneSidebar.querySelectorAll('input[type="range"]').forEach(input => {
+        input.addEventListener('input', () => {
+          const mainInput = document.getElementById(input.id);
+          if (mainInput) { mainInput.value = input.value; mainInput.dispatchEvent(new Event('input')); }
+        });
+      });
+      cloneSidebar.querySelectorAll('select').forEach(sel => {
+        sel.addEventListener('change', () => {
+          const mainSel = document.getElementById(sel.id);
+          if (mainSel) { mainSel.value = sel.value; mainSel.dispatchEvent(new Event('change')); }
+        });
+      });
+      controlsWindow.addEventListener('beforeunload', () => { controlsWindow = null; });
     }
 
     // Handle fullscreen changes - enable projection mode
@@ -898,6 +1009,224 @@
         }, 2000);
       }
     });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // MIDI CONTROL
+    // ═══════════════════════════════════════════════════════════════════
+
+    const paramList = [
+      { id: 'particleCount', name: 'Particles', min: 1000, max: 20000, step: 1000 },
+      { id: 'viscosity', name: 'Viscosity', min: 0.9, max: 0.999, step: 0.001 },
+      { id: 'diffusion', name: 'Diffusion', min: 0, max: 1, step: 0.01 },
+      { id: 'forceScale', name: 'Force', min: 10, max: 200, step: 5 },
+      { id: 'bassForce', name: 'Bass Force', min: 0, max: 10, step: 0.1 },
+      { id: 'midTurbulence', name: 'Mid Turb', min: 0, max: 5, step: 0.1 },
+      { id: 'trebleSparkle', name: 'Treble', min: 0, max: 5, step: 0.1 },
+      { id: 'trailLength', name: 'Trail', min: 0.8, max: 0.99, step: 0.01 }
+    ];
+
+    let midiInputs = [];
+    let activeMidiInput = null;
+
+    async function initMIDI() {
+      try {
+        const access = await navigator.requestMIDIAccess();
+        const select = document.getElementById('midiDevice');
+
+        midiInputs = Array.from(access.inputs.values());
+
+        if (midiInputs.length === 0) {
+          document.getElementById('midiStatus').textContent = 'No MIDI devices found';
+          return;
+        }
+
+        document.getElementById('midiStatus').textContent = `${midiInputs.length} device(s) found`;
+
+        midiInputs.forEach((input, i) => {
+          const opt = document.createElement('option');
+          opt.value = i;
+          opt.textContent = input.name || `Device ${i + 1}`;
+          select.appendChild(opt);
+        });
+
+        select.addEventListener('change', (e) => {
+          if (activeMidiInput) {
+            activeMidiInput.onmidimessage = null;
+          }
+          if (e.target.value !== '') {
+            activeMidiInput = midiInputs[parseInt(e.target.value)];
+            activeMidiInput.onmidimessage = handleMIDI;
+            document.getElementById('midiStatus').textContent = `Connected: ${activeMidiInput.name}`;
+            document.getElementById('midiStatus').classList.add('connected');
+          }
+        });
+
+        // Auto-connect to first device
+        if (midiInputs.length > 0) {
+          select.value = '0';
+          select.dispatchEvent(new Event('change'));
+        }
+
+      } catch (err) {
+        document.getElementById('midiStatus').textContent = 'MIDI not available';
+        console.error('MIDI error:', err);
+      }
+    }
+
+    function handleMIDI(e) {
+      const [status, cc, value] = e.data;
+
+      // CC message (0xB0-0xBF)
+      if ((status & 0xF0) === 0xB0) {
+        // Map CC 1-8 to parameters
+        if (cc >= 1 && cc <= 8) {
+          const param = paramList[cc - 1];
+          if (param) {
+            const normalized = value / 127;
+            const newValue = param.min + normalized * (param.max - param.min);
+            const slider = document.getElementById(param.id);
+            if (slider) {
+              slider.value = newValue;
+              slider.dispatchEvent(new Event('input'));
+            }
+          }
+        }
+      }
+    }
+
+    initMIDI();
+
+    // ═══════════════════════════════════════════════════════════════════
+    // KEYBOARD PARAMETER CONTROL
+    // ═══════════════════════════════════════════════════════════════════
+
+    let selectedParamIndex = -1;
+
+    function selectParam(index) {
+      // Remove previous selection
+      document.querySelectorAll('.control-group').forEach(g => g.classList.remove('selected'));
+
+      if (index >= 0 && index < paramList.length) {
+        selectedParamIndex = index;
+        const param = paramList[index];
+        document.getElementById('selectedParam').textContent = `${index + 1}: ${param.name}`;
+
+        // Highlight the control group
+        const slider = document.getElementById(param.id);
+        if (slider) {
+          slider.closest('.control-group').classList.add('selected');
+        }
+      }
+    }
+
+    function adjustParam(delta) {
+      if (selectedParamIndex < 0) return;
+
+      const param = paramList[selectedParamIndex];
+      const slider = document.getElementById(param.id);
+      if (!slider) return;
+
+      const current = parseFloat(slider.value);
+      const step = param.step * delta * 5; // 5x step for faster adjustment
+      const newValue = Math.max(param.min, Math.min(param.max, current + step));
+
+      slider.value = newValue;
+      slider.dispatchEvent(new Event('input'));
+    }
+
+    // Extend keyboard handler
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
+
+      // Number keys 1-8 select parameter
+      if (e.key >= '1' && e.key <= '8') {
+        selectParam(parseInt(e.key) - 1);
+        return;
+      }
+
+      // Arrow keys adjust selected parameter
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        adjustParam(1);
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        adjustParam(-1);
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HARDWARE CONTROLS (Shared Component)
+    // ═══════════════════════════════════════════════════════════════════
+
+    console.log('HardwareControls class available:', typeof HardwareControls);
+
+    const presets = JSON.parse(localStorage.getItem('fluidflow-presets') || 'null') || new Array(8).fill(null);
+
+    if (typeof HardwareControls === 'undefined') {
+      console.error('HardwareControls not loaded! Check script path.');
+    }
+
+    console.log('About to create HardwareControls instance...');
+    const hardware = new HardwareControls({
+      name: 'Fluid Flow',
+      accentColor: '#6366f1',
+      params: params,
+      knobs: [
+        { id: 'particleCount', label: 'Count', min: 1000, max: 20000, step: 1000 },
+        { id: 'forceScale', label: 'Force', min: 10, max: 200, step: 5 },
+        { id: 'bassForce', label: 'Bass', min: 0, max: 10, step: 0.1, decimals: 1 },
+        { id: 'viscosity', label: 'Visc', min: 0.9, max: 0.999, step: 0.001, decimals: 3 },
+        { id: 'trailLength', label: 'Trail', min: 0.8, max: 0.99, step: 0.01, decimals: 2 },
+        { id: 'midTurbulence', label: 'Turb', min: 0, max: 5, step: 0.1, decimals: 1 },
+        { id: 'trebleSparkle', label: 'Spark', min: 0, max: 5, step: 0.1, decimals: 1 },
+        { id: 'diffusion', label: 'Diff', min: 0, max: 1, step: 0.01, decimals: 2 }
+      ],
+      faders: [
+        { id: 'overlaySize', label: 'Size', min: 5, max: 50, step: 1, suffix: '%' },
+        { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+        { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+        { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
+      ],
+      presets: presets,
+      onParamChange: (id, value) => {
+        // Sync to sidebar sliders
+        const slider = document.getElementById(id);
+        if (slider) {
+          slider.value = value;
+          const display = document.getElementById(id + 'Val');
+          if (display) display.textContent = value;
+        }
+        // Reinit particles if count changed
+        if (id === 'particleCount') initParticles();
+      },
+      onPresetLoad: (index) => {
+        if (presets[index]) {
+          Object.assign(params, presets[index]);
+          // Sync sidebar
+          sliderParams.forEach(param => {
+            const slider = document.getElementById(param);
+            const display = document.getElementById(param + 'Val');
+            if (slider) slider.value = params[param];
+            if (display) display.textContent = params[param];
+          });
+          initParticles();
+          hardware.sync();
+        }
+      }
+    });
+
+    // Add overlay params if not present
+    if (params.overlaySize === undefined) params.overlaySize = 20;
+    if (params.overlayOpacity === undefined) params.overlayOpacity = 80;
+    if (params.overlayIntensity === undefined) params.overlayIntensity = 50;
+    if (params.masterBrightness === undefined) params.masterBrightness = 100;
+
+    // Save preset function (can be called from sidebar)
+    window.savePreset = function(index) {
+      presets[index] = { ...params };
+      localStorage.setItem('fluidflow-presets', JSON.stringify(presets));
+      hardware.setPresets(presets);
+    };
   </script>
 </body>
 </html>

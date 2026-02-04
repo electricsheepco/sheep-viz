@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Llama Bars - sheep-viz</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1a1a1a;
+      --text-primary: #e0e0e0;
+      --text-secondary: #888888;
+      --accent: #ffcc00;
+      --accent-dim: #aa8800;
+      --border: #2a2a2a;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #app {
+      display: flex;
+      height: 100vh;
+    }
+
+    #canvas-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      order: -1;
+    }
+
+    .sidebar-hidden #sidebar {
+      display: none;
+    }
+
+    /* Projection/Fullscreen Mode */
+    .projection-mode {
+      cursor: none;
+    }
+
+    .projection-mode #sidebar {
+      display: none;
+    }
+
+    .projection-mode #canvas-container {
+      background: #000;
+    }
+
+    .projection-mode canvas {
+      max-width: none !important;
+      max-height: none !important;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+
+    .projection-mode #click-prompt {
+      display: none;
+    }
+
+    /* Fullscreen indicator */
+    #fullscreen-indicator {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    #fullscreen-indicator.show {
+      opacity: 1;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+    }
+
+    .control-group label span:last-child {
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      background: var(--bg-tertiary);
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--accent);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 11px;
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn:hover {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    .btn-primary {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+    }
+
+    #click-prompt {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      pointer-events: none;
+      transition: opacity 0.5s;
+    }
+
+    #click-prompt span {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .style-indicator {
+      font-size: 10px;
+      color: var(--accent);
+      margin-top: 8px;
+      padding: 6px 10px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+      text-align: center;
+    }
+
+    .keyboard-hints {
+      font-size: 9px;
+      color: var(--text-secondary);
+      margin-top: 16px;
+      line-height: 1.8;
+    }
+
+    .keyboard-hints kbd {
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    /* Overlay image */
+    #overlay-image {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      z-index: 10;
+      mix-blend-mode: screen;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <h1>Llama Bars</h1>
+      <div class="subtitle">Classic Spectrum Analyzer</div>
+
+      <div class="section">
+        <div class="section-title">Audio Input</div>
+        <input type="file" id="audioFile" accept="audio/*" style="display:none">
+        <button class="btn" onclick="document.getElementById('audioFile').click()">Load Audio File</button>
+        <button class="btn" id="useMic">Use Microphone</button>
+        <button class="btn" id="playPause" style="display:none">Play</button>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Style</div>
+        <div class="style-indicator">Style: <span id="styleLabel">Classic Blocks</span></div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Parameters</div>
+
+        <div class="control-group">
+          <label>Bar Count <span id="barCountVal">32</span></label>
+          <input type="range" id="barCount" min="16" max="128" step="4" value="32">
+        </div>
+
+        <div class="control-group">
+          <label>Speed <span id="speedVal">1.0</span></label>
+          <input type="range" id="speed" min="0.5" max="3" step="0.1" value="1">
+        </div>
+
+        <div class="control-group">
+          <label>Sensitivity <span id="sensitivityVal">1.5</span></label>
+          <input type="range" id="sensitivity" min="0.5" max="3" step="0.1" value="1.5">
+        </div>
+
+        <div class="control-group">
+          <label>Bar Opacity <span id="barOpacityVal">100</span>%</label>
+          <input type="range" id="barOpacity" min="0" max="100" step="5" value="100">
+        </div>
+
+        <div class="control-group">
+          <label>Peak Hold <span id="peakHoldVal">300</span>ms</label>
+          <input type="range" id="peakHold" min="100" max="1000" step="50" value="300">
+        </div>
+
+        <div class="control-group">
+          <label>Peak Gravity <span id="peakGravityVal">1.0</span></label>
+          <input type="range" id="peakGravity" min="0.5" max="3" step="0.1" value="1">
+        </div>
+
+        <div class="control-group">
+          <label>Reflection <span id="reflectionVal">30</span>%</label>
+          <input type="range" id="reflection" min="0" max="100" step="5" value="30">
+        </div>
+
+        <div class="control-group">
+          <label>Gap Size <span id="gapSizeVal">2</span>px</label>
+          <input type="range" id="gapSize" min="0" max="8" step="1" value="2">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Overlay</div>
+        <input type="file" id="overlayFile" accept="image/*" style="display:none">
+        <button class="btn" onclick="document.getElementById('overlayFile').click()">Load Overlay Image</button>
+
+        <div class="control-group">
+          <label>Overlay Size <span id="overlaySizeVal">20</span>%</label>
+          <input type="range" id="overlaySize" min="5" max="100" step="1" value="20">
+        </div>
+
+        <div class="control-group">
+          <label>Overlay Opacity <span id="overlayOpacityVal">80</span>%</label>
+          <input type="range" id="overlayOpacity" min="0" max="100" step="1" value="80">
+        </div>
+      </div>
+
+      <div class="keyboard-hints">
+        <kbd>H</kbd> Toggle hardware bar<br>
+        <kbd>F</kbd> Fullscreen + popout<br>
+        <kbd>S</kbd> Toggle sidebar<br>
+        <kbd>Esc</kbd> Exit fullscreen
+      </div>
+    </div>
+
+    <div id="canvas-container">
+      <canvas id="canvas"></canvas>
+      <div id="click-prompt">
+        <span>🎵</span>
+        Load audio or click to enable microphone
+      </div>
+    </div>
+  </div>
+
+  <img id="overlay-image" src="" alt="" style="display:none">
+  <div id="fullscreen-indicator">Press ESC to exit fullscreen</div>
+
+  <script src="../lib/hardware-controls.js?v=4"></script>
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // LLAMA BARS - Classic Spectrum Analyzer
+    // Inspired by Winamp / Windows Media Player
+    // ═══════════════════════════════════════════════════════════════════
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PARAMETERS
+    // ═══════════════════════════════════════════════════════════════════
+
+    const P = {
+      // Knobs
+      barCount: 32,
+      speed: 1.0,
+      sensitivity: 1.5,
+      barOpacity: 100,
+      peakHold: 300,
+      peakGravity: 1.0,
+      reflection: 30,
+      gapSize: 2,
+      // Faders (overlay)
+      overlaySize: 20,
+      overlayOpacity: 80,
+      overlayIntensity: 50,
+      masterBrightness: 100,
+      // Style (controlled by pads)
+      style: 0  // 0=Classic, 1=Smooth, 2=LED, 3=Hybrid
+    };
+
+    const STYLES = [
+      'Classic Blocks',
+      'Smooth Gradient',
+      'LED Matrix',
+      'Hybrid Glow',
+      'Neon Outline',
+      'Retro CRT',
+      'Minimal',
+      'Inverted'
+    ];
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUDIO
+    // ═══════════════════════════════════════════════════════════════════
+
+    let audioContext, analyser, dataArray, source;
+    let audioElement;
+    let audioInitialized = false;
+    let isPlaying = false;
+    let micActive = false;
+
+    function initAudio() {
+      if (audioInitialized) return;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.85;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      audioInitialized = true;
+      document.getElementById('click-prompt').style.opacity = '0';
+    }
+
+    function getFrequencyData() {
+      if (!analyser) return new Array(P.barCount).fill(0);
+      analyser.getByteFrequencyData(dataArray);
+
+      const bars = [];
+      const binCount = dataArray.length;
+      const barsNeeded = P.barCount;
+
+      // Map frequency bins to bars (logarithmic distribution for better bass representation)
+      for (let i = 0; i < barsNeeded; i++) {
+        const startBin = Math.floor(Math.pow(i / barsNeeded, 1.5) * binCount);
+        const endBin = Math.floor(Math.pow((i + 1) / barsNeeded, 1.5) * binCount);
+
+        let sum = 0;
+        let count = 0;
+        for (let j = startBin; j < endBin && j < binCount; j++) {
+          sum += dataArray[j];
+          count++;
+        }
+
+        const avg = count > 0 ? sum / count : 0;
+        bars.push((avg / 255) * P.sensitivity);
+      }
+
+      return bars;
+    }
+
+    // Audio file loading
+    document.getElementById('audioFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      initAudio();
+
+      if (audioElement) {
+        audioElement.pause();
+        audioElement = null;
+      }
+
+      audioElement = new Audio(URL.createObjectURL(file));
+      source = audioContext.createMediaElementSource(audioElement);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      audioElement.play();
+      isPlaying = true;
+      document.getElementById('playPause').style.display = 'block';
+      document.getElementById('playPause').textContent = 'Pause';
+
+      if (hardware) hardware.setPlaying(true);
+      if (hardware) hardware.setAudioStatus(file.name.substring(0, 15), true);
+    });
+
+    // Microphone
+    document.getElementById('useMic').addEventListener('click', async () => {
+      initAudio();
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micSource = audioContext.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        document.getElementById('useMic').textContent = 'Mic Active';
+        micActive = true;
+        if (hardware) hardware.setAudioStatus('Microphone', true);
+      } catch (err) {
+        console.error('Mic error:', err);
+      }
+    });
+
+    // Play/Pause
+    document.getElementById('playPause').addEventListener('click', () => {
+      if (!audioElement) return;
+      if (isPlaying) {
+        audioElement.pause();
+        document.getElementById('playPause').textContent = 'Play';
+        isPlaying = false;
+      } else {
+        audioElement.play();
+        document.getElementById('playPause').textContent = 'Pause';
+        isPlaying = true;
+      }
+      if (hardware) hardware.setPlaying(isPlaying);
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // BARS STATE
+    // ═══════════════════════════════════════════════════════════════════
+
+    let barHeights = [];
+    let peakHeights = [];
+    let peakVelocities = [];
+    let peakHoldTimers = [];
+
+    function initBars() {
+      barHeights = new Array(P.barCount).fill(0);
+      peakHeights = new Array(P.barCount).fill(0);
+      peakVelocities = new Array(P.barCount).fill(0);
+      peakHoldTimers = new Array(P.barCount).fill(0);
+    }
+
+    initBars();
+
+    // ═══════════════════════════════════════════════════════════════════
+    // COLORS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function getBarColor(heightPercent) {
+      // Green → Yellow → Red gradient
+      if (heightPercent < 0.5) {
+        // Green to Yellow
+        const t = heightPercent * 2;
+        const r = Math.floor(255 * t);
+        const g = 255;
+        const b = 0;
+        return `rgb(${r}, ${g}, ${b})`;
+      } else {
+        // Yellow to Red
+        const t = (heightPercent - 0.5) * 2;
+        const r = 255;
+        const g = Math.floor(255 * (1 - t));
+        const b = 0;
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+    }
+
+    function getBarColorWithAlpha(heightPercent, alpha) {
+      if (heightPercent < 0.5) {
+        const t = heightPercent * 2;
+        const r = Math.floor(255 * t);
+        const g = 255;
+        const b = 0;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      } else {
+        const t = (heightPercent - 0.5) * 2;
+        const r = 255;
+        const g = Math.floor(255 * (1 - t));
+        const b = 0;
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // RENDER STYLES
+    // ═══════════════════════════════════════════════════════════════════
+
+    function renderClassicBlocks(x, barWidth, barHeight, maxHeight, baseY) {
+      const blockHeight = 4;
+      const gap = P.gapSize;
+      const numBlocks = Math.floor(barHeight / (blockHeight + gap));
+      const alpha = P.barOpacity / 100;
+
+      for (let j = 0; j < numBlocks; j++) {
+        const blockY = baseY - (j + 1) * (blockHeight + gap);
+        const heightPercent = (j * (blockHeight + gap)) / maxHeight;
+        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
+        ctx.fillRect(x, blockY, barWidth - gap, blockHeight);
+      }
+    }
+
+    function renderSmoothGradient(x, barWidth, barHeight, maxHeight, baseY) {
+      const alpha = P.barOpacity / 100;
+      const gradient = ctx.createLinearGradient(x, baseY, x, baseY - barHeight);
+      gradient.addColorStop(0, `rgba(0, 255, 0, ${alpha})`);
+      gradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha})`);
+      gradient.addColorStop(1, `rgba(255, 0, 0, ${alpha})`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, baseY - barHeight, barWidth - P.gapSize, barHeight);
+    }
+
+    function renderLEDMatrix(x, barWidth, barHeight, maxHeight, baseY) {
+      const cellSize = 6;
+      const gap = 2;
+      const numCells = Math.floor(barHeight / (cellSize + gap));
+      const alpha = P.barOpacity / 100;
+
+      for (let j = 0; j < numCells; j++) {
+        const cellY = baseY - (j + 1) * (cellSize + gap);
+        const heightPercent = (j * (cellSize + gap)) / maxHeight;
+        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
+
+        // Draw LED-style rounded rect
+        const cellX = x + gap / 2;
+        const cellW = barWidth - P.gapSize - gap;
+        ctx.beginPath();
+        ctx.roundRect(cellX, cellY, cellW, cellSize, 2);
+        ctx.fill();
+      }
+    }
+
+    function renderHybridGlow(x, barWidth, barHeight, maxHeight, baseY) {
+      const alpha = P.barOpacity / 100;
+
+      // Glow effect
+      ctx.shadowColor = getBarColor(barHeight / maxHeight);
+      ctx.shadowBlur = 15;
+
+      // Blocks with glow
+      const blockHeight = 4;
+      const gap = P.gapSize;
+      const numBlocks = Math.floor(barHeight / (blockHeight + gap));
+
+      for (let j = 0; j < numBlocks; j++) {
+        const blockY = baseY - (j + 1) * (blockHeight + gap);
+        const heightPercent = (j * (blockHeight + gap)) / maxHeight;
+        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
+        ctx.fillRect(x, blockY, barWidth - gap, blockHeight);
+      }
+
+      ctx.shadowBlur = 0;
+    }
+
+    function renderNeonOutline(x, barWidth, barHeight, maxHeight, baseY) {
+      const alpha = P.barOpacity / 100;
+      const color = getBarColor(barHeight / maxHeight);
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+
+      ctx.strokeRect(x + 1, baseY - barHeight, barWidth - P.gapSize - 2, barHeight);
+
+      ctx.shadowBlur = 0;
+    }
+
+    function renderRetroCRT(x, barWidth, barHeight, maxHeight, baseY) {
+      const alpha = P.barOpacity / 100;
+      const scanlineGap = 3;
+
+      for (let j = 0; j < barHeight; j += scanlineGap) {
+        const heightPercent = j / maxHeight;
+        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha * 0.8);
+        ctx.fillRect(x, baseY - j - 2, barWidth - P.gapSize, 2);
+      }
+    }
+
+    function renderMinimal(x, barWidth, barHeight, maxHeight, baseY) {
+      const alpha = P.barOpacity / 100;
+      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+      ctx.fillRect(x, baseY - barHeight, barWidth - P.gapSize, barHeight);
+    }
+
+    function renderInverted(x, barWidth, barHeight, maxHeight, baseY) {
+      const alpha = P.barOpacity / 100;
+      // Draw from top down
+      const gradient = ctx.createLinearGradient(x, 0, x, barHeight);
+      gradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
+      gradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha})`);
+      gradient.addColorStop(1, `rgba(0, 255, 0, ${alpha})`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, 0, barWidth - P.gapSize, barHeight);
+    }
+
+    const renderFunctions = [
+      renderClassicBlocks,
+      renderSmoothGradient,
+      renderLEDMatrix,
+      renderHybridGlow,
+      renderNeonOutline,
+      renderRetroCRT,
+      renderMinimal,
+      renderInverted
+    ];
+
+    // ═══════════════════════════════════════════════════════════════════
+    // MAIN RENDER
+    // ═══════════════════════════════════════════════════════════════════
+
+    let lastTime = 0;
+
+    function render(time) {
+      const deltaTime = (time - lastTime) / 1000;
+      lastTime = time;
+
+      // Resize canvas
+      const container = document.getElementById('canvas-container');
+      if (canvas.width !== container.clientWidth || canvas.height !== container.clientHeight) {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+      }
+
+      // Clear with master brightness
+      const brightness = P.masterBrightness / 100;
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Get audio data
+      const frequencies = getFrequencyData();
+
+      // Ensure bar arrays match count
+      if (barHeights.length !== P.barCount) {
+        initBars();
+      }
+
+      // Calculate dimensions
+      const margin = 40;
+      const totalWidth = canvas.width - margin * 2;
+      const barWidth = totalWidth / P.barCount;
+      const maxHeight = canvas.height * 0.6;
+      const baseY = canvas.height * 0.65;
+
+      // Update bar heights with smoothing
+      for (let i = 0; i < P.barCount; i++) {
+        const target = (frequencies[i] || 0) * maxHeight;
+        const smoothing = 0.3 * P.speed;
+        barHeights[i] += (target - barHeights[i]) * smoothing;
+
+        // Update peaks with gravity physics
+        if (barHeights[i] > peakHeights[i]) {
+          peakHeights[i] = barHeights[i];
+          peakVelocities[i] = 0;
+          peakHoldTimers[i] = P.peakHold;
+        } else {
+          if (peakHoldTimers[i] > 0) {
+            peakHoldTimers[i] -= deltaTime * 1000;
+          } else {
+            // Gravity acceleration
+            peakVelocities[i] += P.peakGravity * 500 * deltaTime;
+            peakHeights[i] -= peakVelocities[i] * deltaTime;
+            if (peakHeights[i] < 0) peakHeights[i] = 0;
+          }
+        }
+      }
+
+      // Apply master brightness
+      ctx.globalAlpha = brightness;
+
+      // Render bars
+      const renderFunc = renderFunctions[P.style] || renderClassicBlocks;
+
+      for (let i = 0; i < P.barCount; i++) {
+        const x = margin + i * barWidth;
+        const barHeight = barHeights[i];
+
+        // Draw bar
+        renderFunc(x, barWidth, barHeight, maxHeight, baseY);
+
+        // Draw peak indicator
+        if (peakHeights[i] > 2) {
+          const peakY = baseY - peakHeights[i];
+          const heightPercent = peakHeights[i] / maxHeight;
+          ctx.fillStyle = getBarColorWithAlpha(heightPercent, P.barOpacity / 100);
+          ctx.fillRect(x, peakY - 3, barWidth - P.gapSize, 3);
+        }
+      }
+
+      // Render reflection
+      if (P.reflection > 0) {
+        const reflectionAlpha = (P.reflection / 100) * (P.barOpacity / 100) * 0.5;
+
+        for (let i = 0; i < P.barCount; i++) {
+          const x = margin + i * barWidth;
+          const barHeight = barHeights[i];
+
+          // Create gradient for reflection fade
+          const gradient = ctx.createLinearGradient(x, baseY, x, baseY + barHeight * 0.6);
+
+          if (P.style === 1 || P.style === 7) {
+            // Smooth gradient reflection
+            gradient.addColorStop(0, `rgba(0, 255, 0, ${reflectionAlpha})`);
+            gradient.addColorStop(0.5, `rgba(255, 255, 0, ${reflectionAlpha * 0.5})`);
+            gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
+          } else {
+            // Block-style reflection
+            const topColor = getBarColorWithAlpha(barHeight / maxHeight, reflectionAlpha);
+            gradient.addColorStop(0, topColor);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          }
+
+          ctx.fillStyle = gradient;
+          ctx.fillRect(x, baseY + 4, barWidth - P.gapSize, barHeight * 0.5);
+        }
+      }
+
+      ctx.globalAlpha = 1;
+
+      requestAnimationFrame(render);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // OVERLAY
+    // ═══════════════════════════════════════════════════════════════════
+
+    const overlayImg = document.getElementById('overlay-image');
+
+    document.getElementById('overlayFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      overlayImg.src = URL.createObjectURL(file);
+      overlayImg.style.display = 'block';
+      updateOverlay();
+    });
+
+    function updateOverlay() {
+      if (!overlayImg.src || overlayImg.style.display === 'none') return;
+      const size = P.overlaySize;
+      const opacity = P.overlayOpacity / 100;
+      overlayImg.style.width = size + '%';
+      overlayImg.style.opacity = opacity;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SIDEBAR CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    const sliderParams = [
+      'barCount', 'speed', 'sensitivity', 'barOpacity',
+      'peakHold', 'peakGravity', 'reflection', 'gapSize',
+      'overlaySize', 'overlayOpacity'
+    ];
+
+    sliderParams.forEach(param => {
+      const slider = document.getElementById(param);
+      if (!slider) return;
+
+      slider.addEventListener('input', () => {
+        P[param] = parseFloat(slider.value);
+        const display = document.getElementById(param + 'Val');
+        if (display) {
+          display.textContent = P[param];
+        }
+        if (param === 'overlaySize' || param === 'overlayOpacity') {
+          updateOverlay();
+        }
+        if (param === 'barCount') {
+          initBars();
+        }
+        if (hardware) hardware.sync();
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════════
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 's' || e.key === 'S') {
+        document.getElementById('app').classList.toggle('sidebar-hidden');
+      } else if (e.key === 'h' || e.key === 'H') {
+        if (hardware) hardware.toggle();
+      } else if (e.key === 'Escape') {
+        exitFullscreen();
+      } else if (e.key >= '1' && e.key <= '8') {
+        // Number keys switch styles
+        const styleIndex = parseInt(e.key) - 1;
+        setStyle(styleIndex);
+      }
+    });
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.body.classList.add('projection-mode');
+        if (hardware) hardware.popOut();
+        showFullscreenIndicator();
+      } else {
+        exitFullscreen();
+      }
+    }
+
+    function exitFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      document.body.classList.remove('projection-mode');
+    }
+
+    function showFullscreenIndicator() {
+      const indicator = document.getElementById('fullscreen-indicator');
+      indicator.classList.add('show');
+      setTimeout(() => indicator.classList.remove('show'), 2000);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // STYLE SWITCHING
+    // ═══════════════════════════════════════════════════════════════════
+
+    function setStyle(index) {
+      if (index >= 0 && index < STYLES.length) {
+        P.style = index;
+        document.getElementById('styleLabel').textContent = STYLES[index];
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HARDWARE CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    let hardware;
+
+    function initHardware() {
+      if (typeof HardwareControls === 'undefined') {
+        console.error('HardwareControls not loaded!');
+        return;
+      }
+
+      hardware = new HardwareControls({
+        name: 'Llama Bars',
+        accentColor: '#ffcc00',
+        params: P,
+        knobs: [
+          { id: 'barCount', label: 'Count', min: 16, max: 128, step: 4 },
+          { id: 'speed', label: 'Speed', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+          { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+          { id: 'barOpacity', label: 'Alpha', min: 0, max: 100, step: 5, suffix: '%' },
+          { id: 'peakHold', label: 'Hold', min: 100, max: 1000, step: 50, suffix: 'ms' },
+          { id: 'peakGravity', label: 'Grav', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+          { id: 'reflection', label: 'Refl', min: 0, max: 100, step: 5, suffix: '%' },
+          { id: 'gapSize', label: 'Gap', min: 0, max: 8, step: 1, suffix: 'px' }
+        ],
+        faders: [
+          { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
+          { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
+        ],
+        presets: STYLES.map((name, i) => ({ name })),  // Style presets
+        onParamChange: (id, value) => {
+          // Sync sidebar
+          const slider = document.getElementById(id);
+          if (slider) {
+            slider.value = value;
+            const display = document.getElementById(id + 'Val');
+            if (display) display.textContent = value;
+          }
+          if (id === 'overlaySize' || id === 'overlayOpacity') {
+            updateOverlay();
+          }
+          if (id === 'barCount') {
+            initBars();
+          }
+        },
+        onPresetLoad: (index) => {
+          // Pads switch styles instead of loading parameter presets
+          setStyle(index);
+        },
+        onAudioFile: (file) => {
+          // Trigger the file input change handler
+          const input = document.getElementById('audioFile');
+          const dataTransfer = new DataTransfer();
+          dataTransfer.items.add(file);
+          input.files = dataTransfer.files;
+          input.dispatchEvent(new Event('change'));
+        },
+        onMicToggle: (active) => {
+          if (active && !micActive) {
+            document.getElementById('useMic').click();
+          }
+        },
+        onPlayPause: (playing) => {
+          if (audioElement) {
+            if (playing && !isPlaying) {
+              audioElement.play();
+              isPlaying = true;
+            } else if (!playing && isPlaying) {
+              audioElement.pause();
+              isPlaying = false;
+            }
+            document.getElementById('playPause').textContent = isPlaying ? 'Pause' : 'Play';
+          }
+        },
+        onSystemAudio: (stream) => {
+          initAudio();
+          const systemSource = audioContext.createMediaStreamSource(stream);
+          systemSource.connect(analyser);
+          // Note: System audio doesn't go to speakers (no destination connect)
+        }
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════════════
+
+    // Click to init audio
+    document.getElementById('canvas-container').addEventListener('click', () => {
+      initAudio();
+    });
+
+    // Start
+    initHardware();
+    requestAnimationFrame(render);
+
+  </script>
+</body>
+</html>

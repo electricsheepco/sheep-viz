@@ -29,11 +29,20 @@ It's named after [Electric Sheep](https://electricsheep.org/)—the distributed 
 
 Drop in an audio file. The visuals react to bass, mids, and treble in real-time.
 
-**Vertical Pulse** — Light columns that breathe with frequency, distorted by organic blobs drifting across the screen. That neon-rain-through-glass aesthetic.
+**9 Visualizers included:**
 
-**Radial Burst** — Particles explode from the center on every beat. Trails decay into nothing. A waveform ring pulses around the chaos.
+- **Llama Bars** — Classic spectrum analyzer (Winamp tribute). 8 style variants. *NEW*
+- **Starfield** — Classic space tunnel with warp trails. Replace stars with custom images.
+- **Warp Speed** — Star Wars hyperspace effect with directional control (WASD/mouse).
+- **Vertical Pulse** — Light columns breathing with frequency, distorted by floating blobs.
+- **Matrix Rain** — Falling digital characters with audio-reactive speed and density.
+- **Vector Grid** — 80s wireframe landscape reacting to bass waves.
+- **Radial Burst** — Particles explode from center on every beat.
+- **Fluid Flow** — Particles following noise flow fields with audio influence.
 
-More visualizers coming. Or fork it and make your own.
+**Coming soon:** Spilled Milk (MilkDrop), Geist (tunnels), Gogh Mode (Van Gogh), Gilt Trip (Klimt), Cubic Zirconia (Picasso)
+
+Fork it and make your own.
 
 ---
 
@@ -60,32 +69,42 @@ cd tools && npm install
 ## Features
 
 - **Browser-based** — No installation, runs anywhere
-- **MIDI support** — Map your controller, perform live
-- **Fullscreen projection** — Hide the UI, output to a projector
+- **MIDI support** — 8 knobs, 4 faders, 8 pads mapped to Arturia MiniLab 3
+- **System audio capture** — React to YouTube, Spotify, any app (not just files)
+- **Fullscreen popout** — Controls pop out to separate window for dual-screen live setups
 - **Overlay system** — Add your logo, album art, whatever
+- **Band watermark** — Configurable logo in corner for branding
 - **Color extraction** — Pull palette from your artwork automatically
 - **Preset system** — Save and share your configurations
 - **Frame-perfect export** — Render videos that sync exactly to your audio
 - **Resolution presets** — YouTube, TikTok, Instagram, all covered
+- **Open source** — Clean, modular code. Easy to hack.
 
 ---
 
 ## For Live Performance
 
-1. Open `vertical-pulse-pro.html`
+1. Open any visualizer (recommended: `starfield.html` or `vertical-pulse.html`)
 2. Connect your MIDI controller (auto-detected)
-3. Load your set or use line-in from your mixer
-4. Press `F` for fullscreen
-5. Press `H` to hide controls
-6. Output to projector via HDMI
+3. Select your device from the MIDI dropdown
+4. Press `F` for fullscreen (controls pop out to separate window)
+5. Output to projector via HDMI
 
-Default MIDI mapping (customize in code):
-| CC | Control |
-|----|---------|
-| 1-6 | Visual parameters |
-| Note 36 | Play/Pause |
-| Note 37 | Record |
-| Note 38 | Fullscreen |
+### MiniLab 3 MIDI Mapping (Recommended Controller)
+
+```
+   KNOBS (CC)                    FADERS (CC)          PADS (Ch.10)
+   ┌────┬────┬────┬────┐        ┌────┬────┬────┬────┐ ┌────┬────┬────┬────┐
+   │ 74 │ 71 │ 76 │ 77 │        │ 82 │ 83 │ 85 │ 17 │ │ 36 │ 37 │ 38 │ 39 │
+   │ P1 │ P2 │ P3 │ P4 │        │ P9 │P10 │P11 │MST │ │ 1  │ 2  │ 3  │ 4  │
+   ├────┼────┼────┼────┤        └────┴────┴────┴────┘ ├────┼────┼────┼────┤
+   │ 93 │ 18 │ 19 │ 16 │          Overlay controls    │ 40 │ 41 │ 42 │ 43 │
+   │ P5 │ P6 │ P7 │ P8 │                              │ 5  │ 6  │ 7  │ 8  │
+   └────┴────┴────┴────┘                              └────┴────┴────┴────┘
+     Parameters 1-8                                     Presets 1-8
+```
+
+See [docs/midi-setup.md](docs/midi-setup.md) for full mapping details and other controllers.
 
 ---
 
@@ -131,11 +150,11 @@ The architecture is simple:
 Look at `vertical-pulse-pro.html`. It's one self-contained file. Copy it, change the `draw()` function, add your own parameters. That's it.
 
 Ideas I haven't built yet:
-- Flow field particles
-- 3D waveform terrain
 - Geometric kaleidoscope
 - Liquid/fluid simulation
-- Spectrum bars (classic, but make it fresh)
+- Shader-based morphing (MilkDrop style)
+- Tunnel effects (Geiss style)
+- Art-inspired: Van Gogh swirls, Klimt gold, Picasso cubism
 
 If you build something cool, open a PR.
 
@@ -145,17 +164,29 @@ If you build something cool, open a PR.
 
 ```
 sheep/
+├── lib/
+│   ├── hardware-controls.js      # Shared skeuomorphic controls
+│   └── hardware-controls.css     # Dark metal aesthetic styling
 ├── visualizers/
-│   ├── vertical-pulse-pro.html   # Main visualizer (MIDI + fullscreen)
-│   ├── vertical-pulse.html       # Full-featured with overlays
-│   ├── radial-burst.html         # Particle explosion visualizer
+│   ├── llama-bars.html           # Spectrum analyzer (Winamp tribute)
+│   ├── starfield.html            # Classic star tunnel with trails
+│   ├── warp-speed.html           # Star Wars hyperspace effect
+│   ├── vertical-pulse.html       # Full-featured light columns
+│   ├── vertical-pulse-pro.html   # Light columns (simplified)
+│   ├── matrix-rain.html          # Matrix digital rain
+│   ├── vector-grid.html          # 3D wireframe grid
+│   ├── radial-burst.html         # Particle explosion
+│   ├── fluid-flow.html           # Fluid dynamics particles
 │   └── presets/                  # Saved configurations
 ├── tools/
 │   ├── render-video.sh           # Full render pipeline
 │   ├── analyze-audio.js          # FFT extraction
 │   └── render-frames.js          # Headless frame renderer
 ├── assets/                       # Your images, logos
-└── docs/                         # Notes, documentation
+└── docs/                         # Documentation
+    ├── midi-setup.md             # MIDI controller guide
+    ├── creating-visualizers.md   # Build your own
+    └── video-rendering.md        # Export videos
 ```
 
 ---
