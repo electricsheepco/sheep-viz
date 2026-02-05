@@ -42,11 +42,29 @@
 
     .visualizers {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      grid-template-columns: repeat(4, 1fr);
       gap: 20px;
-      max-width: 1000px;
+      max-width: 1400px;
       width: 100%;
       margin-bottom: 48px;
+    }
+
+    @media (max-width: 1200px) {
+      .visualizers {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .visualizers {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 600px) {
+      .visualizers {
+        grid-template-columns: 1fr;
+      }
     }
 
     .card {
@@ -291,6 +309,28 @@
         <span class="tag">Picasso Tribute</span>
       </div>
     </a>
+
+    <a href="visualizers/oscilloscope.html" class="card">
+      <div class="card-preview">
+        <canvas id="preview-oscilloscope"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Oscilloscope</h2>
+        <p>Classic waveform display with Lissajous curves, phosphor glow, and multi-trace modes.</p>
+        <span class="tag">Classic</span>
+      </div>
+    </a>
+
+    <a href="visualizers/pollock-splatter.html" class="card">
+      <div class="card-preview">
+        <canvas id="preview-pollock"></canvas>
+      </div>
+      <div class="card-content">
+        <h2>Pollock Splatter</h2>
+        <p>Action painting with drips, flings, and splatters. Chaotic energy inspired by Jackson Pollock.</p>
+        <span class="tag">Art Tribute</span>
+      </div>
+    </a>
   </div>
 
   <div class="links">
@@ -373,6 +413,12 @@
             break;
           case 'cubic':
             this.drawCubic();
+            break;
+          case 'oscilloscope':
+            this.drawOscilloscope();
+            break;
+          case 'pollock':
+            this.drawPollock();
             break;
         }
 
@@ -1023,6 +1069,144 @@
         }
       }
 
+      drawOscilloscope() {
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
+        const cx = w / 2;
+        const cy = h / 2;
+
+        // Draw grid
+        ctx.strokeStyle = 'rgba(0, 255, 136, 0.15)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 8; i++) {
+          const x = (w / 8) * i;
+          const y = (h / 8) * i;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, h);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(w, y);
+          ctx.stroke();
+        }
+
+        // Draw waveform with glow
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 2;
+        ctx.shadowColor = '#00ff88';
+        ctx.shadowBlur = 15;
+
+        ctx.beginPath();
+        for (let i = 0; i < w; i++) {
+          const x = i;
+          const freq1 = Math.sin((i / w) * Math.PI * 4 + this.time * 2);
+          const freq2 = Math.sin((i / w) * Math.PI * 8 + this.time * 3) * 0.3;
+          const y = cy + (freq1 + freq2) * h * 0.2;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Draw Lissajous curve
+        ctx.strokeStyle = '#00ffff';
+        ctx.beginPath();
+        const scale = Math.min(w, h) * 0.25;
+        for (let i = 0; i < 200; i++) {
+          const t = (i / 200) * Math.PI * 2;
+          const x = cx + Math.sin(t * 3 + this.time) * scale;
+          const y = cy + Math.sin(t * 4 + this.time * 1.1) * scale * 0.8;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+      }
+
+      drawPollock() {
+        const ctx = this.ctx;
+        const w = this.width;
+        const h = this.height;
+
+        // Color palette
+        const colors = ['#1a1a1a', '#f5f5dc', '#c4a747', '#8b4513', '#2f4f4f', '#ff6b35'];
+
+        // Initialize splats
+        if (!this.pollockSplats) {
+          this.pollockSplats = [];
+          this.pollockDrips = [];
+        }
+
+        // Add new splats periodically
+        if (Math.random() < 0.15) {
+          this.pollockSplats.push({
+            x: Math.random() * w,
+            y: Math.random() * h,
+            size: 10 + Math.random() * 30,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            age: 0
+          });
+
+          // Maybe add a drip
+          if (Math.random() < 0.3) {
+            const x = Math.random() * w;
+            this.pollockDrips.push({
+              x: x,
+              y: Math.random() * h * 0.3,
+              length: 50 + Math.random() * 100,
+              progress: 0,
+              color: colors[Math.floor(Math.random() * colors.length)],
+              thickness: 2 + Math.random() * 4
+            });
+          }
+        }
+
+        // Draw splats
+        for (let i = this.pollockSplats.length - 1; i >= 0; i--) {
+          const s = this.pollockSplats[i];
+          const alpha = Math.max(0, 1 - s.age / 60);
+          ctx.fillStyle = s.color;
+          ctx.globalAlpha = alpha;
+
+          ctx.beginPath();
+          const points = 6 + Math.floor(Math.random() * 4);
+          for (let j = 0; j <= points; j++) {
+            const angle = (j / points) * Math.PI * 2;
+            const r = s.size * (0.5 + Math.random() * 0.5);
+            const px = s.x + Math.cos(angle) * r;
+            const py = s.y + Math.sin(angle) * r;
+            if (j === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          }
+          ctx.closePath();
+          ctx.fill();
+
+          s.age++;
+          if (s.age > 60) this.pollockSplats.splice(i, 1);
+        }
+
+        // Draw drips
+        ctx.globalAlpha = 1;
+        for (let i = this.pollockDrips.length - 1; i >= 0; i--) {
+          const d = this.pollockDrips[i];
+          ctx.strokeStyle = d.color;
+          ctx.lineWidth = d.thickness;
+          ctx.lineCap = 'round';
+
+          const endY = d.y + d.length * d.progress;
+          ctx.beginPath();
+          ctx.moveTo(d.x, d.y);
+          ctx.lineTo(d.x + Math.sin(d.progress * 5) * 10, endY);
+          ctx.stroke();
+
+          d.progress += 0.02;
+          if (d.progress > 1.5) this.pollockDrips.splice(i, 1);
+        }
+
+        ctx.globalAlpha = 1;
+      }
+
       drawWarp() {
         const ctx = this.ctx;
         const cx = this.width / 2;
@@ -1096,7 +1280,9 @@
       new MiniVisualizer('preview-geist', 'geist'),
       new MiniVisualizer('preview-gogh', 'gogh'),
       new MiniVisualizer('preview-gilt', 'gilt'),
-      new MiniVisualizer('preview-cubic', 'cubic')
+      new MiniVisualizer('preview-cubic', 'cubic'),
+      new MiniVisualizer('preview-oscilloscope', 'oscilloscope'),
+      new MiniVisualizer('preview-pollock', 'pollock')
     ];
 
     previews.forEach(p => p.draw());
