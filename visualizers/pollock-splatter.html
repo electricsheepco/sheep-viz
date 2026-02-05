@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pollock Splatter - sheep-viz</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1a1a1a;
+      --text-primary: #e0e0e0;
+      --text-secondary: #888888;
+      --accent: #ff6b35;
+      --accent-dim: #cc5528;
+      --border: #2a2a2a;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #app {
+      display: flex;
+      height: 100vh;
+    }
+
+    #canvas-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      order: -1;
+    }
+
+    .sidebar-hidden #sidebar {
+      display: none;
+    }
+
+    .projection-mode {
+      cursor: none;
+    }
+
+    .projection-mode #sidebar {
+      display: none;
+    }
+
+    .projection-mode #canvas-container {
+      background: #000;
+    }
+
+    .projection-mode canvas {
+      max-width: none !important;
+      max-height: none !important;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+
+    .projection-mode #click-prompt {
+      display: none;
+    }
+
+    #fullscreen-indicator {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    #fullscreen-indicator.show {
+      opacity: 1;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+    }
+
+    .control-group input[type="range"] {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--bg-tertiary);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .preset-btn {
+      padding: 8px 4px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 9px;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .preset-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    .keyboard-hints {
+      font-size: 10px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .keyboard-hints kbd {
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    #click-prompt {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--text-secondary);
+      font-size: 14px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <h1>Pollock Splatter</h1>
+      <div class="subtitle">Action Painting</div>
+
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="preset-grid">
+          <button class="preset-btn active" data-preset="0">Number 1</button>
+          <button class="preset-btn" data-preset="1">Autumn Rhythm</button>
+          <button class="preset-btn" data-preset="2">Convergence</button>
+          <button class="preset-btn" data-preset="3">Blue Poles</button>
+          <button class="preset-btn" data-preset="4">Lavender Mist</button>
+          <button class="preset-btn" data-preset="5">Full Fathom</button>
+          <button class="preset-btn" data-preset="6">Black & White</button>
+          <button class="preset-btn" data-preset="7">Mural</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Parameters</div>
+
+        <div class="control-group">
+          <label>Splat Rate <span id="splatRateVal">50</span></label>
+          <input type="range" id="splatRate" min="10" max="100" step="1" value="50">
+        </div>
+
+        <div class="control-group">
+          <label>Speed <span id="speedVal">60</span>%</label>
+          <input type="range" id="speed" min="10" max="100" step="1" value="60">
+        </div>
+
+        <div class="control-group">
+          <label>Sensitivity <span id="sensitivityVal">80</span>%</label>
+          <input type="range" id="sensitivity" min="10" max="150" step="1" value="80">
+        </div>
+
+        <div class="control-group">
+          <label>Splat Size <span id="splatSizeVal">40</span></label>
+          <input type="range" id="splatSize" min="10" max="100" step="1" value="40">
+        </div>
+
+        <div class="control-group">
+          <label>Drip Length <span id="dripLengthVal">60</span></label>
+          <input type="range" id="dripLength" min="10" max="150" step="1" value="60">
+        </div>
+
+        <div class="control-group">
+          <label>Chaos <span id="chaosVal">50</span>%</label>
+          <input type="range" id="chaos" min="0" max="100" step="1" value="50">
+        </div>
+
+        <div class="control-group">
+          <label>Density <span id="densityVal">60</span>%</label>
+          <input type="range" id="density" min="10" max="100" step="1" value="60">
+        </div>
+
+        <div class="control-group">
+          <label>Fade <span id="fadeVal">98</span>%</label>
+          <input type="range" id="fade" min="90" max="100" step="0.5" value="98">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Overlay</div>
+        <input type="file" id="overlayFile" accept="image/*" style="display:none">
+        <button class="btn" onclick="document.getElementById('overlayFile').click()">Load Overlay Image</button>
+
+        <div class="control-group">
+          <label>Overlay Size <span id="overlaySizeVal">20</span>%</label>
+          <input type="range" id="overlaySize" min="5" max="100" step="1" value="20">
+        </div>
+
+        <div class="control-group">
+          <label>Overlay Opacity <span id="overlayOpacityVal">80</span>%</label>
+          <input type="range" id="overlayOpacity" min="0" max="100" step="1" value="80">
+        </div>
+
+        <div class="control-group">
+          <label>Overlay Effect</label>
+          <select id="overlayEffect" style="width:100%; padding:6px; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:4px; font-family:inherit; font-size:11px;">
+            <option value="none">None (Static)</option>
+            <option value="pulse">Pulse</option>
+            <option value="split">Split</option>
+            <option value="glitch">Glitch</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="keyboard-hints">
+        <kbd>H</kbd> Toggle hardware bar<br>
+        <kbd>F</kbd> Fullscreen + popout<br>
+        <kbd>S</kbd> Toggle sidebar<br>
+        <kbd>1-8</kbd> Switch preset<br>
+        <kbd>Esc</kbd> Exit fullscreen
+      </div>
+    </div>
+
+    <div id="canvas-container">
+      <canvas id="canvas"></canvas>
+      <div id="click-prompt">Click anywhere to start audio</div>
+    </div>
+  </div>
+
+  <div id="fullscreen-indicator">Press ESC to exit fullscreen</div>
+
+  <script src="../lib/hardware-controls.js"></script>
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // PARAMETERS
+    // ═══════════════════════════════════════════════════════════════════
+
+    const P = {
+      preset: 0,
+      // Knobs
+      splatRate: 50,
+      speed: 60,
+      sensitivity: 80,
+      splatSize: 40,
+      dripLength: 60,
+      chaos: 50,
+      density: 60,
+      fade: 98,
+      // Faders
+      overlaySize: 20,
+      overlayOpacity: 80,
+      overlayEffect: 'none',
+      fxIntensity: 50,
+      masterBrightness: 100,
+    };
+
+    // Color palettes inspired by Pollock paintings
+    const palettes = {
+      number1: ['#1a1a1a', '#f5f5dc', '#c4a747', '#8b4513', '#2f4f4f'],
+      autumnRhythm: ['#8b4513', '#d2691e', '#f4a460', '#1a1a1a', '#f5f5dc'],
+      convergence: ['#ff0000', '#ffff00', '#0000ff', '#1a1a1a', '#ffffff'],
+      bluePoles: ['#00008b', '#4169e1', '#87ceeb', '#c0c0c0', '#ffd700'],
+      lavenderMist: ['#e6e6fa', '#d8bfd8', '#dda0dd', '#c0c0c0', '#f5f5f5'],
+      fullFathom: ['#006400', '#228b22', '#32cd32', '#1a1a1a', '#2f4f4f'],
+      blackWhite: ['#1a1a1a', '#333333', '#666666', '#999999', '#ffffff'],
+      mural: ['#ff6b35', '#f7c59f', '#2a2a2a', '#e8e8e8', '#457b9d'],
+    };
+
+    const presets = [
+      { name: 'Number 1', palette: 'number1', splatRate: 50, speed: 60, sensitivity: 80, splatSize: 40, dripLength: 60, chaos: 50, density: 60, fade: 98 },
+      { name: 'Autumn Rhythm', palette: 'autumnRhythm', splatRate: 70, speed: 50, sensitivity: 90, splatSize: 50, dripLength: 80, chaos: 40, density: 50, fade: 97 },
+      { name: 'Convergence', palette: 'convergence', splatRate: 80, speed: 70, sensitivity: 100, splatSize: 35, dripLength: 50, chaos: 70, density: 70, fade: 96 },
+      { name: 'Blue Poles', palette: 'bluePoles', splatRate: 40, speed: 40, sensitivity: 70, splatSize: 60, dripLength: 100, chaos: 30, density: 40, fade: 99 },
+      { name: 'Lavender Mist', palette: 'lavenderMist', splatRate: 60, speed: 55, sensitivity: 60, splatSize: 30, dripLength: 40, chaos: 20, density: 80, fade: 98.5 },
+      { name: 'Full Fathom', palette: 'fullFathom', splatRate: 55, speed: 65, sensitivity: 85, splatSize: 45, dripLength: 70, chaos: 55, density: 55, fade: 97.5 },
+      { name: 'Black & White', palette: 'blackWhite', splatRate: 45, speed: 50, sensitivity: 75, splatSize: 55, dripLength: 90, chaos: 35, density: 45, fade: 98 },
+      { name: 'Mural', palette: 'mural', splatRate: 65, speed: 75, sensitivity: 95, splatSize: 38, dripLength: 55, chaos: 60, density: 65, fade: 97 },
+    ];
+
+    let currentPalette = palettes.number1;
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUDIO
+    // ═══════════════════════════════════════════════════════════════════
+
+    let audioContext, analyser, dataArray, source;
+    let audioElement;
+    let audioInitialized = false;
+
+    function initAudio() {
+      if (audioInitialized) return;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      audioInitialized = true;
+      document.getElementById('click-prompt').style.opacity = '0';
+    }
+
+    function getAudioData() {
+      if (!analyser) return { bass: 0, mid: 0, high: 0, average: 0 };
+      analyser.getByteFrequencyData(dataArray);
+
+      const len = dataArray.length;
+      let bass = 0, mid = 0, high = 0;
+
+      for (let i = 0; i < len * 0.15; i++) bass += dataArray[i];
+      for (let i = Math.floor(len * 0.15); i < len * 0.5; i++) mid += dataArray[i];
+      for (let i = Math.floor(len * 0.5); i < len; i++) high += dataArray[i];
+
+      const bassCount = Math.floor(len * 0.15);
+      const midCount = Math.floor(len * 0.35);
+      const highCount = len - Math.floor(len * 0.5);
+
+      const sens = P.sensitivity / 100;
+      bass = (bass / bassCount / 255) * sens;
+      mid = (mid / midCount / 255) * sens;
+      high = (high / highCount / 255) * sens;
+
+      return {
+        bass: Math.min(bass, 1.5),
+        mid: Math.min(mid, 1.5),
+        high: Math.min(high, 1.5),
+        average: (bass + mid + high) / 3
+      };
+    }
+
+    function loadAudioFile(file) {
+      initAudio();
+      if (audioElement) {
+        audioElement.pause();
+        audioElement = null;
+      }
+
+      audioElement = new Audio(URL.createObjectURL(file));
+      source = audioContext.createMediaElementSource(audioElement);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      audioElement.play();
+    }
+
+    let micActive = false;
+    async function toggleMic() {
+      initAudio();
+      if (micActive) {
+        location.reload();
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micSource = audioContext.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        micActive = true;
+      } catch (err) {
+        console.error('Mic access denied:', err);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CANVAS & RENDERING
+    // ═══════════════════════════════════════════════════════════════════
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let time = 0;
+    let splats = [];
+    let drips = [];
+
+    class Splat {
+      constructor(x, y, size, color, energy) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.color = color;
+        this.energy = energy;
+        this.age = 0;
+        this.maxAge = 30 + Math.random() * 30;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.points = this.generateSplatShape();
+      }
+
+      generateSplatShape() {
+        const points = [];
+        const numPoints = 8 + Math.floor(Math.random() * 8);
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (i / numPoints) * Math.PI * 2;
+          const variance = 0.5 + Math.random() * 0.5;
+          const r = this.size * variance;
+          points.push({
+            x: Math.cos(angle) * r,
+            y: Math.sin(angle) * r
+          });
+        }
+        return points;
+      }
+
+      draw(ctx) {
+        const alpha = Math.max(0, 1 - this.age / this.maxAge);
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = this.color;
+
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        for (let i = 1; i < this.points.length; i++) {
+          const p0 = this.points[i - 1];
+          const p1 = this.points[i];
+          const mx = (p0.x + p1.x) / 2;
+          const my = (p0.y + p1.y) / 2;
+          ctx.quadraticCurveTo(p0.x, p0.y, mx, my);
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.restore();
+        this.age++;
+        return this.age < this.maxAge;
+      }
+    }
+
+    class Drip {
+      constructor(x, y, color, length, thickness, energy) {
+        this.x = x;
+        this.y = y;
+        this.startY = y;
+        this.color = color;
+        this.length = length;
+        this.thickness = thickness;
+        this.energy = energy;
+        this.speed = 2 + Math.random() * 4;
+        this.wobble = (Math.random() - 0.5) * 2;
+        this.progress = 0;
+        this.points = [{ x, y }];
+      }
+
+      update() {
+        if (this.progress < 1) {
+          this.progress += 0.02 * (P.speed / 50);
+          const newY = this.startY + this.length * this.progress;
+          const newX = this.x + Math.sin(this.progress * 10) * this.wobble * (P.chaos / 50);
+          this.points.push({ x: newX, y: newY });
+        }
+        return this.progress < 1.5;
+      }
+
+      draw(ctx) {
+        if (this.points.length < 2) return;
+
+        const alpha = Math.max(0, 1 - (this.progress - 1) * 2);
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = this.thickness;
+        ctx.lineCap = 'round';
+        ctx.globalAlpha = alpha;
+
+        ctx.beginPath();
+        ctx.moveTo(this.points[0].x, this.points[0].y);
+        for (let i = 1; i < this.points.length; i++) {
+          ctx.lineTo(this.points[i].x, this.points[i].y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    function spawnSplat(audio, w, h) {
+      const x = Math.random() * w;
+      const y = Math.random() * h;
+      const size = (P.splatSize * 0.5 + P.splatSize * audio.average) * (0.5 + Math.random());
+      const color = currentPalette[Math.floor(Math.random() * currentPalette.length)];
+
+      splats.push(new Splat(x, y, size, color, audio.average));
+
+      // Maybe spawn a drip
+      if (Math.random() < 0.3 + audio.bass * 0.3) {
+        const dripLength = P.dripLength * (0.5 + audio.bass);
+        const thickness = 1 + Math.random() * 3;
+        drips.push(new Drip(x, y + size / 2, color, dripLength, thickness, audio.bass));
+      }
+    }
+
+    function spawnDripLine(audio, w, h) {
+      const startX = Math.random() * w;
+      const startY = Math.random() * h * 0.3;
+      const endX = startX + (Math.random() - 0.5) * w * 0.5;
+      const length = h * 0.3 + h * 0.4 * audio.mid;
+      const color = currentPalette[Math.floor(Math.random() * currentPalette.length)];
+      const thickness = 2 + audio.bass * 5;
+
+      // Create flowing drip
+      drips.push(new Drip(startX, startY, color, length, thickness, audio.mid));
+    }
+
+    function spawnFling(audio, w, h) {
+      // Fling pattern - multiple small splats in an arc
+      const cx = Math.random() * w;
+      const cy = Math.random() * h;
+      const angle = Math.random() * Math.PI * 2;
+      const count = 5 + Math.floor(audio.high * 10);
+      const color = currentPalette[Math.floor(Math.random() * currentPalette.length)];
+
+      for (let i = 0; i < count; i++) {
+        const dist = 20 + i * 15 * (P.chaos / 50);
+        const spread = (Math.random() - 0.5) * 0.5;
+        const x = cx + Math.cos(angle + spread) * dist;
+        const y = cy + Math.sin(angle + spread) * dist;
+        const size = P.splatSize * 0.3 * (1 - i / count);
+
+        splats.push(new Splat(x, y, size, color, audio.high));
+      }
+    }
+
+    function render() {
+      const container = document.getElementById('canvas-container');
+      if (canvas.width !== container.clientWidth || canvas.height !== container.clientHeight) {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+      }
+
+      const w = canvas.width;
+      const h = canvas.height;
+
+      const audio = getAudioData();
+
+      // Fade effect
+      const fadeAlpha = 1 - (P.fade / 100);
+      ctx.fillStyle = `rgba(20, 18, 15, ${fadeAlpha})`;
+      ctx.fillRect(0, 0, w, h);
+
+      time += 0.016 * (P.speed / 50);
+
+      // Spawn new elements based on audio
+      const spawnChance = (P.splatRate / 100) * (P.density / 100) * (0.5 + audio.average);
+
+      if (Math.random() < spawnChance * 0.5) {
+        spawnSplat(audio, w, h);
+      }
+
+      if (Math.random() < spawnChance * 0.2 && audio.bass > 0.3) {
+        spawnDripLine(audio, w, h);
+      }
+
+      if (Math.random() < spawnChance * 0.15 && audio.high > 0.4) {
+        spawnFling(audio, w, h);
+      }
+
+      // Apply master brightness
+      ctx.globalAlpha = P.masterBrightness / 100;
+
+      // Update and draw splats
+      splats = splats.filter(splat => splat.draw(ctx));
+
+      // Update and draw drips
+      drips = drips.filter(drip => {
+        drip.update();
+        drip.draw(ctx);
+        return drip.progress < 1.5;
+      });
+
+      ctx.globalAlpha = 1;
+
+      // Draw overlay
+      drawOverlay(ctx, w, h, audio);
+
+      requestAnimationFrame(render);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // OVERLAY
+    // ═══════════════════════════════════════════════════════════════════
+
+    let overlayImage = null;
+    let overlayLoaded = false;
+
+    document.getElementById('overlayFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      overlayImage = new Image();
+      overlayImage.onload = () => {
+        overlayLoaded = true;
+      };
+      overlayImage.src = URL.createObjectURL(file);
+    });
+
+    // Offscreen canvas for overlay effects
+    let overlayCanvas = null;
+    let overlayCtx = null;
+
+    function drawOverlay(ctx, w, h, audio) {
+      if (!overlayLoaded || !overlayImage) return;
+
+      const size = P.overlaySize / 100;
+      const opacity = P.overlayOpacity / 100;
+      const effect = P.overlayEffect;
+
+      const imgAspect = overlayImage.width / overlayImage.height;
+      const canvasAspect = w / h;
+
+      let drawW, drawH;
+      if (imgAspect > canvasAspect) {
+        drawW = w * size;
+        drawH = drawW / imgAspect;
+      } else {
+        drawH = h * size;
+        drawW = drawH * imgAspect;
+      }
+
+      const baseX = (w - drawW) / 2;
+      const baseY = (h - drawH) / 2;
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.globalCompositeOperation = 'screen';
+
+      if (effect === 'none' || !audio) {
+        ctx.drawImage(overlayImage, baseX, baseY, drawW, drawH);
+      } else if (effect === 'pulse') {
+        const pulseScale = 1 + audio.bass * 0.3;
+        const pulseW = drawW * pulseScale;
+        const pulseH = drawH * pulseScale;
+        const pulseX = (w - pulseW) / 2;
+        const pulseY = (h - pulseH) / 2;
+
+        if (audio.bass > 0.5) {
+          ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+          ctx.shadowBlur = 30 * audio.bass;
+        }
+        ctx.drawImage(overlayImage, pulseX, pulseY, pulseW, pulseH);
+      } else if (effect === 'split') {
+        const slices = 20;
+        const sliceW = drawW / slices;
+
+        for (let i = 0; i < slices; i++) {
+          const freqIndex = Math.floor((i / slices) * 128);
+          let energy = 0;
+          if (analyser && dataArray) {
+            energy = (dataArray[freqIndex] || 0) / 255;
+          }
+
+          const yOffset = (energy - 0.5) * 50 * P.sensitivity / 100;
+          const xOffset = audio.bass * 10 * Math.sin(i * 0.5 + time);
+
+          const srcX = (i / slices) * overlayImage.width;
+          const srcW = overlayImage.width / slices;
+
+          ctx.drawImage(
+            overlayImage,
+            srcX, 0, srcW, overlayImage.height,
+            baseX + i * sliceW + xOffset, baseY + yOffset, sliceW, drawH
+          );
+        }
+      } else if (effect === 'glitch') {
+        if (!overlayCanvas || overlayCanvas.width !== w || overlayCanvas.height !== h) {
+          overlayCanvas = document.createElement('canvas');
+          overlayCanvas.width = w;
+          overlayCanvas.height = h;
+          overlayCtx = overlayCanvas.getContext('2d');
+        }
+
+        const rgbOffset = (audio.high + audio.mid) * 15;
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.globalCompositeOperation = 'source-over';
+        overlayCtx.drawImage(overlayImage, baseX - rgbOffset, baseY, drawW, drawH);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.33)';
+        ctx.globalAlpha = opacity * 0.5;
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.drawImage(overlayImage, baseX, baseY + rgbOffset * 0.5, drawW, drawH);
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.33)';
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.drawImage(overlayImage, baseX + rgbOffset, baseY, drawW, drawH);
+        ctx.fillStyle = 'rgba(0, 0, 255, 0.33)';
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = opacity;
+        if (audio.average > 0.6 && Math.random() > 0.7) {
+          const sliceY = Math.random() * drawH;
+          const sliceH = Math.random() * drawH * 0.2;
+          const displacement = (Math.random() - 0.5) * 50;
+
+          ctx.drawImage(
+            overlayImage,
+            0, (sliceY / drawH) * overlayImage.height,
+            overlayImage.width, (sliceH / drawH) * overlayImage.height,
+            baseX + displacement, baseY + sliceY, drawW, sliceH
+          );
+        }
+      }
+
+      ctx.restore();
+    }
+
+    document.getElementById('overlayEffect').addEventListener('change', (e) => {
+      P.overlayEffect = e.target.value;
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SIDEBAR CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    const sliderParams = [
+      'splatRate', 'speed', 'sensitivity', 'splatSize',
+      'dripLength', 'chaos', 'density', 'fade',
+      'overlaySize', 'overlayOpacity'
+    ];
+
+    sliderParams.forEach(param => {
+      const slider = document.getElementById(param);
+      if (!slider) return;
+
+      slider.addEventListener('input', () => {
+        P[param] = parseFloat(slider.value);
+        const display = document.getElementById(param + 'Val');
+        if (display) {
+          display.textContent = P[param];
+        }
+        if (hardware) hardware.sync();
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════════
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 's' || e.key === 'S') {
+        document.getElementById('app').classList.toggle('sidebar-hidden');
+      } else if (e.key === 'h' || e.key === 'H') {
+        if (hardware) hardware.toggle();
+      } else if (e.key === 'Escape') {
+        exitFullscreen();
+      } else if (e.key >= '1' && e.key <= '8') {
+        loadPreset(parseInt(e.key) - 1);
+      }
+    });
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.getElementById('app').classList.add('projection-mode');
+        const indicator = document.getElementById('fullscreen-indicator');
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 2000);
+      } else {
+        exitFullscreen();
+      }
+    }
+
+    function exitFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      document.getElementById('app').classList.remove('projection-mode');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PRESETS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function loadPreset(index) {
+      if (index < 0 || index >= presets.length) return;
+
+      P.preset = index;
+      const preset = presets[index];
+
+      currentPalette = palettes[preset.palette];
+      P.splatRate = preset.splatRate;
+      P.speed = preset.speed;
+      P.sensitivity = preset.sensitivity;
+      P.splatSize = preset.splatSize;
+      P.dripLength = preset.dripLength;
+      P.chaos = preset.chaos;
+      P.density = preset.density;
+      P.fade = preset.fade;
+
+      // Update UI
+      sliderParams.forEach(param => {
+        const slider = document.getElementById(param);
+        const display = document.getElementById(param + 'Val');
+        if (slider && P[param] !== undefined) {
+          slider.value = P[param];
+          if (display) display.textContent = P[param];
+        }
+      });
+
+      // Update preset buttons
+      document.querySelectorAll('.preset-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+
+      if (hardware) hardware.sync();
+    }
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        loadPreset(parseInt(btn.dataset.preset));
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HARDWARE CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    let hardware = null;
+
+    function initHardware() {
+      hardware = new HardwareControls({
+        name: 'Pollock Splatter',
+        accentColor: '#ff6b35',
+        params: P,
+        knobs: [
+          { id: 'splatRate', label: 'Rate', min: 10, max: 100, step: 1 },
+          { id: 'speed', label: 'Speed', min: 10, max: 100, step: 1, suffix: '%' },
+          { id: 'sensitivity', label: 'Sens', min: 10, max: 150, step: 1, suffix: '%' },
+          { id: 'splatSize', label: 'Size', min: 10, max: 100, step: 1 },
+          { id: 'dripLength', label: 'Drip', min: 10, max: 150, step: 1 },
+          { id: 'chaos', label: 'Chaos', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'density', label: 'Dense', min: 10, max: 100, step: 1, suffix: '%' },
+          { id: 'fade', label: 'Fade', min: 90, max: 100, step: 0.5, suffix: '%' },
+        ],
+        faders: [
+          { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
+          { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' },
+        ],
+        presets: presets.map(p => p.name),
+        onParamChange: (id, value) => {
+          P[id] = value;
+          const slider = document.getElementById(id);
+          const display = document.getElementById(id + 'Val');
+          if (slider) slider.value = value;
+          if (display) display.textContent = value;
+        },
+        onPresetLoad: (index) => {
+          loadPreset(index);
+        },
+        onAudioFile: (file) => {
+          loadAudioFile(file);
+        },
+        onMicToggle: (active) => {
+          toggleMic();
+        },
+        onSystemAudio: async (stream) => {
+          initAudio();
+          const systemSource = audioContext.createMediaStreamSource(stream);
+          systemSource.connect(analyser);
+        },
+        onPlayPause: (playing) => {
+          if (audioElement) {
+            if (playing) audioElement.play();
+            else audioElement.pause();
+          }
+        }
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════════════
+
+    document.addEventListener('click', () => initAudio(), { once: true });
+    initHardware();
+    render();
+  </script>
+</body>
+</html>

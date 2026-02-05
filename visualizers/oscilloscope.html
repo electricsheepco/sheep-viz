@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Oscilloscope - sheep-viz</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #111111;
+      --bg-tertiary: #1a1a1a;
+      --text-primary: #e0e0e0;
+      --text-secondary: #888888;
+      --accent: #00ff88;
+      --accent-dim: #00aa55;
+      --border: #2a2a2a;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #app {
+      display: flex;
+      height: 100vh;
+    }
+
+    #canvas-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      position: relative;
+    }
+
+    canvas {
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    #sidebar {
+      width: 280px;
+      background: var(--bg-secondary);
+      padding: 20px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      order: -1;
+    }
+
+    .sidebar-hidden #sidebar {
+      display: none;
+    }
+
+    .projection-mode {
+      cursor: none;
+    }
+
+    .projection-mode #sidebar {
+      display: none;
+    }
+
+    .projection-mode #canvas-container {
+      background: #000;
+    }
+
+    .projection-mode canvas {
+      max-width: none !important;
+      max-height: none !important;
+      width: 100vw !important;
+      height: 100vh !important;
+    }
+
+    .projection-mode #click-prompt {
+      display: none;
+    }
+
+    #fullscreen-indicator {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    #fullscreen-indicator.show {
+      opacity: 1;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+    }
+
+    .subtitle {
+      font-size: 10px;
+      color: var(--text-secondary);
+      margin-bottom: 24px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .section {
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      margin-bottom: 6px;
+      color: var(--text-secondary);
+    }
+
+    .control-group input[type="range"] {
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--bg-tertiary);
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .control-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 11px;
+      transition: all 0.2s;
+      margin-bottom: 8px;
+    }
+
+    .btn:hover {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+
+    .preset-btn {
+      padding: 8px 4px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 9px;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--text-primary);
+    }
+
+    .preset-btn.active {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+
+    .keyboard-hints {
+      font-size: 10px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .keyboard-hints kbd {
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      border: 1px solid var(--border);
+    }
+
+    #click-prompt {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: var(--text-secondary);
+      font-size: 14px;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <h1>Oscilloscope</h1>
+      <div class="subtitle">Waveform Visualizer</div>
+
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="preset-grid">
+          <button class="preset-btn active" data-preset="0">Waveform</button>
+          <button class="preset-btn" data-preset="1">Lissajous</button>
+          <button class="preset-btn" data-preset="2">Vectorscope</button>
+          <button class="preset-btn" data-preset="3">Spectrum</button>
+          <button class="preset-btn" data-preset="4">Phosphor</button>
+          <button class="preset-btn" data-preset="5">Multi-trace</button>
+          <button class="preset-btn" data-preset="6">XY Mode</button>
+          <button class="preset-btn" data-preset="7">Heartbeat</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Parameters</div>
+
+        <div class="control-group">
+          <label>Lines <span id="linesVal">3</span></label>
+          <input type="range" id="lines" min="1" max="8" step="1" value="3">
+        </div>
+
+        <div class="control-group">
+          <label>Speed <span id="speedVal">50</span>%</label>
+          <input type="range" id="speed" min="10" max="100" step="1" value="50">
+        </div>
+
+        <div class="control-group">
+          <label>Sensitivity <span id="sensitivityVal">70</span>%</label>
+          <input type="range" id="sensitivity" min="10" max="150" step="1" value="70">
+        </div>
+
+        <div class="control-group">
+          <label>Thickness <span id="thicknessVal">2</span>px</label>
+          <input type="range" id="thickness" min="1" max="8" step="0.5" value="2">
+        </div>
+
+        <div class="control-group">
+          <label>Decay <span id="decayVal">85</span>%</label>
+          <input type="range" id="decay" min="50" max="99" step="1" value="85">
+        </div>
+
+        <div class="control-group">
+          <label>Glow <span id="glowVal">20</span></label>
+          <input type="range" id="glow" min="0" max="50" step="1" value="20">
+        </div>
+
+        <div class="control-group">
+          <label>X Freq <span id="xFreqVal">1</span></label>
+          <input type="range" id="xFreq" min="1" max="8" step="1" value="1">
+        </div>
+
+        <div class="control-group">
+          <label>Y Freq <span id="yFreqVal">2</span></label>
+          <input type="range" id="yFreq" min="1" max="8" step="1" value="2">
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Overlay</div>
+        <input type="file" id="overlayFile" accept="image/*" style="display:none">
+        <button class="btn" onclick="document.getElementById('overlayFile').click()">Load Overlay Image</button>
+
+        <div class="control-group">
+          <label>Overlay Size <span id="overlaySizeVal">20</span>%</label>
+          <input type="range" id="overlaySize" min="5" max="100" step="1" value="20">
+        </div>
+
+        <div class="control-group">
+          <label>Overlay Opacity <span id="overlayOpacityVal">80</span>%</label>
+          <input type="range" id="overlayOpacity" min="0" max="100" step="1" value="80">
+        </div>
+
+        <div class="control-group">
+          <label>Overlay Effect</label>
+          <select id="overlayEffect" style="width:100%; padding:6px; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:4px; font-family:inherit; font-size:11px;">
+            <option value="none">None (Static)</option>
+            <option value="pulse">Pulse</option>
+            <option value="split">Split</option>
+            <option value="glitch">Glitch</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="keyboard-hints">
+        <kbd>H</kbd> Toggle hardware bar<br>
+        <kbd>F</kbd> Fullscreen + popout<br>
+        <kbd>S</kbd> Toggle sidebar<br>
+        <kbd>1-8</kbd> Switch preset<br>
+        <kbd>Esc</kbd> Exit fullscreen
+      </div>
+    </div>
+
+    <div id="canvas-container">
+      <canvas id="canvas"></canvas>
+      <div id="click-prompt">Click anywhere to start audio</div>
+    </div>
+  </div>
+
+  <div id="fullscreen-indicator">Press ESC to exit fullscreen</div>
+
+  <script src="../lib/hardware-controls.js"></script>
+  <script>
+    // ═══════════════════════════════════════════════════════════════════
+    // PARAMETERS
+    // ═══════════════════════════════════════════════════════════════════
+
+    const P = {
+      preset: 0,
+      // Knobs
+      lines: 3,
+      speed: 50,
+      sensitivity: 70,
+      thickness: 2,
+      decay: 85,
+      glow: 20,
+      xFreq: 1,
+      yFreq: 2,
+      // Faders
+      overlaySize: 20,
+      overlayOpacity: 80,
+      overlayEffect: 'none',
+      fxIntensity: 50,
+      masterBrightness: 100,
+    };
+
+    const presets = [
+      { name: 'Waveform', lines: 3, speed: 50, sensitivity: 70, thickness: 2, decay: 85, glow: 20, xFreq: 1, yFreq: 1 },
+      { name: 'Lissajous', lines: 1, speed: 60, sensitivity: 80, thickness: 2.5, decay: 92, glow: 25, xFreq: 3, yFreq: 4 },
+      { name: 'Vectorscope', lines: 2, speed: 40, sensitivity: 90, thickness: 1.5, decay: 88, glow: 15, xFreq: 2, yFreq: 3 },
+      { name: 'Spectrum', lines: 8, speed: 70, sensitivity: 60, thickness: 3, decay: 75, glow: 30, xFreq: 1, yFreq: 1 },
+      { name: 'Phosphor', lines: 2, speed: 45, sensitivity: 75, thickness: 3, decay: 95, glow: 40, xFreq: 1, yFreq: 2 },
+      { name: 'Multi-trace', lines: 6, speed: 55, sensitivity: 65, thickness: 1.5, decay: 80, glow: 15, xFreq: 2, yFreq: 2 },
+      { name: 'XY Mode', lines: 1, speed: 80, sensitivity: 100, thickness: 2, decay: 90, glow: 35, xFreq: 5, yFreq: 6 },
+      { name: 'Heartbeat', lines: 1, speed: 30, sensitivity: 120, thickness: 3, decay: 70, glow: 20, xFreq: 1, yFreq: 1 },
+    ];
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUDIO
+    // ═══════════════════════════════════════════════════════════════════
+
+    let audioContext, analyser, dataArray, timeDataArray, source;
+    let audioElement;
+    let audioInitialized = false;
+
+    function initAudio() {
+      if (audioInitialized) return;
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.8;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+      timeDataArray = new Uint8Array(analyser.fftSize);
+      audioInitialized = true;
+      document.getElementById('click-prompt').style.opacity = '0';
+    }
+
+    function getAudioData() {
+      if (!analyser) return { bass: 0, mid: 0, high: 0, average: 0, waveform: [] };
+      analyser.getByteFrequencyData(dataArray);
+      analyser.getByteTimeDomainData(timeDataArray);
+
+      const len = dataArray.length;
+      let bass = 0, mid = 0, high = 0;
+
+      for (let i = 0; i < len * 0.15; i++) bass += dataArray[i];
+      for (let i = Math.floor(len * 0.15); i < len * 0.5; i++) mid += dataArray[i];
+      for (let i = Math.floor(len * 0.5); i < len; i++) high += dataArray[i];
+
+      const bassCount = Math.floor(len * 0.15);
+      const midCount = Math.floor(len * 0.35);
+      const highCount = len - Math.floor(len * 0.5);
+
+      const sens = P.sensitivity / 100;
+      bass = (bass / bassCount / 255) * sens;
+      mid = (mid / midCount / 255) * sens;
+      high = (high / highCount / 255) * sens;
+
+      return {
+        bass: Math.min(bass, 1.5),
+        mid: Math.min(mid, 1.5),
+        high: Math.min(high, 1.5),
+        average: (bass + mid + high) / 3,
+        waveform: timeDataArray,
+        spectrum: dataArray
+      };
+    }
+
+    function loadAudioFile(file) {
+      initAudio();
+      if (audioElement) {
+        audioElement.pause();
+        audioElement = null;
+      }
+
+      audioElement = new Audio(URL.createObjectURL(file));
+      source = audioContext.createMediaElementSource(audioElement);
+      source.connect(analyser);
+      analyser.connect(audioContext.destination);
+
+      audioElement.play();
+    }
+
+    let micActive = false;
+    async function toggleMic() {
+      initAudio();
+      if (micActive) {
+        location.reload();
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const micSource = audioContext.createMediaStreamSource(stream);
+        micSource.connect(analyser);
+        micActive = true;
+      } catch (err) {
+        console.error('Mic access denied:', err);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // CANVAS & RENDERING
+    // ═══════════════════════════════════════════════════════════════════
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let time = 0;
+    let phase = 0;
+
+    // Colors for different trace lines
+    const traceColors = [
+      '#00ff88', // Green (primary)
+      '#00ffff', // Cyan
+      '#ffff00', // Yellow
+      '#ff00ff', // Magenta
+      '#ff8800', // Orange
+      '#00ff00', // Lime
+      '#8888ff', // Lavender
+      '#ff0088', // Pink
+    ];
+
+    function render() {
+      const container = document.getElementById('canvas-container');
+      if (canvas.width !== container.clientWidth || canvas.height !== container.clientHeight) {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+      }
+
+      const w = canvas.width;
+      const h = canvas.height;
+      const cx = w / 2;
+      const cy = h / 2;
+
+      const audio = getAudioData();
+
+      // Decay effect (phosphor persistence)
+      const decayAlpha = 1 - (P.decay / 100);
+      ctx.fillStyle = `rgba(0, 0, 0, ${decayAlpha})`;
+      ctx.fillRect(0, 0, w, h);
+
+      // Update time
+      time += 0.016 * (P.speed / 50);
+      phase += 0.02 * (P.speed / 50);
+
+      // Apply master brightness
+      ctx.globalAlpha = P.masterBrightness / 100;
+
+      // Draw grid (subtle)
+      drawGrid(w, h, cx, cy);
+
+      // Render based on preset
+      const renderFuncs = [
+        renderWaveform,
+        renderLissajous,
+        renderVectorscope,
+        renderSpectrum,
+        renderPhosphor,
+        renderMultiTrace,
+        renderXYMode,
+        renderHeartbeat,
+      ];
+
+      const renderFunc = renderFuncs[P.preset] || renderWaveform;
+      renderFunc(audio, w, h, cx, cy);
+
+      ctx.globalAlpha = 1;
+
+      // Draw overlay
+      drawOverlay(ctx, w, h, audio);
+
+      requestAnimationFrame(render);
+    }
+
+    function drawGrid(w, h, cx, cy) {
+      ctx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
+      ctx.lineWidth = 1;
+
+      // Vertical center line
+      ctx.beginPath();
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, h);
+      ctx.stroke();
+
+      // Horizontal center line
+      ctx.beginPath();
+      ctx.moveTo(0, cy);
+      ctx.lineTo(w, cy);
+      ctx.stroke();
+
+      // Grid divisions
+      const divisions = 8;
+      for (let i = 1; i < divisions; i++) {
+        const x = (w / divisions) * i;
+        const y = (h / divisions) * i;
+
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+    }
+
+    function setTraceStyle(ctx, colorIndex, audio) {
+      const color = traceColors[colorIndex % traceColors.length];
+      ctx.strokeStyle = color;
+      ctx.lineWidth = P.thickness;
+
+      if (P.glow > 0) {
+        ctx.shadowColor = color;
+        ctx.shadowBlur = P.glow * (1 + audio.bass * 0.5);
+      } else {
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // RENDER FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function renderWaveform(audio, w, h, cx, cy) {
+      const waveform = audio.waveform;
+      if (!waveform || waveform.length === 0) return;
+
+      const margin = 50;
+      const drawW = w - margin * 2;
+      const drawH = h - margin * 2;
+
+      for (let line = 0; line < P.lines; line++) {
+        setTraceStyle(ctx, line, audio);
+        ctx.beginPath();
+
+        const yOffset = (line - (P.lines - 1) / 2) * (drawH / P.lines) * 0.8;
+        const samples = Math.min(waveform.length, 512);
+
+        for (let i = 0; i < samples; i++) {
+          const x = margin + (i / samples) * drawW;
+          const sample = (waveform[i] / 128 - 1) * (drawH / P.lines / 2) * P.sensitivity / 50;
+          const y = cy + yOffset + sample;
+
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    function renderLissajous(audio, w, h, cx, cy) {
+      setTraceStyle(ctx, 0, audio);
+      ctx.beginPath();
+
+      const scale = Math.min(w, h) * 0.35 * (0.5 + audio.average);
+      const points = 500;
+
+      for (let i = 0; i < points; i++) {
+        const t = (i / points) * Math.PI * 2 + phase;
+        const x = cx + Math.sin(t * P.xFreq + audio.bass * 2) * scale;
+        const y = cy + Math.sin(t * P.yFreq + audio.mid * 2) * scale;
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    function renderVectorscope(audio, w, h, cx, cy) {
+      const waveform = audio.waveform;
+      if (!waveform || waveform.length === 0) return;
+
+      setTraceStyle(ctx, 0, audio);
+
+      const scale = Math.min(w, h) * 0.4;
+      const samples = Math.min(waveform.length / 2, 256);
+
+      ctx.beginPath();
+      for (let i = 0; i < samples; i++) {
+        const left = (waveform[i * 2] / 128 - 1) * scale * P.sensitivity / 100;
+        const right = (waveform[i * 2 + 1] / 128 - 1) * scale * P.sensitivity / 100;
+
+        // Rotate 45 degrees for M/S display
+        const x = cx + (left + right) * 0.707;
+        const y = cy + (left - right) * 0.707;
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    function renderSpectrum(audio, w, h, cx, cy) {
+      const spectrum = audio.spectrum;
+      if (!spectrum || spectrum.length === 0) return;
+
+      const margin = 50;
+      const drawW = w - margin * 2;
+      const drawH = h - margin * 2;
+
+      for (let line = 0; line < P.lines; line++) {
+        setTraceStyle(ctx, line, audio);
+        ctx.beginPath();
+
+        const bandStart = Math.floor((line / P.lines) * spectrum.length * 0.5);
+        const bandEnd = Math.floor(((line + 1) / P.lines) * spectrum.length * 0.5);
+        const bandSize = bandEnd - bandStart;
+
+        const yBase = cy + (line - (P.lines - 1) / 2) * (drawH / P.lines);
+
+        for (let i = 0; i < bandSize; i++) {
+          const x = margin + (i / bandSize) * drawW;
+          const val = spectrum[bandStart + i] / 255;
+          const y = yBase - val * (drawH / P.lines / 2) * P.sensitivity / 50;
+
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    function renderPhosphor(audio, w, h, cx, cy) {
+      const waveform = audio.waveform;
+      if (!waveform || waveform.length === 0) return;
+
+      // Draw multiple fading traces
+      for (let trace = 0; trace < 3; trace++) {
+        const alpha = 1 - trace * 0.3;
+        ctx.globalAlpha = alpha * (P.masterBrightness / 100);
+
+        setTraceStyle(ctx, 0, audio);
+        ctx.beginPath();
+
+        const phaseOffset = trace * 0.1;
+        const scale = Math.min(w, h) * 0.35;
+        const points = 400;
+
+        for (let i = 0; i < points; i++) {
+          const t = (i / points) * Math.PI * 2 + phase - phaseOffset;
+          const waveIdx = Math.floor((i / points) * waveform.length);
+          const waveVal = (waveform[waveIdx] / 128 - 1) * P.sensitivity / 100;
+
+          const r = scale * (0.5 + waveVal * 0.5 + audio.bass * 0.3);
+          const x = cx + Math.cos(t * P.xFreq) * r;
+          const y = cy + Math.sin(t * P.yFreq) * r;
+
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    function renderMultiTrace(audio, w, h, cx, cy) {
+      const waveform = audio.waveform;
+      if (!waveform || waveform.length === 0) return;
+
+      const margin = 40;
+      const drawW = w - margin * 2;
+      const traceH = (h - margin * 2) / P.lines;
+
+      for (let line = 0; line < P.lines; line++) {
+        setTraceStyle(ctx, line, audio);
+        ctx.beginPath();
+
+        const yCenter = margin + traceH * (line + 0.5);
+        const samples = Math.min(waveform.length, 256);
+
+        // Each line shows different frequency band
+        const bandStart = Math.floor((line / P.lines) * samples);
+        const bandEnd = Math.floor(((line + 1) / P.lines) * samples);
+
+        for (let i = 0; i < samples; i++) {
+          const x = margin + (i / samples) * drawW;
+          const idx = bandStart + (i % (bandEnd - bandStart));
+          const sample = (waveform[idx] / 128 - 1) * (traceH / 2) * 0.8 * P.sensitivity / 70;
+          const y = yCenter + sample;
+
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.stroke();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    function renderXYMode(audio, w, h, cx, cy) {
+      const waveform = audio.waveform;
+      if (!waveform || waveform.length === 0) return;
+
+      setTraceStyle(ctx, 0, audio);
+
+      const scale = Math.min(w, h) * 0.4;
+      const samples = Math.min(waveform.length / 2, 512);
+
+      ctx.beginPath();
+      for (let i = 0; i < samples; i++) {
+        const t = (i / samples) * Math.PI * 2;
+        const idx = i * 2;
+
+        const xMod = Math.sin(t * P.xFreq + phase);
+        const yMod = Math.sin(t * P.yFreq + phase * 1.1);
+
+        const sampleX = (waveform[idx] / 128 - 1);
+        const sampleY = (waveform[idx + 1] / 128 - 1);
+
+        const x = cx + (xMod + sampleX * 0.5) * scale * P.sensitivity / 100;
+        const y = cy + (yMod + sampleY * 0.5) * scale * P.sensitivity / 100;
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    function renderHeartbeat(audio, w, h, cx, cy) {
+      setTraceStyle(ctx, 0, audio);
+      ctx.beginPath();
+
+      const margin = 50;
+      const drawW = w - margin * 2;
+      const amplitude = (h * 0.3) * (0.5 + audio.bass);
+
+      const points = 200;
+      for (let i = 0; i < points; i++) {
+        const t = i / points;
+        const x = margin + t * drawW;
+
+        // Create heartbeat pattern
+        let y = cy;
+        const beatPhase = (t * 4 + time * 0.5) % 1;
+
+        if (beatPhase < 0.1) {
+          // P wave
+          y = cy - Math.sin(beatPhase / 0.1 * Math.PI) * amplitude * 0.2;
+        } else if (beatPhase < 0.2) {
+          // Baseline
+          y = cy;
+        } else if (beatPhase < 0.25) {
+          // Q wave
+          y = cy + (beatPhase - 0.2) / 0.05 * amplitude * 0.1;
+        } else if (beatPhase < 0.3) {
+          // R wave (spike)
+          y = cy - Math.sin((beatPhase - 0.25) / 0.05 * Math.PI) * amplitude;
+        } else if (beatPhase < 0.35) {
+          // S wave
+          y = cy + Math.sin((beatPhase - 0.3) / 0.05 * Math.PI) * amplitude * 0.2;
+        } else if (beatPhase < 0.5) {
+          // T wave
+          y = cy - Math.sin((beatPhase - 0.35) / 0.15 * Math.PI) * amplitude * 0.3;
+        }
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // OVERLAY
+    // ═══════════════════════════════════════════════════════════════════
+
+    let overlayImage = null;
+    let overlayLoaded = false;
+
+    document.getElementById('overlayFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      overlayImage = new Image();
+      overlayImage.onload = () => {
+        overlayLoaded = true;
+      };
+      overlayImage.src = URL.createObjectURL(file);
+    });
+
+    // Offscreen canvas for overlay effects
+    let overlayCanvas = null;
+    let overlayCtx = null;
+
+    function drawOverlay(ctx, w, h, audio) {
+      if (!overlayLoaded || !overlayImage) return;
+
+      const size = P.overlaySize / 100;
+      const opacity = P.overlayOpacity / 100;
+      const effect = P.overlayEffect;
+
+      const imgAspect = overlayImage.width / overlayImage.height;
+      const canvasAspect = w / h;
+
+      let drawW, drawH;
+      if (imgAspect > canvasAspect) {
+        drawW = w * size;
+        drawH = drawW / imgAspect;
+      } else {
+        drawH = h * size;
+        drawW = drawH * imgAspect;
+      }
+
+      const baseX = (w - drawW) / 2;
+      const baseY = (h - drawH) / 2;
+
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.globalCompositeOperation = 'screen';
+
+      if (effect === 'none' || !audio) {
+        ctx.drawImage(overlayImage, baseX, baseY, drawW, drawH);
+      } else if (effect === 'pulse') {
+        const pulseScale = 1 + audio.bass * 0.3;
+        const pulseW = drawW * pulseScale;
+        const pulseH = drawH * pulseScale;
+        const pulseX = (w - pulseW) / 2;
+        const pulseY = (h - pulseH) / 2;
+
+        if (audio.bass > 0.5) {
+          ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+          ctx.shadowBlur = 30 * audio.bass;
+        }
+        ctx.drawImage(overlayImage, pulseX, pulseY, pulseW, pulseH);
+      } else if (effect === 'split') {
+        const slices = 20;
+        const sliceW = drawW / slices;
+
+        for (let i = 0; i < slices; i++) {
+          const freqIndex = Math.floor((i / slices) * 128);
+          let energy = 0;
+          if (analyser && dataArray) {
+            energy = (dataArray[freqIndex] || 0) / 255;
+          }
+
+          const yOffset = (energy - 0.5) * 50 * P.sensitivity / 100;
+          const xOffset = audio.bass * 10 * Math.sin(i * 0.5 + time);
+
+          const srcX = (i / slices) * overlayImage.width;
+          const srcW = overlayImage.width / slices;
+
+          ctx.drawImage(
+            overlayImage,
+            srcX, 0, srcW, overlayImage.height,
+            baseX + i * sliceW + xOffset, baseY + yOffset, sliceW, drawH
+          );
+        }
+      } else if (effect === 'glitch') {
+        if (!overlayCanvas || overlayCanvas.width !== w || overlayCanvas.height !== h) {
+          overlayCanvas = document.createElement('canvas');
+          overlayCanvas.width = w;
+          overlayCanvas.height = h;
+          overlayCtx = overlayCanvas.getContext('2d');
+        }
+
+        const rgbOffset = (audio.high + audio.mid) * 15;
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.globalCompositeOperation = 'source-over';
+        overlayCtx.drawImage(overlayImage, baseX - rgbOffset, baseY, drawW, drawH);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.33)';
+        ctx.globalAlpha = opacity * 0.5;
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.drawImage(overlayImage, baseX, baseY + rgbOffset * 0.5, drawW, drawH);
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.33)';
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.drawImage(overlayImage, baseX + rgbOffset, baseY, drawW, drawH);
+        ctx.fillStyle = 'rgba(0, 0, 255, 0.33)';
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = opacity;
+        if (audio.average > 0.6 && Math.random() > 0.7) {
+          const sliceY = Math.random() * drawH;
+          const sliceH = Math.random() * drawH * 0.2;
+          const displacement = (Math.random() - 0.5) * 50;
+
+          ctx.drawImage(
+            overlayImage,
+            0, (sliceY / drawH) * overlayImage.height,
+            overlayImage.width, (sliceH / drawH) * overlayImage.height,
+            baseX + displacement, baseY + sliceY, drawW, sliceH
+          );
+        }
+      }
+
+      ctx.restore();
+    }
+
+    document.getElementById('overlayEffect').addEventListener('change', (e) => {
+      P.overlayEffect = e.target.value;
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // SIDEBAR CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    const sliderParams = [
+      'lines', 'speed', 'sensitivity', 'thickness',
+      'decay', 'glow', 'xFreq', 'yFreq',
+      'overlaySize', 'overlayOpacity'
+    ];
+
+    sliderParams.forEach(param => {
+      const slider = document.getElementById(param);
+      if (!slider) return;
+
+      slider.addEventListener('input', () => {
+        P[param] = parseFloat(slider.value);
+        const display = document.getElementById(param + 'Val');
+        if (display) {
+          display.textContent = P[param];
+        }
+        if (hardware) hardware.sync();
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════════════════════════════════
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 's' || e.key === 'S') {
+        document.getElementById('app').classList.toggle('sidebar-hidden');
+      } else if (e.key === 'h' || e.key === 'H') {
+        if (hardware) hardware.toggle();
+      } else if (e.key === 'Escape') {
+        exitFullscreen();
+      } else if (e.key >= '1' && e.key <= '8') {
+        loadPreset(parseInt(e.key) - 1);
+      }
+    });
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.getElementById('app').classList.add('projection-mode');
+        const indicator = document.getElementById('fullscreen-indicator');
+        indicator.classList.add('show');
+        setTimeout(() => indicator.classList.remove('show'), 2000);
+      } else {
+        exitFullscreen();
+      }
+    }
+
+    function exitFullscreen() {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      document.getElementById('app').classList.remove('projection-mode');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // PRESETS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function loadPreset(index) {
+      if (index < 0 || index >= presets.length) return;
+
+      P.preset = index;
+      const preset = presets[index];
+
+      P.lines = preset.lines;
+      P.speed = preset.speed;
+      P.sensitivity = preset.sensitivity;
+      P.thickness = preset.thickness;
+      P.decay = preset.decay;
+      P.glow = preset.glow;
+      P.xFreq = preset.xFreq;
+      P.yFreq = preset.yFreq;
+
+      // Update UI
+      sliderParams.forEach(param => {
+        const slider = document.getElementById(param);
+        const display = document.getElementById(param + 'Val');
+        if (slider && P[param] !== undefined) {
+          slider.value = P[param];
+          if (display) display.textContent = P[param];
+        }
+      });
+
+      // Update preset buttons
+      document.querySelectorAll('.preset-btn').forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+      });
+
+      if (hardware) hardware.sync();
+    }
+
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        loadPreset(parseInt(btn.dataset.preset));
+      });
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // HARDWARE CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    let hardware = null;
+
+    function initHardware() {
+      hardware = new HardwareControls({
+        name: 'Oscilloscope',
+        accentColor: '#00ff88',
+        params: P,
+        knobs: [
+          { id: 'lines', label: 'Lines', min: 1, max: 8, step: 1 },
+          { id: 'speed', label: 'Speed', min: 10, max: 100, step: 1, suffix: '%' },
+          { id: 'sensitivity', label: 'Sens', min: 10, max: 150, step: 1, suffix: '%' },
+          { id: 'thickness', label: 'Thick', min: 1, max: 8, step: 0.5, suffix: 'px' },
+          { id: 'decay', label: 'Decay', min: 50, max: 99, step: 1, suffix: '%' },
+          { id: 'glow', label: 'Glow', min: 0, max: 50, step: 1 },
+          { id: 'xFreq', label: 'X Freq', min: 1, max: 8, step: 1 },
+          { id: 'yFreq', label: 'Y Freq', min: 1, max: 8, step: 1 },
+        ],
+        faders: [
+          { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
+          { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' },
+        ],
+        presets: presets.map(p => p.name),
+        onParamChange: (id, value) => {
+          P[id] = value;
+          const slider = document.getElementById(id);
+          const display = document.getElementById(id + 'Val');
+          if (slider) slider.value = value;
+          if (display) display.textContent = value;
+        },
+        onPresetLoad: (index) => {
+          loadPreset(index);
+        },
+        onAudioFile: (file) => {
+          loadAudioFile(file);
+        },
+        onMicToggle: (active) => {
+          toggleMic();
+        },
+        onSystemAudio: async (stream) => {
+          initAudio();
+          const systemSource = audioContext.createMediaStreamSource(stream);
+          systemSource.connect(analyser);
+        },
+        onPlayPause: (playing) => {
+          if (audioElement) {
+            if (playing) audioElement.play();
+            else audioElement.pause();
+          }
+        }
+      });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════════════════════════════════
+
+    document.addEventListener('click', () => initAudio(), { once: true });
+    initHardware();
+    render();
+  </script>
+</body>
+</html>
