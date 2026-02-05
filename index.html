@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>sheep-viz</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     * {
       margin: 0;
@@ -25,19 +25,25 @@
     }
 
     h1 {
-      font-size: 48px;
-      font-weight: 700;
+      font-family: 'Major Mono Display', monospace;
+      font-size: 56px;
+      font-weight: 400;
       margin-bottom: 8px;
       background: linear-gradient(135deg, #6366f1, #ec4899, #06b6d4);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      text-transform: lowercase;
+      letter-spacing: 4px;
     }
 
     .tagline {
-      font-size: 14px;
+      font-family: 'Major Mono Display', monospace;
+      font-size: 12px;
       color: #8888a0;
       margin-bottom: 48px;
+      text-transform: lowercase;
+      letter-spacing: 2px;
     }
 
     .visualizers {
@@ -102,9 +108,12 @@
     }
 
     .card h2 {
-      font-size: 16px;
-      font-weight: 600;
+      font-family: 'Major Mono Display', monospace;
+      font-size: 14px;
+      font-weight: 400;
       margin-bottom: 8px;
+      text-transform: lowercase;
+      letter-spacing: 1px;
     }
 
     .card p {
@@ -334,7 +343,7 @@
   </div>
 
   <div class="links">
-    <a href="docs/">Documentation</a>
+    <a href="about.html">About</a>
     <a href="https://github.com/electricsheepco/sheep-viz">GitHub</a>
   </div>
 
