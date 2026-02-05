@@ -322,6 +322,16 @@
           <label>Overlay Opacity <span id="overlayOpacityVal">80</span>%</label>
           <input type="range" id="overlayOpacity" min="0" max="100" step="1" value="80">
         </div>
+
+        <div class="control-group">
+          <label>Overlay Effect</label>
+          <select id="overlayEffect" style="width:100%; padding:6px; background:var(--bg-tertiary); border:1px solid var(--border); color:var(--text-primary); border-radius:4px; font-family:inherit; font-size:11px;">
+            <option value="none">None (Static)</option>
+            <option value="pulse">Pulse</option>
+            <option value="split">Split</option>
+            <option value="glitch">Glitch</option>
+          </select>
+        </div>
       </div>
 
       <div class="keyboard-hints">
@@ -371,6 +381,7 @@
       // Faders
       overlaySize: 20,
       overlayOpacity: 80,
+      overlayEffect: 'none',
       fxIntensity: 50,
       masterBrightness: 100,
       // Preset
@@ -955,7 +966,7 @@
       ctx.globalAlpha = 1;
 
       // Draw overlay blended onto canvas
-      drawOverlay(ctx, w, h);
+      drawOverlay(ctx, w, h, audio);
 
       requestAnimationFrame(render);
     }
@@ -978,11 +989,16 @@
       overlayImage.src = URL.createObjectURL(file);
     });
 
-    function drawOverlay(ctx, w, h) {
+    // Offscreen canvas for overlay effects
+    let overlayCanvas = null;
+    let overlayCtx = null;
+
+    function drawOverlay(ctx, w, h, audio) {
       if (!overlayLoaded || !overlayImage) return;
 
       const size = P.overlaySize / 100;
       const opacity = P.overlayOpacity / 100;
+      const effect = P.overlayEffect;
 
       const imgAspect = overlayImage.width / overlayImage.height;
       const canvasAspect = w / h;
@@ -996,15 +1012,100 @@
         drawW = drawH * imgAspect;
       }
 
-      const x = (w - drawW) / 2;
-      const y = (h - drawH) / 2;
+      const baseX = (w - drawW) / 2;
+      const baseY = (h - drawH) / 2;
 
       ctx.save();
       ctx.globalAlpha = opacity;
       ctx.globalCompositeOperation = 'screen';
-      ctx.drawImage(overlayImage, x, y, drawW, drawH);
+
+      if (effect === 'none' || !audio) {
+        ctx.drawImage(overlayImage, baseX, baseY, drawW, drawH);
+      } else if (effect === 'pulse') {
+        const pulseScale = 1 + audio.bass * 0.3;
+        const pulseW = drawW * pulseScale;
+        const pulseH = drawH * pulseScale;
+        const pulseX = (w - pulseW) / 2;
+        const pulseY = (h - pulseH) / 2;
+
+        if (audio.bass > 0.5) {
+          ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+          ctx.shadowBlur = 30 * audio.bass;
+        }
+        ctx.drawImage(overlayImage, pulseX, pulseY, pulseW, pulseH);
+      } else if (effect === 'split') {
+        const slices = 20;
+        const sliceW = drawW / slices;
+
+        for (let i = 0; i < slices; i++) {
+          const freqIndex = Math.floor((i / slices) * 128);
+          let energy = 0;
+          if (analyser && dataArray) {
+            energy = (dataArray[freqIndex] || 0) / 255;
+          }
+
+          const yOffset = (energy - 0.5) * 50 * P.sensitivity;
+          const xOffset = audio.bass * 10 * Math.sin(i * 0.5 + time);
+
+          const srcX = (i / slices) * overlayImage.width;
+          const srcW = overlayImage.width / slices;
+
+          ctx.drawImage(
+            overlayImage,
+            srcX, 0, srcW, overlayImage.height,
+            baseX + i * sliceW + xOffset, baseY + yOffset, sliceW, drawH
+          );
+        }
+      } else if (effect === 'glitch') {
+        if (!overlayCanvas || overlayCanvas.width !== w || overlayCanvas.height !== h) {
+          overlayCanvas = document.createElement('canvas');
+          overlayCanvas.width = w;
+          overlayCanvas.height = h;
+          overlayCtx = overlayCanvas.getContext('2d');
+        }
+
+        const rgbOffset = (audio.high + audio.mid) * 15;
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.globalCompositeOperation = 'source-over';
+        overlayCtx.drawImage(overlayImage, baseX - rgbOffset, baseY, drawW, drawH);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.33)';
+        ctx.globalAlpha = opacity * 0.5;
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.drawImage(overlayImage, baseX, baseY + rgbOffset * 0.5, drawW, drawH);
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.33)';
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        overlayCtx.clearRect(0, 0, w, h);
+        overlayCtx.drawImage(overlayImage, baseX + rgbOffset, baseY, drawW, drawH);
+        ctx.fillStyle = 'rgba(0, 0, 255, 0.33)';
+        ctx.drawImage(overlayCanvas, 0, 0);
+
+        ctx.globalCompositeOperation = 'screen';
+        ctx.globalAlpha = opacity;
+        if (audio.average > 0.6 && Math.random() > 0.7) {
+          const sliceY = Math.random() * drawH;
+          const sliceH = Math.random() * drawH * 0.2;
+          const displacement = (Math.random() - 0.5) * 50;
+
+          ctx.drawImage(
+            overlayImage,
+            0, (sliceY / drawH) * overlayImage.height,
+            overlayImage.width, (sliceH / drawH) * overlayImage.height,
+            baseX + displacement, baseY + sliceY, drawW, sliceH
+          );
+        }
+      }
+
       ctx.restore();
     }
+
+    document.getElementById('overlayEffect').addEventListener('change', (e) => {
+      P.overlayEffect = e.target.value;
+    });
 
     // ═══════════════════════════════════════════════════════════════════
     // SIDEBAR CONTROLS
