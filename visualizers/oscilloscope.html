@@ -249,6 +249,14 @@
       <div class="subtitle">Waveform Visualizer</div>
 
       <div class="section">
+        <div class="section-title">Audio Input</div>
+        <input type="file" id="audioFile" accept="audio/*" style="display:none">
+        <button class="btn" onclick="document.getElementById('audioFile').click()">Load Audio File</button>
+        <button class="btn" id="useMic">Use Microphone</button>
+        <button class="btn" id="playPause" style="display:none">Play</button>
+      </div>
+
+      <div class="section">
         <div class="section-title">Presets</div>
         <div class="preset-grid">
           <button class="preset-btn active" data-preset="0">Waveform</button>
@@ -976,6 +984,35 @@
 
     document.getElementById('overlayEffect').addEventListener('change', (e) => {
       P.overlayEffect = e.target.value;
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // AUDIO CONTROLS
+    // ═══════════════════════════════════════════════════════════════════
+
+    document.getElementById('audioFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      loadAudioFile(file);
+      document.getElementById('playPause').style.display = 'block';
+      document.getElementById('playPause').textContent = 'Pause';
+    });
+
+    document.getElementById('useMic').addEventListener('click', () => {
+      toggleMic();
+      document.getElementById('useMic').textContent = micActive ? 'Use Microphone' : 'Mic Active';
+    });
+
+    document.getElementById('playPause').addEventListener('click', () => {
+      if (audioElement) {
+        if (audioElement.paused) {
+          audioElement.play();
+          document.getElementById('playPause').textContent = 'Pause';
+        } else {
+          audioElement.pause();
+          document.getElementById('playPause').textContent = 'Play';
+        }
+      }
     });
 
     // ═══════════════════════════════════════════════════════════════════
