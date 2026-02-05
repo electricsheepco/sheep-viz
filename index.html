@@ -158,11 +158,77 @@
       color: #6366f1;
       text-decoration: none;
     }
+
+    .top-bar {
+      width: 100%;
+      max-width: 1400px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding: 0 20px;
+    }
+
+    .top-bar .tagline-top {
+      font-family: 'Major Mono Display', monospace;
+      font-size: 11px;
+      color: #8888a0;
+      text-transform: lowercase;
+      letter-spacing: 2px;
+    }
+
+    .top-bar .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: #e8e8ed;
+    }
+
+    .top-bar .brand:hover {
+      color: #6366f1;
+    }
+
+    .top-bar .brand img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+    }
+
+    .top-bar .brand span {
+      font-family: 'Major Mono Display', monospace;
+      font-size: 12px;
+      text-transform: lowercase;
+      letter-spacing: 1px;
+    }
+
+    .bottom-bar {
+      margin-top: 48px;
+      font-size: 11px;
+      color: #555;
+    }
+
+    .bottom-bar a {
+      color: #6366f1;
+      text-decoration: none;
+    }
+
+    .bottom-bar a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
+  <div class="top-bar">
+    <span class="tagline-top">made by musicians, for musicians</span>
+    <a href="https://www.sheep.band" class="brand" target="_blank">
+      <img src="images/sheep-logo.png" alt="Sheep" onerror="this.style.display='none'">
+      <span>sheep.band</span>
+    </a>
+  </div>
+
   <h1>sheep-viz</h1>
-  <p class="tagline">Audio-reactive visuals for musicians who miss the old days.</p>
+  <p class="tagline">audio-reactive visuals for musicians who miss the old days</p>
 
   <div class="visualizers">
     <a href="visualizers/vertical-pulse-pro.html" class="card">
@@ -347,9 +413,9 @@
     <a href="https://github.com/electricsheepco/sheep-viz">GitHub</a>
   </div>
 
-  <footer>
-    <a href="https://www.sheep.band">sheep.band</a> - Made by musicians, for musicians
-  </footer>
+  <div class="bottom-bar">
+    An <a href="https://electric-sheep-supply-co.in">Electric Sheep Supply Co.</a> work
+  </div>
 
   <script>
     // Mini visualizer previews
