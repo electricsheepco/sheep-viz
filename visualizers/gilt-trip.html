@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Llama Bars - sheep-viz</title>
+  <title>Gilt Trip - sheep-viz</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
   <style>
@@ -19,8 +19,8 @@
       --bg-tertiary: #1a1a1a;
       --text-primary: #e0e0e0;
       --text-secondary: #888888;
-      --accent: #ffcc00;
-      --accent-dim: #aa8800;
+      --accent: #d4af37;
+      --accent-dim: #a08030;
       --border: #2a2a2a;
     }
 
@@ -64,7 +64,6 @@
       display: none;
     }
 
-    /* Projection/Fullscreen Mode */
     .projection-mode {
       cursor: none;
     }
@@ -88,7 +87,6 @@
       display: none;
     }
 
-    /* Fullscreen indicator */
     #fullscreen-indicator {
       position: fixed;
       top: 20px;
@@ -250,8 +248,8 @@
 <body>
   <div id="app">
     <div id="sidebar">
-      <h1>Llama Bars</h1>
-      <div class="subtitle">Classic Spectrum Analyzer</div>
+      <h1>Gilt Trip</h1>
+      <div class="subtitle">Art Nouveau Gold</div>
 
       <div class="section">
         <div class="section-title">Audio Input</div>
@@ -262,21 +260,21 @@
       </div>
 
       <div class="section">
-        <div class="section-title">Style</div>
-        <div class="style-indicator">Style: <span id="styleLabel">Classic Blocks</span></div>
+        <div class="section-title">Preset</div>
+        <div class="style-indicator">Preset: <span id="styleLabel">The Kiss</span></div>
       </div>
 
       <div class="section">
         <div class="section-title">Parameters</div>
 
         <div class="control-group">
-          <label>Bar Count <span id="barCountVal">32</span></label>
-          <input type="range" id="barCount" min="16" max="128" step="4" value="32">
+          <label>Density <span id="densityVal">50</span></label>
+          <input type="range" id="density" min="10" max="100" step="5" value="50">
         </div>
 
         <div class="control-group">
           <label>Speed <span id="speedVal">1.0</span></label>
-          <input type="range" id="speed" min="0.5" max="3" step="0.1" value="1">
+          <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
         </div>
 
         <div class="control-group">
@@ -285,28 +283,28 @@
         </div>
 
         <div class="control-group">
-          <label>Bar Opacity <span id="barOpacityVal">100</span>%</label>
-          <input type="range" id="barOpacity" min="0" max="100" step="5" value="100">
+          <label>Gold Amount <span id="goldVal">70</span>%</label>
+          <input type="range" id="gold" min="0" max="100" step="5" value="70">
         </div>
 
         <div class="control-group">
-          <label>Peak Hold <span id="peakHoldVal">300</span>ms</label>
-          <input type="range" id="peakHold" min="100" max="1000" step="50" value="300">
+          <label>Spirals <span id="spiralsVal">50</span></label>
+          <input type="range" id="spirals" min="0" max="100" step="5" value="50">
         </div>
 
         <div class="control-group">
-          <label>Peak Gravity <span id="peakGravityVal">1.0</span></label>
-          <input type="range" id="peakGravity" min="0.5" max="3" step="0.1" value="1">
+          <label>Mosaic <span id="mosaicVal">50</span></label>
+          <input type="range" id="mosaic" min="0" max="100" step="5" value="50">
         </div>
 
         <div class="control-group">
-          <label>Reflection <span id="reflectionVal">30</span>%</label>
-          <input type="range" id="reflection" min="0" max="100" step="5" value="30">
+          <label>Shimmer <span id="shimmerVal">50</span>%</label>
+          <input type="range" id="shimmer" min="0" max="100" step="5" value="50">
         </div>
 
         <div class="control-group">
-          <label>Gap Size <span id="gapSizeVal">2</span>px</label>
-          <input type="range" id="gapSize" min="0" max="8" step="1" value="2">
+          <label>Organic <span id="organicVal">50</span>%</label>
+          <input type="range" id="organic" min="0" max="100" step="5" value="50">
         </div>
       </div>
 
@@ -330,6 +328,7 @@
         <kbd>H</kbd> Toggle hardware bar<br>
         <kbd>F</kbd> Fullscreen + popout<br>
         <kbd>S</kbd> Toggle sidebar<br>
+        <kbd>1-8</kbd> Switch preset<br>
         <kbd>Esc</kbd> Exit fullscreen
       </div>
     </div>
@@ -337,7 +336,7 @@
     <div id="canvas-container">
       <canvas id="canvas"></canvas>
       <div id="click-prompt">
-        <span>🎵</span>
+        <span>*</span>
         Load audio or click to enable microphone
       </div>
     </div>
@@ -349,8 +348,7 @@
   <script src="../lib/hardware-controls.js?v=4"></script>
   <script>
     // ═══════════════════════════════════════════════════════════════════
-    // LLAMA BARS - Classic Spectrum Analyzer
-    // Inspired by Winamp / Windows Media Player
+    // GILT TRIP - Klimt Art Nouveau Gold Visualizer
     // ═══════════════════════════════════════════════════════════════════
 
     const canvas = document.getElementById('canvas');
@@ -362,32 +360,51 @@
 
     const P = {
       // Knobs
-      barCount: 32,
+      density: 50,
       speed: 1.0,
       sensitivity: 1.5,
-      barOpacity: 100,
-      peakHold: 300,
-      peakGravity: 1.0,
-      reflection: 30,
-      gapSize: 2,
-      // Faders (overlay)
+      gold: 70,
+      spirals: 50,
+      mosaic: 50,
+      shimmer: 50,
+      organic: 50,
+      // Faders
       overlaySize: 20,
       overlayOpacity: 80,
-      overlayIntensity: 50,
+      fxIntensity: 50,
       masterBrightness: 100,
-      // Style (controlled by pads)
-      style: 0  // 0=Classic, 1=Smooth, 2=LED, 3=Hybrid
+      // Preset
+      preset: 0
     };
 
-    const STYLES = [
-      'Classic Blocks',
-      'Smooth Gradient',
-      'LED Matrix',
-      'Hybrid Glow',
-      'Neon Outline',
-      'Retro CRT',
-      'Minimal',
-      'Inverted'
+    const PRESETS = [
+      'The Kiss',
+      'Tree of Life',
+      'Gold Mosaic',
+      'Adele Portrait',
+      'Byzantine',
+      'Spiral Garden',
+      'Peacock',
+      'Golden Rain'
+    ];
+
+    // Gold palette variations
+    const GOLD_COLORS = [
+      [212, 175, 55],   // Classic gold
+      [255, 215, 0],    // Bright gold
+      [218, 165, 32],   // Goldenrod
+      [184, 134, 11],   // Dark goldenrod
+      [255, 223, 128],  // Light gold
+      [205, 173, 0],    // Metallic gold
+    ];
+
+    const ACCENT_COLORS = [
+      [139, 69, 19],    // Saddle brown
+      [0, 100, 100],    // Teal
+      [128, 0, 0],      // Maroon
+      [75, 0, 130],     // Indigo
+      [0, 128, 128],    // Dark cyan
+      [85, 107, 47],    // Olive
     ];
 
     // ═══════════════════════════════════════════════════════════════════
@@ -404,38 +421,35 @@
       if (audioInitialized) return;
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioContext.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.85;
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
       dataArray = new Uint8Array(analyser.frequencyBinCount);
       audioInitialized = true;
       document.getElementById('click-prompt').style.opacity = '0';
     }
 
-    function getFrequencyData() {
-      if (!analyser) return new Array(P.barCount).fill(0);
+    function getAudioData() {
+      if (!analyser) return { bass: 0, mid: 0, high: 0, average: 0 };
       analyser.getByteFrequencyData(dataArray);
 
-      const bars = [];
-      const binCount = dataArray.length;
-      const barsNeeded = P.barCount;
+      const len = dataArray.length;
+      let bass = 0, mid = 0, high = 0;
 
-      // Map frequency bins to bars (logarithmic distribution for better bass representation)
-      for (let i = 0; i < barsNeeded; i++) {
-        const startBin = Math.floor(Math.pow(i / barsNeeded, 1.5) * binCount);
-        const endBin = Math.floor(Math.pow((i + 1) / barsNeeded, 1.5) * binCount);
+      for (let i = 0; i < len * 0.15; i++) bass += dataArray[i];
+      for (let i = Math.floor(len * 0.15); i < len * 0.5; i++) mid += dataArray[i];
+      for (let i = Math.floor(len * 0.5); i < len; i++) high += dataArray[i];
 
-        let sum = 0;
-        let count = 0;
-        for (let j = startBin; j < endBin && j < binCount; j++) {
-          sum += dataArray[j];
-          count++;
-        }
+      const bassCount = Math.floor(len * 0.15);
+      const midCount = Math.floor(len * 0.35);
+      const highCount = len - Math.floor(len * 0.5);
 
-        const avg = count > 0 ? sum / count : 0;
-        bars.push((avg / 255) * P.sensitivity);
-      }
+      bass = (bass / bassCount / 255) * P.sensitivity;
+      mid = (mid / midCount / 255) * P.sensitivity;
+      high = (high / highCount / 255) * P.sensitivity;
 
-      return bars;
+      const average = (bass + mid + high) / 3;
+
+      return { bass, mid, high, average };
     }
 
     // Audio file loading
@@ -495,195 +509,425 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════
-    // BARS STATE
+    // STATE
     // ═══════════════════════════════════════════════════════════════════
 
-    let barHeights = [];
-    let peakHeights = [];
-    let peakVelocities = [];
-    let peakHoldTimers = [];
+    let time = 0;
+    let elements = [];
 
-    function initBars() {
-      barHeights = new Array(P.barCount).fill(0);
-      peakHeights = new Array(P.barCount).fill(0);
-      peakVelocities = new Array(P.barCount).fill(0);
-      peakHoldTimers = new Array(P.barCount).fill(0);
+    // ═══════════════════════════════════════════════════════════════════
+    // UTILITY FUNCTIONS
+    // ═══════════════════════════════════════════════════════════════════
+
+    function getGoldColor(shimmerOffset = 0) {
+      const goldAmount = P.gold / 100;
+      const shimmer = P.shimmer / 100;
+
+      const baseIndex = Math.floor(Math.random() * GOLD_COLORS.length);
+      const base = GOLD_COLORS[baseIndex];
+
+      // Add shimmer variation
+      const shimmerVal = Math.sin(time * 5 + shimmerOffset) * shimmer * 30;
+
+      return [
+        Math.min(255, Math.max(0, base[0] + shimmerVal)),
+        Math.min(255, Math.max(0, base[1] + shimmerVal * 0.8)),
+        Math.min(255, Math.max(0, base[2] + shimmerVal * 0.5))
+      ];
     }
 
-    initBars();
+    function getAccentColor() {
+      const index = Math.floor(Math.random() * ACCENT_COLORS.length);
+      return ACCENT_COLORS[index];
+    }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // COLORS
-    // ═══════════════════════════════════════════════════════════════════
+    function drawSpiral(ctx, cx, cy, radius, turns, audio) {
+      const points = turns * 30;
+      const spiralTightness = P.spirals / 50;
 
-    function getBarColor(heightPercent) {
-      // Green → Yellow → Red gradient
-      if (heightPercent < 0.5) {
-        // Green to Yellow
-        const t = heightPercent * 2;
-        const r = Math.floor(255 * t);
-        const g = 255;
-        const b = 0;
-        return `rgb(${r}, ${g}, ${b})`;
-      } else {
-        // Yellow to Red
-        const t = (heightPercent - 0.5) * 2;
-        const r = 255;
-        const g = Math.floor(255 * (1 - t));
-        const b = 0;
-        return `rgb(${r}, ${g}, ${b})`;
+      ctx.beginPath();
+
+      for (let i = 0; i <= points; i++) {
+        const progress = i / points;
+        const angle = progress * Math.PI * 2 * turns;
+        const r = progress * radius * spiralTightness;
+
+        const wobble = Math.sin(angle * 3 + time * 2) * (P.organic / 100) * 5;
+
+        const x = cx + Math.cos(angle + time * P.speed * 0.5) * (r + wobble);
+        const y = cy + Math.sin(angle + time * P.speed * 0.5) * (r + wobble);
+
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      const color = getGoldColor(cx + cy);
+      ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.6 + audio.mid * 0.3})`;
+      ctx.lineWidth = 2 + audio.bass * 2;
+      ctx.stroke();
+    }
+
+    function drawMosaicTile(ctx, x, y, size, audio) {
+      const isGold = Math.random() < P.gold / 100;
+      const color = isGold ? getGoldColor(x + y) : getAccentColor();
+
+      const shimmer = Math.sin(time * 3 + x * 0.1 + y * 0.1) * (P.shimmer / 100) * 0.3;
+      const alpha = 0.5 + shimmer + audio.average * 0.3;
+
+      // Organic shape variation
+      const organic = P.organic / 100;
+      const vertices = 4 + Math.floor(organic * 4);
+
+      ctx.beginPath();
+
+      for (let i = 0; i <= vertices; i++) {
+        const angle = (i / vertices) * Math.PI * 2;
+        const wobble = Math.sin(angle * 3 + time) * organic * size * 0.2;
+        const r = size / 2 + wobble;
+
+        const px = x + size / 2 + Math.cos(angle) * r;
+        const py = y + size / 2 + Math.sin(angle) * r;
+
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+
+      ctx.closePath();
+      ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+      ctx.fill();
+
+      // Gold outline
+      if (isGold) {
+        ctx.strokeStyle = `rgba(255, 223, 128, ${alpha * 0.5})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
       }
     }
 
-    function getBarColorWithAlpha(heightPercent, alpha) {
-      if (heightPercent < 0.5) {
-        const t = heightPercent * 2;
-        const r = Math.floor(255 * t);
-        const g = 255;
-        const b = 0;
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-      } else {
-        const t = (heightPercent - 0.5) * 2;
-        const r = 255;
-        const g = Math.floor(255 * (1 - t));
-        const b = 0;
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    function drawOrnament(ctx, cx, cy, size, audio) {
+      const layers = 3;
+
+      for (let layer = layers - 1; layer >= 0; layer--) {
+        const layerSize = size * (1 - layer * 0.25);
+        const rotation = time * P.speed * 0.3 * (layer % 2 === 0 ? 1 : -1);
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rotation);
+
+        // Draw decorative circles
+        const numCircles = 6 + layer * 2;
+        for (let i = 0; i < numCircles; i++) {
+          const angle = (i / numCircles) * Math.PI * 2;
+          const dist = layerSize * 0.6;
+          const x = Math.cos(angle) * dist;
+          const y = Math.sin(angle) * dist;
+          const r = layerSize * 0.15 * (1 + audio.mid * 0.3);
+
+          const color = getGoldColor(i + layer);
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.7)`;
+          ctx.fill();
+        }
+
+        ctx.restore();
       }
-    }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // RENDER STYLES
-    // ═══════════════════════════════════════════════════════════════════
+      // Center jewel
+      const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, size * 0.2);
+      gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+      gradient.addColorStop(0.5, 'rgba(212, 175, 55, 0.6)');
+      gradient.addColorStop(1, 'rgba(184, 134, 11, 0.4)');
 
-    function renderClassicBlocks(x, barWidth, barHeight, maxHeight, baseY) {
-      const blockHeight = 4;
-      const gap = P.gapSize;
-      const numBlocks = Math.floor(barHeight / (blockHeight + gap));
-      const alpha = P.barOpacity / 100;
-
-      for (let j = 0; j < numBlocks; j++) {
-        const blockY = baseY - (j + 1) * (blockHeight + gap);
-        const heightPercent = (j * (blockHeight + gap)) / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
-        ctx.fillRect(x, blockY, barWidth - gap, blockHeight);
-      }
-    }
-
-    function renderSmoothGradient(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      const gradient = ctx.createLinearGradient(x, baseY, x, baseY - barHeight);
-      gradient.addColorStop(0, `rgba(0, 255, 0, ${alpha})`);
-      gradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha})`);
-      gradient.addColorStop(1, `rgba(255, 0, 0, ${alpha})`);
+      ctx.beginPath();
+      ctx.arc(cx, cy, size * 0.2 * (1 + audio.bass * 0.3), 0, Math.PI * 2);
       ctx.fillStyle = gradient;
-      ctx.fillRect(x, baseY - barHeight, barWidth - P.gapSize, barHeight);
+      ctx.fill();
     }
 
-    function renderLEDMatrix(x, barWidth, barHeight, maxHeight, baseY) {
-      const cellSize = 6;
-      const gap = 2;
-      const numCells = Math.floor(barHeight / (cellSize + gap));
-      const alpha = P.barOpacity / 100;
+    // ═══════════════════════════════════════════════════════════════════
+    // PRESET RENDERERS
+    // ═══════════════════════════════════════════════════════════════════
 
-      for (let j = 0; j < numCells; j++) {
-        const cellY = baseY - (j + 1) * (cellSize + gap);
-        const heightPercent = (j * (cellSize + gap)) / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
+    // 0: The Kiss - intertwined golden figures
+    function renderTheKiss(audio, w, h) {
+      const cx = w / 2;
+      const cy = h / 2;
 
-        // Draw LED-style rounded rect
-        const cellX = x + gap / 2;
-        const cellW = barWidth - P.gapSize - gap;
+      // Flowing golden shapes
+      const numShapes = Math.floor(10 + P.density / 5);
+
+      for (let i = 0; i < numShapes; i++) {
+        const angle = (i / numShapes) * Math.PI * 2 + time * P.speed * 0.2;
+        const radius = 100 + i * 20 + Math.sin(time + i) * 30;
+
+        const x = cx + Math.cos(angle) * radius * 0.3;
+        const y = cy + Math.sin(angle) * radius * 0.5;
+
+        drawSpiral(ctx, x, y, 30 + audio.bass * 20, 2 + i % 3, audio);
+      }
+
+      // Central embrace shape
+      drawOrnament(ctx, cx, cy, 80 + audio.average * 40, audio);
+    }
+
+    // 1: Tree of Life - branching golden tree
+    function renderTreeOfLife(audio, w, h) {
+      const cx = w / 2;
+      const baseY = h * 0.85;
+
+      function drawBranch(x, y, angle, length, depth) {
+        if (depth > 6 || length < 10) return;
+
+        const endX = x + Math.cos(angle) * length;
+        const endY = y + Math.sin(angle) * length;
+
+        const color = getGoldColor(depth);
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.5 + audio.average * 0.3})`;
+        ctx.lineWidth = Math.max(1, (7 - depth) * 1.5);
+
         ctx.beginPath();
-        ctx.roundRect(cellX, cellY, cellW, cellSize, 2);
+        ctx.moveTo(x, y);
+
+        // Organic curve
+        const ctrlX = (x + endX) / 2 + Math.sin(time + depth) * (P.organic / 100) * 20;
+        const ctrlY = (y + endY) / 2;
+        ctx.quadraticCurveTo(ctrlX, ctrlY, endX, endY);
+        ctx.stroke();
+
+        // Spirals at branch ends
+        if (depth > 3 && P.spirals > 30) {
+          drawSpiral(ctx, endX, endY, 10 + audio.mid * 10, 1.5, audio);
+        }
+
+        const spread = 0.4 + (P.organic / 100) * 0.3;
+        const shrink = 0.7;
+
+        drawBranch(endX, endY, angle - spread, length * shrink, depth + 1);
+        drawBranch(endX, endY, angle + spread, length * shrink, depth + 1);
+      }
+
+      // Main trunk
+      drawBranch(cx, baseY, -Math.PI / 2, 100 + audio.bass * 30, 0);
+    }
+
+    // 2: Gold Mosaic - geometric golden tiles
+    function renderGoldMosaic(audio, w, h) {
+      const tileSize = 20 + (100 - P.mosaic) / 3;
+      const cols = Math.ceil(w / tileSize);
+      const rows = Math.ceil(h / tileSize);
+
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const x = col * tileSize;
+          const y = row * tileSize;
+
+          // Animate tiles based on position and audio
+          const wave = Math.sin(col * 0.2 + row * 0.2 + time * P.speed);
+          if (wave > -0.5 + audio.average) {
+            drawMosaicTile(ctx, x, y, tileSize - 2, audio);
+          }
+        }
+      }
+    }
+
+    // 3: Adele Portrait - central figure with ornate background
+    function renderAdelePortrait(audio, w, h) {
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // Background pattern
+      const numBgElements = Math.floor(P.density / 2);
+      for (let i = 0; i < numBgElements; i++) {
+        const x = (Math.sin(i * 0.5 + time * 0.3) * 0.5 + 0.5) * w;
+        const y = (Math.cos(i * 0.7 + time * 0.2) * 0.5 + 0.5) * h;
+        const size = 20 + Math.sin(i + time) * 10;
+
+        drawOrnament(ctx, x, y, size + audio.mid * 10, audio);
+      }
+
+      // Central figure area (darker)
+      const figureGradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, 150);
+      figureGradient.addColorStop(0, 'rgba(50, 30, 10, 0.3)');
+      figureGradient.addColorStop(1, 'rgba(50, 30, 10, 0)');
+      ctx.fillStyle = figureGradient;
+      ctx.fillRect(0, 0, w, h);
+
+      // Ornate frame
+      drawOrnament(ctx, cx, cy, 120 + audio.bass * 30, audio);
+    }
+
+    // 4: Byzantine - religious icon style
+    function renderByzantine(audio, w, h) {
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // Halo rings
+      const numRings = 5;
+      for (let i = numRings - 1; i >= 0; i--) {
+        const radius = 50 + i * 40 + audio.bass * 20;
+        const color = getGoldColor(i);
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.3 + (numRings - i) * 0.1})`;
+        ctx.lineWidth = 3 + audio.mid * 2;
+        ctx.stroke();
+
+        // Decorative dots
+        const numDots = 12 + i * 4;
+        for (let j = 0; j < numDots; j++) {
+          const angle = (j / numDots) * Math.PI * 2 + time * P.speed * 0.2 * (i % 2 === 0 ? 1 : -1);
+          const dotX = cx + Math.cos(angle) * radius;
+          const dotY = cy + Math.sin(angle) * radius;
+
+          ctx.beginPath();
+          ctx.arc(dotX, dotY, 3 + audio.high * 2, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.8)`;
+          ctx.fill();
+        }
+      }
+    }
+
+    // 5: Spiral Garden - field of golden spirals
+    function renderSpiralGarden(audio, w, h) {
+      const numSpirals = Math.floor(5 + P.density / 10);
+
+      for (let i = 0; i < numSpirals; i++) {
+        const x = (i % 5) * (w / 4) + w / 8;
+        const y = Math.floor(i / 5) * (h / 3) + h / 6;
+
+        const offsetX = Math.sin(time * P.speed + i) * 30;
+        const offsetY = Math.cos(time * P.speed * 0.7 + i) * 30;
+
+        drawSpiral(ctx, x + offsetX, y + offsetY, 40 + audio.bass * 30, 3, audio);
+      }
+    }
+
+    // 6: Peacock - feather-like patterns
+    function renderPeacock(audio, w, h) {
+      const cx = w / 2;
+      const cy = h * 0.7;
+
+      const numFeathers = Math.floor(15 + P.density / 3);
+
+      for (let i = 0; i < numFeathers; i++) {
+        const baseAngle = -Math.PI + (i / (numFeathers - 1)) * Math.PI;
+        const length = 200 + Math.sin(i * 0.5 + time) * 50;
+
+        // Feather shaft
+        const endX = cx + Math.cos(baseAngle) * length;
+        const endY = cy + Math.sin(baseAngle) * length;
+
+        const color = i % 3 === 0 ? getGoldColor(i) : [0, 100 + i * 5, 100 + i * 3];
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.quadraticCurveTo(
+          cx + Math.cos(baseAngle) * length * 0.5,
+          cy + Math.sin(baseAngle) * length * 0.5 - 30,
+          endX, endY
+        );
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.6)`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Eye at end
+        const eyeSize = 15 + audio.mid * 10;
+        const eyeGradient = ctx.createRadialGradient(endX, endY, 0, endX, endY, eyeSize);
+        eyeGradient.addColorStop(0, 'rgba(0, 50, 100, 0.8)');
+        eyeGradient.addColorStop(0.5, 'rgba(0, 100, 150, 0.6)');
+        eyeGradient.addColorStop(0.7, 'rgba(212, 175, 55, 0.8)');
+        eyeGradient.addColorStop(1, 'rgba(212, 175, 55, 0)');
+
+        ctx.beginPath();
+        ctx.arc(endX, endY, eyeSize, 0, Math.PI * 2);
+        ctx.fillStyle = eyeGradient;
         ctx.fill();
       }
     }
 
-    function renderHybridGlow(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-
-      // Glow effect
-      ctx.shadowColor = getBarColor(barHeight / maxHeight);
-      ctx.shadowBlur = 15;
-
-      // Blocks with glow
-      const blockHeight = 4;
-      const gap = P.gapSize;
-      const numBlocks = Math.floor(barHeight / (blockHeight + gap));
-
-      for (let j = 0; j < numBlocks; j++) {
-        const blockY = baseY - (j + 1) * (blockHeight + gap);
-        const heightPercent = (j * (blockHeight + gap)) / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
-        ctx.fillRect(x, blockY, barWidth - gap, blockHeight);
+    // 7: Golden Rain - falling gold particles
+    function renderGoldenRain(audio, w, h) {
+      if (!this.rainParticles) {
+        this.rainParticles = [];
       }
 
-      ctx.shadowBlur = 0;
-    }
-
-    function renderNeonOutline(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      const color = getBarColor(barHeight / maxHeight);
-
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
-
-      ctx.strokeRect(x + 1, baseY - barHeight, barWidth - P.gapSize - 2, barHeight);
-
-      ctx.shadowBlur = 0;
-    }
-
-    function renderRetroCRT(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      const scanlineGap = 3;
-
-      for (let j = 0; j < barHeight; j += scanlineGap) {
-        const heightPercent = j / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha * 0.8);
-        ctx.fillRect(x, baseY - j - 2, barWidth - P.gapSize, 2);
+      // Spawn particles
+      const spawnRate = Math.floor(P.density / 10 + audio.bass * 5);
+      for (let i = 0; i < spawnRate; i++) {
+        this.rainParticles.push({
+          x: Math.random() * w,
+          y: -20,
+          vx: (Math.random() - 0.5) * 2,
+          vy: 2 + Math.random() * 3,
+          size: 3 + Math.random() * 8,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.1,
+          color: getGoldColor(Math.random() * 100)
+        });
       }
-    }
 
-    function renderMinimal(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-      ctx.fillRect(x, baseY - barHeight, barWidth - P.gapSize, barHeight);
-    }
+      // Update and draw
+      for (let i = this.rainParticles.length - 1; i >= 0; i--) {
+        const p = this.rainParticles[i];
 
-    function renderInverted(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      // Draw from top down
-      const gradient = ctx.createLinearGradient(x, 0, x, barHeight);
-      gradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
-      gradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha})`);
-      gradient.addColorStop(1, `rgba(0, 255, 0, ${alpha})`);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x, 0, barWidth - P.gapSize, barHeight);
+        p.x += p.vx + Math.sin(time * 2 + p.y * 0.02) * (P.organic / 100) * 2;
+        p.y += p.vy * P.speed;
+        p.rotation += p.rotationSpeed;
+
+        if (p.y > h + 20) {
+          this.rainParticles.splice(i, 1);
+          continue;
+        }
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+
+        // Draw gold flake shape
+        ctx.beginPath();
+        const points = 6;
+        for (let j = 0; j <= points; j++) {
+          const angle = (j / points) * Math.PI * 2;
+          const r = p.size * (j % 2 === 0 ? 1 : 0.5);
+          const px = Math.cos(angle) * r;
+          const py = Math.sin(angle) * r;
+          if (j === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+
+        const shimmerVal = Math.sin(time * 5 + p.x * 0.1) * 0.3 + 0.7;
+        ctx.fillStyle = `rgba(${p.color[0]}, ${p.color[1]}, ${p.color[2]}, ${shimmerVal})`;
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      // Limit particles
+      if (this.rainParticles.length > 500) {
+        this.rainParticles = this.rainParticles.slice(-500);
+      }
     }
 
     const renderFunctions = [
-      renderClassicBlocks,
-      renderSmoothGradient,
-      renderLEDMatrix,
-      renderHybridGlow,
-      renderNeonOutline,
-      renderRetroCRT,
-      renderMinimal,
-      renderInverted
+      renderTheKiss,
+      renderTreeOfLife,
+      renderGoldMosaic,
+      renderAdelePortrait,
+      renderByzantine,
+      renderSpiralGarden,
+      renderPeacock,
+      renderGoldenRain
     ];
 
     // ═══════════════════════════════════════════════════════════════════
     // MAIN RENDER
     // ═══════════════════════════════════════════════════════════════════
 
-    let lastTime = 0;
-
-    function render(time) {
-      const deltaTime = (time - lastTime) / 1000;
-      lastTime = time;
-
+    function render() {
       // Resize canvas
       const container = document.getElementById('canvas-container');
       if (canvas.width !== container.clientWidth || canvas.height !== container.clientHeight) {
@@ -691,103 +935,32 @@
         canvas.height = container.clientHeight;
       }
 
-      // Clear with master brightness
-      const brightness = P.masterBrightness / 100;
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width;
+      const h = canvas.height;
 
       // Get audio data
-      const frequencies = getFrequencyData();
+      const audio = getAudioData();
 
-      // Ensure bar arrays match count
-      if (barHeights.length !== P.barCount) {
-        initBars();
-      }
+      // Dark background with slight fade
+      ctx.fillStyle = 'rgba(20, 15, 10, 0.1)';
+      ctx.fillRect(0, 0, w, h);
 
-      // Calculate dimensions
-      const margin = 40;
-      const totalWidth = canvas.width - margin * 2;
-      const barWidth = totalWidth / P.barCount;
-      const maxHeight = canvas.height * 0.6;
-      const baseY = canvas.height * 0.65;
-
-      // Update bar heights with smoothing
-      for (let i = 0; i < P.barCount; i++) {
-        const target = (frequencies[i] || 0) * maxHeight;
-        const smoothing = 0.3 * P.speed;
-        barHeights[i] += (target - barHeights[i]) * smoothing;
-
-        // Update peaks with gravity physics
-        if (barHeights[i] > peakHeights[i]) {
-          peakHeights[i] = barHeights[i];
-          peakVelocities[i] = 0;
-          peakHoldTimers[i] = P.peakHold;
-        } else {
-          if (peakHoldTimers[i] > 0) {
-            peakHoldTimers[i] -= deltaTime * 1000;
-          } else {
-            // Gravity acceleration
-            peakVelocities[i] += P.peakGravity * 500 * deltaTime;
-            peakHeights[i] -= peakVelocities[i] * deltaTime;
-            if (peakHeights[i] < 0) peakHeights[i] = 0;
-          }
-        }
-      }
+      // Update time
+      time += 0.016 * P.speed;
 
       // Apply master brightness
-      ctx.globalAlpha = brightness;
+      ctx.globalAlpha = P.masterBrightness / 100;
 
-      // Render bars
-      const renderFunc = renderFunctions[P.style] || renderClassicBlocks;
-
-      for (let i = 0; i < P.barCount; i++) {
-        const x = margin + i * barWidth;
-        const barHeight = barHeights[i];
-
-        // Draw bar
-        renderFunc(x, barWidth, barHeight, maxHeight, baseY);
-
-        // Draw peak indicator
-        if (peakHeights[i] > 2) {
-          const peakY = baseY - peakHeights[i];
-          const heightPercent = peakHeights[i] / maxHeight;
-          ctx.fillStyle = getBarColorWithAlpha(heightPercent, P.barOpacity / 100);
-          ctx.fillRect(x, peakY - 3, barWidth - P.gapSize, 3);
-        }
-      }
-
-      // Render reflection
-      if (P.reflection > 0) {
-        const reflectionAlpha = (P.reflection / 100) * (P.barOpacity / 100) * 0.5;
-
-        for (let i = 0; i < P.barCount; i++) {
-          const x = margin + i * barWidth;
-          const barHeight = barHeights[i];
-
-          // Create gradient for reflection fade
-          const gradient = ctx.createLinearGradient(x, baseY, x, baseY + barHeight * 0.6);
-
-          if (P.style === 1 || P.style === 7) {
-            // Smooth gradient reflection
-            gradient.addColorStop(0, `rgba(0, 255, 0, ${reflectionAlpha})`);
-            gradient.addColorStop(0.5, `rgba(255, 255, 0, ${reflectionAlpha * 0.5})`);
-            gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
-          } else {
-            // Block-style reflection
-            const topColor = getBarColorWithAlpha(barHeight / maxHeight, reflectionAlpha);
-            gradient.addColorStop(0, topColor);
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          }
-
-          ctx.fillStyle = gradient;
-          ctx.fillRect(x, baseY + 4, barWidth - P.gapSize, barHeight * 0.5);
-        }
+      // Render current preset
+      const renderFunc = renderFunctions[P.preset];
+      if (renderFunc) {
+        renderFunc.call(this, audio, w, h);
       }
 
       ctx.globalAlpha = 1;
 
       // Draw overlay blended onto canvas
-      drawOverlay(ctx, canvas.width, canvas.height);
+      drawOverlay(ctx, w, h);
 
       requestAnimationFrame(render);
     }
@@ -843,8 +1016,8 @@
     // ═══════════════════════════════════════════════════════════════════
 
     const sliderParams = [
-      'barCount', 'speed', 'sensitivity', 'barOpacity',
-      'peakHold', 'peakGravity', 'reflection', 'gapSize',
+      'density', 'speed', 'sensitivity', 'gold',
+      'spirals', 'mosaic', 'shimmer', 'organic',
       'overlaySize', 'overlayOpacity'
     ];
 
@@ -860,9 +1033,6 @@
         }
         if (param === 'overlaySize' || param === 'overlayOpacity') {
           updateOverlay();
-        }
-        if (param === 'barCount') {
-          initBars();
         }
         if (hardware) hardware.sync();
       });
@@ -882,9 +1052,8 @@
       } else if (e.key === 'Escape') {
         exitFullscreen();
       } else if (e.key >= '1' && e.key <= '8') {
-        // Number keys switch styles
-        const styleIndex = parseInt(e.key) - 1;
-        setStyle(styleIndex);
+        const presetIndex = parseInt(e.key) - 1;
+        setPreset(presetIndex);
       }
     });
 
@@ -913,13 +1082,13 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // STYLE SWITCHING
+    // PRESET SWITCHING
     // ═══════════════════════════════════════════════════════════════════
 
-    function setStyle(index) {
-      if (index >= 0 && index < STYLES.length) {
-        P.style = index;
-        document.getElementById('styleLabel').textContent = STYLES[index];
+    function setPreset(index) {
+      if (index >= 0 && index < PRESETS.length) {
+        P.preset = index;
+        document.getElementById('styleLabel').textContent = PRESETS[index];
       }
     }
 
@@ -936,28 +1105,27 @@
       }
 
       hardware = new HardwareControls({
-        name: 'Llama Bars',
-        accentColor: '#ffcc00',
+        name: 'Gilt Trip',
+        accentColor: '#d4af37',
         params: P,
         knobs: [
-          { id: 'barCount', label: 'Count', min: 16, max: 128, step: 4 },
-          { id: 'speed', label: 'Speed', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+          { id: 'density', label: 'Dense', min: 10, max: 100, step: 5 },
+          { id: 'speed', label: 'Speed', min: 0.1, max: 3, step: 0.1, decimals: 1 },
           { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'barOpacity', label: 'Alpha', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'peakHold', label: 'Hold', min: 100, max: 1000, step: 50, suffix: 'ms' },
-          { id: 'peakGravity', label: 'Grav', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'reflection', label: 'Refl', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'gapSize', label: 'Gap', min: 0, max: 8, step: 1, suffix: 'px' }
+          { id: 'gold', label: 'Gold', min: 0, max: 100, step: 5, suffix: '%' },
+          { id: 'spirals', label: 'Spirl', min: 0, max: 100, step: 5 },
+          { id: 'mosaic', label: 'Mosac', min: 0, max: 100, step: 5 },
+          { id: 'shimmer', label: 'Shmmr', min: 0, max: 100, step: 5, suffix: '%' },
+          { id: 'organic', label: 'Orgnic', min: 0, max: 100, step: 5, suffix: '%' }
         ],
         faders: [
           { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
           { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
           { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
         ],
-        presets: STYLES.map((name, i) => ({ name })),  // Style presets
+        presets: PRESETS.map((name, i) => ({ name })),
         onParamChange: (id, value) => {
-          // Sync sidebar
           const slider = document.getElementById(id);
           if (slider) {
             slider.value = value;
@@ -967,16 +1135,11 @@
           if (id === 'overlaySize' || id === 'overlayOpacity') {
             updateOverlay();
           }
-          if (id === 'barCount') {
-            initBars();
-          }
         },
         onPresetLoad: (index) => {
-          // Pads switch styles instead of loading parameter presets
-          setStyle(index);
+          setPreset(index);
         },
         onAudioFile: (file) => {
-          // Trigger the file input change handler
           const input = document.getElementById('audioFile');
           const dataTransfer = new DataTransfer();
           dataTransfer.items.add(file);
@@ -1004,7 +1167,6 @@
           initAudio();
           const systemSource = audioContext.createMediaStreamSource(stream);
           systemSource.connect(analyser);
-          // Note: System audio doesn't go to speakers (no destination connect)
         }
       });
     }
@@ -1013,12 +1175,10 @@
     // INIT
     // ═══════════════════════════════════════════════════════════════════
 
-    // Click to init audio
     document.getElementById('canvas-container').addEventListener('click', () => {
       initAudio();
     });
 
-    // Start
     initHardware();
     requestAnimationFrame(render);
 

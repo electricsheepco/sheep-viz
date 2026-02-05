@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Llama Bars - sheep-viz</title>
+  <title>Cubic Zirconia - sheep-viz</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
   <style>
@@ -19,8 +19,8 @@
       --bg-tertiary: #1a1a1a;
       --text-primary: #e0e0e0;
       --text-secondary: #888888;
-      --accent: #ffcc00;
-      --accent-dim: #aa8800;
+      --accent: #e63946;
+      --accent-dim: #9d2933;
       --border: #2a2a2a;
     }
 
@@ -64,7 +64,6 @@
       display: none;
     }
 
-    /* Projection/Fullscreen Mode */
     .projection-mode {
       cursor: none;
     }
@@ -88,7 +87,6 @@
       display: none;
     }
 
-    /* Fullscreen indicator */
     #fullscreen-indicator {
       position: fixed;
       top: 20px;
@@ -250,8 +248,8 @@
 <body>
   <div id="app">
     <div id="sidebar">
-      <h1>Llama Bars</h1>
-      <div class="subtitle">Classic Spectrum Analyzer</div>
+      <h1>Cubic Zirconia</h1>
+      <div class="subtitle">Cubist Fragmentation</div>
 
       <div class="section">
         <div class="section-title">Audio Input</div>
@@ -262,21 +260,21 @@
       </div>
 
       <div class="section">
-        <div class="section-title">Style</div>
-        <div class="style-indicator">Style: <span id="styleLabel">Classic Blocks</span></div>
+        <div class="section-title">Preset</div>
+        <div class="style-indicator">Preset: <span id="styleLabel">Shattered</span></div>
       </div>
 
       <div class="section">
         <div class="section-title">Parameters</div>
 
         <div class="control-group">
-          <label>Bar Count <span id="barCountVal">32</span></label>
-          <input type="range" id="barCount" min="16" max="128" step="4" value="32">
+          <label>Fragments <span id="fragmentsVal">50</span></label>
+          <input type="range" id="fragments" min="10" max="100" step="5" value="50">
         </div>
 
         <div class="control-group">
           <label>Speed <span id="speedVal">1.0</span></label>
-          <input type="range" id="speed" min="0.5" max="3" step="0.1" value="1">
+          <input type="range" id="speed" min="0.1" max="3" step="0.1" value="1">
         </div>
 
         <div class="control-group">
@@ -285,28 +283,28 @@
         </div>
 
         <div class="control-group">
-          <label>Bar Opacity <span id="barOpacityVal">100</span>%</label>
-          <input type="range" id="barOpacity" min="0" max="100" step="5" value="100">
+          <label>Angular <span id="angularVal">50</span>%</label>
+          <input type="range" id="angular" min="0" max="100" step="5" value="50">
         </div>
 
         <div class="control-group">
-          <label>Peak Hold <span id="peakHoldVal">300</span>ms</label>
-          <input type="range" id="peakHold" min="100" max="1000" step="50" value="300">
+          <label>Overlap <span id="overlapVal">50</span>%</label>
+          <input type="range" id="overlap" min="0" max="100" step="5" value="50">
         </div>
 
         <div class="control-group">
-          <label>Peak Gravity <span id="peakGravityVal">1.0</span></label>
-          <input type="range" id="peakGravity" min="0.5" max="3" step="0.1" value="1">
+          <label>Outline <span id="outlineVal">70</span>%</label>
+          <input type="range" id="outline" min="0" max="100" step="5" value="70">
         </div>
 
         <div class="control-group">
-          <label>Reflection <span id="reflectionVal">30</span>%</label>
-          <input type="range" id="reflection" min="0" max="100" step="5" value="30">
+          <label>Palette <span id="paletteVal">0</span></label>
+          <input type="range" id="palette" min="0" max="4" step="1" value="0">
         </div>
 
         <div class="control-group">
-          <label>Gap Size <span id="gapSizeVal">2</span>px</label>
-          <input type="range" id="gapSize" min="0" max="8" step="1" value="2">
+          <label>Distort <span id="distortVal">30</span>%</label>
+          <input type="range" id="distort" min="0" max="100" step="5" value="30">
         </div>
       </div>
 
@@ -330,6 +328,7 @@
         <kbd>H</kbd> Toggle hardware bar<br>
         <kbd>F</kbd> Fullscreen + popout<br>
         <kbd>S</kbd> Toggle sidebar<br>
+        <kbd>1-8</kbd> Switch preset<br>
         <kbd>Esc</kbd> Exit fullscreen
       </div>
     </div>
@@ -337,7 +336,7 @@
     <div id="canvas-container">
       <canvas id="canvas"></canvas>
       <div id="click-prompt">
-        <span>🎵</span>
+        <span>#</span>
         Load audio or click to enable microphone
       </div>
     </div>
@@ -349,8 +348,7 @@
   <script src="../lib/hardware-controls.js?v=4"></script>
   <script>
     // ═══════════════════════════════════════════════════════════════════
-    // LLAMA BARS - Classic Spectrum Analyzer
-    // Inspired by Winamp / Windows Media Player
+    // CUBIC ZIRCONIA - Picasso Cubism Visualizer
     // ═══════════════════════════════════════════════════════════════════
 
     const canvas = document.getElementById('canvas');
@@ -362,32 +360,46 @@
 
     const P = {
       // Knobs
-      barCount: 32,
+      fragments: 50,
       speed: 1.0,
       sensitivity: 1.5,
-      barOpacity: 100,
-      peakHold: 300,
-      peakGravity: 1.0,
-      reflection: 30,
-      gapSize: 2,
-      // Faders (overlay)
+      angular: 50,
+      overlap: 50,
+      outline: 70,
+      palette: 0,
+      distort: 30,
+      // Faders
       overlaySize: 20,
       overlayOpacity: 80,
-      overlayIntensity: 50,
+      fxIntensity: 50,
       masterBrightness: 100,
-      // Style (controlled by pads)
-      style: 0  // 0=Classic, 1=Smooth, 2=LED, 3=Hybrid
+      // Preset
+      preset: 0
     };
 
-    const STYLES = [
-      'Classic Blocks',
-      'Smooth Gradient',
-      'LED Matrix',
-      'Hybrid Glow',
-      'Neon Outline',
-      'Retro CRT',
-      'Minimal',
-      'Inverted'
+    const PRESETS = [
+      'Shattered',
+      'Portrait',
+      'Guitar',
+      'Blue Period',
+      'Rose Period',
+      'Guernica',
+      'Prism',
+      'Deconstruct'
+    ];
+
+    // Cubist color palettes
+    const PALETTES = [
+      // 0: Analytic Cubism - muted browns, grays, ochres
+      [[139, 119, 101], [169, 154, 134], [101, 91, 79], [189, 174, 154], [79, 69, 59]],
+      // 1: Synthetic Cubism - bolder colors
+      [[230, 57, 70], [69, 123, 157], [241, 250, 238], [29, 53, 87], [168, 218, 220]],
+      // 2: Blue Period
+      [[30, 50, 100], [50, 80, 140], [70, 100, 160], [100, 130, 180], [40, 60, 110]],
+      // 3: Rose Period
+      [[219, 168, 140], [239, 188, 160], [189, 138, 110], [169, 118, 90], [199, 148, 120]],
+      // 4: High contrast
+      [[0, 0, 0], [255, 255, 255], [230, 57, 70], [69, 123, 157], [241, 196, 15]]
     ];
 
     // ═══════════════════════════════════════════════════════════════════
@@ -404,38 +416,35 @@
       if (audioInitialized) return;
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioContext.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.85;
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.8;
       dataArray = new Uint8Array(analyser.frequencyBinCount);
       audioInitialized = true;
       document.getElementById('click-prompt').style.opacity = '0';
     }
 
-    function getFrequencyData() {
-      if (!analyser) return new Array(P.barCount).fill(0);
+    function getAudioData() {
+      if (!analyser) return { bass: 0, mid: 0, high: 0, average: 0 };
       analyser.getByteFrequencyData(dataArray);
 
-      const bars = [];
-      const binCount = dataArray.length;
-      const barsNeeded = P.barCount;
+      const len = dataArray.length;
+      let bass = 0, mid = 0, high = 0;
 
-      // Map frequency bins to bars (logarithmic distribution for better bass representation)
-      for (let i = 0; i < barsNeeded; i++) {
-        const startBin = Math.floor(Math.pow(i / barsNeeded, 1.5) * binCount);
-        const endBin = Math.floor(Math.pow((i + 1) / barsNeeded, 1.5) * binCount);
+      for (let i = 0; i < len * 0.15; i++) bass += dataArray[i];
+      for (let i = Math.floor(len * 0.15); i < len * 0.5; i++) mid += dataArray[i];
+      for (let i = Math.floor(len * 0.5); i < len; i++) high += dataArray[i];
 
-        let sum = 0;
-        let count = 0;
-        for (let j = startBin; j < endBin && j < binCount; j++) {
-          sum += dataArray[j];
-          count++;
-        }
+      const bassCount = Math.floor(len * 0.15);
+      const midCount = Math.floor(len * 0.35);
+      const highCount = len - Math.floor(len * 0.5);
 
-        const avg = count > 0 ? sum / count : 0;
-        bars.push((avg / 255) * P.sensitivity);
-      }
+      bass = (bass / bassCount / 255) * P.sensitivity;
+      mid = (mid / midCount / 255) * P.sensitivity;
+      high = (high / highCount / 255) * P.sensitivity;
 
-      return bars;
+      const average = (bass + mid + high) / 3;
+
+      return { bass, mid, high, average };
     }
 
     // Audio file loading
@@ -495,299 +504,458 @@
     });
 
     // ═══════════════════════════════════════════════════════════════════
-    // BARS STATE
+    // STATE
     // ═══════════════════════════════════════════════════════════════════
 
-    let barHeights = [];
-    let peakHeights = [];
-    let peakVelocities = [];
-    let peakHoldTimers = [];
+    let time = 0;
+    let fragments = [];
 
-    function initBars() {
-      barHeights = new Array(P.barCount).fill(0);
-      peakHeights = new Array(P.barCount).fill(0);
-      peakVelocities = new Array(P.barCount).fill(0);
-      peakHoldTimers = new Array(P.barCount).fill(0);
-    }
-
-    initBars();
-
-    // ═══════════════════════════════════════════════════════════════════
-    // COLORS
-    // ═══════════════════════════════════════════════════════════════════
-
-    function getBarColor(heightPercent) {
-      // Green → Yellow → Red gradient
-      if (heightPercent < 0.5) {
-        // Green to Yellow
-        const t = heightPercent * 2;
-        const r = Math.floor(255 * t);
-        const g = 255;
-        const b = 0;
-        return `rgb(${r}, ${g}, ${b})`;
-      } else {
-        // Yellow to Red
-        const t = (heightPercent - 0.5) * 2;
-        const r = 255;
-        const g = Math.floor(255 * (1 - t));
-        const b = 0;
-        return `rgb(${r}, ${g}, ${b})`;
+    class Fragment {
+      constructor(x, y, w, h, palette) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.rotation = (Math.random() - 0.5) * 0.5;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.02;
+        this.vertices = this.generateVertices();
+        this.color = palette[Math.floor(Math.random() * palette.length)];
+        this.seed = Math.random() * 1000;
+        this.phase = Math.random() * Math.PI * 2;
       }
-    }
 
-    function getBarColorWithAlpha(heightPercent, alpha) {
-      if (heightPercent < 0.5) {
-        const t = heightPercent * 2;
-        const r = Math.floor(255 * t);
-        const g = 255;
-        const b = 0;
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-      } else {
-        const t = (heightPercent - 0.5) * 2;
-        const r = 255;
-        const g = Math.floor(255 * (1 - t));
-        const b = 0;
-        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+      generateVertices() {
+        const angular = P.angular / 100;
+        const numVertices = 3 + Math.floor(Math.random() * 4); // 3-6 vertices
+        const vertices = [];
+
+        for (let i = 0; i < numVertices; i++) {
+          const baseAngle = (i / numVertices) * Math.PI * 2;
+          const angleVariation = (Math.random() - 0.5) * angular * Math.PI * 0.5;
+          const angle = baseAngle + angleVariation;
+
+          const baseRadius = Math.min(this.w, this.h) / 2;
+          const radiusVariation = 0.5 + Math.random() * 0.5;
+          const radius = baseRadius * radiusVariation;
+
+          vertices.push({
+            angle: angle,
+            radius: radius,
+            offsetX: (Math.random() - 0.5) * this.w * 0.3,
+            offsetY: (Math.random() - 0.5) * this.h * 0.3
+          });
+        }
+
+        return vertices;
       }
-    }
 
-    // ═══════════════════════════════════════════════════════════════════
-    // RENDER STYLES
-    // ═══════════════════════════════════════════════════════════════════
+      draw(ctx, audio, time) {
+        const distort = P.distort / 100;
+        const wobble = Math.sin(time * 2 + this.phase) * distort * 20;
 
-    function renderClassicBlocks(x, barWidth, barHeight, maxHeight, baseY) {
-      const blockHeight = 4;
-      const gap = P.gapSize;
-      const numBlocks = Math.floor(barHeight / (blockHeight + gap));
-      const alpha = P.barOpacity / 100;
+        ctx.save();
+        ctx.translate(this.x + wobble * audio.mid, this.y + wobble * audio.bass);
+        ctx.rotate(this.rotation + Math.sin(time + this.seed) * 0.1 * audio.mid);
 
-      for (let j = 0; j < numBlocks; j++) {
-        const blockY = baseY - (j + 1) * (blockHeight + gap);
-        const heightPercent = (j * (blockHeight + gap)) / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
-        ctx.fillRect(x, blockY, barWidth - gap, blockHeight);
-      }
-    }
-
-    function renderSmoothGradient(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      const gradient = ctx.createLinearGradient(x, baseY, x, baseY - barHeight);
-      gradient.addColorStop(0, `rgba(0, 255, 0, ${alpha})`);
-      gradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha})`);
-      gradient.addColorStop(1, `rgba(255, 0, 0, ${alpha})`);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x, baseY - barHeight, barWidth - P.gapSize, barHeight);
-    }
-
-    function renderLEDMatrix(x, barWidth, barHeight, maxHeight, baseY) {
-      const cellSize = 6;
-      const gap = 2;
-      const numCells = Math.floor(barHeight / (cellSize + gap));
-      const alpha = P.barOpacity / 100;
-
-      for (let j = 0; j < numCells; j++) {
-        const cellY = baseY - (j + 1) * (cellSize + gap);
-        const heightPercent = (j * (cellSize + gap)) / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
-
-        // Draw LED-style rounded rect
-        const cellX = x + gap / 2;
-        const cellW = barWidth - P.gapSize - gap;
+        // Draw fragment shape
         ctx.beginPath();
-        ctx.roundRect(cellX, cellY, cellW, cellSize, 2);
+
+        for (let i = 0; i < this.vertices.length; i++) {
+          const v = this.vertices[i];
+          const audioBoost = 1 + audio.average * 0.3;
+          const px = Math.cos(v.angle) * v.radius * audioBoost + v.offsetX;
+          const py = Math.sin(v.angle) * v.radius * audioBoost + v.offsetY;
+
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+
+        ctx.closePath();
+
+        // Fill with semi-transparent color
+        const overlap = P.overlap / 100;
+        const alpha = 0.3 + overlap * 0.4 + audio.average * 0.2;
+        ctx.fillStyle = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${alpha})`;
         ctx.fill();
+
+        // Outline
+        if (P.outline > 0) {
+          const outlineAlpha = (P.outline / 100) * (0.5 + audio.high * 0.3);
+          ctx.strokeStyle = `rgba(0, 0, 0, ${outlineAlpha})`;
+          ctx.lineWidth = 1 + audio.bass;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+
+        // Update rotation
+        this.rotation += this.rotationSpeed * P.speed * (1 + audio.average * 0.5);
       }
     }
 
-    function renderHybridGlow(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
+    function initFragments(w, h) {
+      fragments = [];
+      const palette = PALETTES[P.palette];
+      const numFragments = P.fragments;
+      const gridSize = Math.ceil(Math.sqrt(numFragments));
+      const cellW = w / gridSize;
+      const cellH = h / gridSize;
 
-      // Glow effect
-      ctx.shadowColor = getBarColor(barHeight / maxHeight);
-      ctx.shadowBlur = 15;
+      for (let i = 0; i < numFragments; i++) {
+        const gridX = i % gridSize;
+        const gridY = Math.floor(i / gridSize);
 
-      // Blocks with glow
-      const blockHeight = 4;
-      const gap = P.gapSize;
-      const numBlocks = Math.floor(barHeight / (blockHeight + gap));
+        const x = gridX * cellW + cellW / 2 + (Math.random() - 0.5) * cellW * 0.5;
+        const y = gridY * cellH + cellH / 2 + (Math.random() - 0.5) * cellH * 0.5;
+        const fragW = cellW * (0.8 + Math.random() * 0.8);
+        const fragH = cellH * (0.8 + Math.random() * 0.8);
 
-      for (let j = 0; j < numBlocks; j++) {
-        const blockY = baseY - (j + 1) * (blockHeight + gap);
-        const heightPercent = (j * (blockHeight + gap)) / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha);
-        ctx.fillRect(x, blockY, barWidth - gap, blockHeight);
+        fragments.push(new Fragment(x, y, fragW, fragH, palette));
       }
-
-      ctx.shadowBlur = 0;
     }
 
-    function renderNeonOutline(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      const color = getBarColor(barHeight / maxHeight);
+    // ═══════════════════════════════════════════════════════════════════
+    // PRESET RENDERERS
+    // ═══════════════════════════════════════════════════════════════════
 
-      ctx.strokeStyle = color;
+    // 0: Shattered - basic fragmentation
+    function renderShattered(audio, w, h) {
+      if (fragments.length === 0 || fragments.length !== P.fragments) {
+        initFragments(w, h);
+      }
+
+      for (const frag of fragments) {
+        frag.draw(ctx, audio, time);
+      }
+    }
+
+    // 1: Portrait - face-like arrangement
+    function renderPortrait(audio, w, h) {
+      const cx = w / 2;
+      const cy = h / 2;
+      const palette = PALETTES[P.palette];
+
+      // Face outline fragments
+      const numFrags = Math.floor(P.fragments / 2);
+
+      for (let i = 0; i < numFrags; i++) {
+        const angle = (i / numFrags) * Math.PI * 2;
+        const radius = 100 + Math.sin(angle * 3 + time) * 30 + audio.bass * 50;
+
+        const x = cx + Math.cos(angle) * radius;
+        const y = cy + Math.sin(angle) * radius * 1.3; // Oval
+
+        drawCubistShape(ctx, x, y, 40 + audio.mid * 20, palette, audio);
+      }
+
+      // Eyes
+      drawCubistShape(ctx, cx - 50, cy - 30, 30 + audio.high * 15, palette, audio);
+      drawCubistShape(ctx, cx + 50, cy - 30, 30 + audio.high * 15, palette, audio);
+
+      // Nose
+      drawCubistShape(ctx, cx, cy + 10, 25 + audio.mid * 10, palette, audio);
+
+      // Mouth
+      drawCubistShape(ctx, cx, cy + 60, 40 + audio.bass * 20, palette, audio);
+    }
+
+    // 2: Guitar - guitar body shape fragments
+    function renderGuitar(audio, w, h) {
+      const cx = w / 2;
+      const cy = h / 2;
+      const palette = PALETTES[P.palette];
+
+      // Guitar body curves
+      const numCurves = Math.floor(P.fragments / 3);
+
+      for (let i = 0; i < numCurves; i++) {
+        const progress = i / numCurves;
+        const bodyY = cy - h * 0.3 + progress * h * 0.6;
+
+        // Figure-8 shape
+        const bodyWidth = Math.sin(progress * Math.PI) * 120 + 60;
+        const wobble = Math.sin(time * 2 + i) * (P.distort / 100) * 20;
+
+        drawCubistShape(ctx, cx - bodyWidth / 2 + wobble, bodyY, 30 + audio.mid * 20, palette, audio);
+        drawCubistShape(ctx, cx + bodyWidth / 2 + wobble, bodyY, 30 + audio.mid * 20, palette, audio);
+      }
+
+      // Neck
+      for (let i = 0; i < 8; i++) {
+        const y = cy - h * 0.35 - i * 25;
+        drawCubistShape(ctx, cx, y, 20 + audio.high * 10, palette, audio);
+      }
+
+      // Sound hole
+      const holeSize = 40 + audio.bass * 30;
+      ctx.beginPath();
+      ctx.arc(cx, cy, holeSize, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0, 0, 0, ${0.5 + audio.average * 0.3})`;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    // 3: Blue Period - melancholic blue tones
+    function renderBluePeriod(audio, w, h) {
+      // Force blue palette
+      const bluePalette = PALETTES[2];
+
+      const numShapes = P.fragments;
+      for (let i = 0; i < numShapes; i++) {
+        const x = (Math.sin(i * 0.5 + time * 0.3) * 0.4 + 0.5) * w;
+        const y = (Math.cos(i * 0.7 + time * 0.2) * 0.4 + 0.5) * h;
+        const size = 30 + Math.sin(i + time) * 20 + audio.average * 30;
+
+        drawCubistShape(ctx, x, y, size, bluePalette, audio, 0.4);
+      }
+
+      // Dripping effect
+      for (let i = 0; i < 20; i++) {
+        const x = (i / 20) * w;
+        const dripLength = 50 + Math.sin(time + i) * 30 + audio.bass * 50;
+        const color = bluePalette[i % bluePalette.length];
+
+        ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.3)`;
+        ctx.fillRect(x, 0, w / 25, dripLength);
+      }
+    }
+
+    // 4: Rose Period - warm pink/rose tones
+    function renderRosePeriod(audio, w, h) {
+      const rosePalette = PALETTES[3];
+
+      // Softer, rounder shapes
+      const numShapes = P.fragments;
+      for (let i = 0; i < numShapes; i++) {
+        const angle = (i / numShapes) * Math.PI * 2 + time * 0.2;
+        const radius = 50 + i * 5 + audio.mid * 30;
+
+        const x = w / 2 + Math.cos(angle) * radius;
+        const y = h / 2 + Math.sin(angle) * radius;
+        const size = 25 + Math.sin(i * 0.5 + time) * 15 + audio.average * 20;
+
+        drawCubistShape(ctx, x, y, size, rosePalette, audio, 0.5);
+      }
+    }
+
+    // 5: Guernica - harsh black/white/gray
+    function renderGuernica(audio, w, h) {
+      const guernicaPalette = [[0, 0, 0], [50, 50, 50], [100, 100, 100], [150, 150, 150], [200, 200, 200]];
+
+      // Chaotic, angular fragments
+      const numFrags = P.fragments;
+      for (let i = 0; i < numFrags; i++) {
+        const x = Math.random() * w;
+        const y = Math.random() * h;
+        const size = 20 + Math.random() * 60 + audio.bass * 40;
+
+        // More angular shapes
+        const tempAngular = P.angular;
+        P.angular = 80 + audio.high * 20;
+        drawCubistShape(ctx, x, y, size, guernicaPalette, audio, 0.6);
+        P.angular = tempAngular;
+      }
+
+      // Harsh lines
+      ctx.strokeStyle = `rgba(0, 0, 0, ${0.3 + audio.mid * 0.4})`;
+      ctx.lineWidth = 2 + audio.bass * 3;
+
+      for (let i = 0; i < 10; i++) {
+        ctx.beginPath();
+        ctx.moveTo(Math.random() * w, Math.random() * h);
+        ctx.lineTo(Math.random() * w, Math.random() * h);
+        ctx.stroke();
+      }
+    }
+
+    // 6: Prism - light refraction, color separation
+    function renderPrism(audio, w, h) {
+      const cx = w / 2;
+      const cy = h / 2;
+
+      // Rainbow prism colors
+      const prismColors = [
+        [255, 0, 0], [255, 127, 0], [255, 255, 0],
+        [0, 255, 0], [0, 0, 255], [75, 0, 130], [148, 0, 211]
+      ];
+
+      // Central prism (triangle)
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - 80);
+      ctx.lineTo(cx - 70, cy + 50);
+      ctx.lineTo(cx + 70, cy + 50);
+      ctx.closePath();
+      ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + audio.average * 0.3})`;
       ctx.lineWidth = 2;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 10;
+      ctx.stroke();
 
-      ctx.strokeRect(x + 1, baseY - barHeight, barWidth - P.gapSize - 2, barHeight);
+      // Light beams fragmenting
+      for (let i = 0; i < 7; i++) {
+        const color = prismColors[i];
+        const startX = cx - 100 - i * 10;
+        const startY = cy - 50 + i * 15;
 
-      ctx.shadowBlur = 0;
-    }
+        const beamLength = 200 + audio.bass * 100;
+        const spread = (i - 3) * 15 + audio.mid * 10;
 
-    function renderRetroCRT(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      const scanlineGap = 3;
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(cx + beamLength, cy + spread);
+        ctx.strokeStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${0.4 + audio.high * 0.3})`;
+        ctx.lineWidth = 3 + audio.average * 2;
+        ctx.stroke();
 
-      for (let j = 0; j < barHeight; j += scanlineGap) {
-        const heightPercent = j / maxHeight;
-        ctx.fillStyle = getBarColorWithAlpha(heightPercent, alpha * 0.8);
-        ctx.fillRect(x, baseY - j - 2, barWidth - P.gapSize, 2);
+        // Fragment at end
+        drawCubistShape(
+          ctx,
+          cx + beamLength + Math.random() * 50,
+          cy + spread,
+          20 + audio.average * 15,
+          [color],
+          audio,
+          0.6
+        );
       }
     }
 
-    function renderMinimal(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-      ctx.fillRect(x, baseY - barHeight, barWidth - P.gapSize, barHeight);
+    // 7: Deconstruct - maximum fragmentation
+    function renderDeconstruct(audio, w, h) {
+      const palette = PALETTES[P.palette];
+
+      // Constantly regenerating fragments
+      const numFrags = Math.floor(P.fragments * 1.5);
+
+      for (let i = 0; i < numFrags; i++) {
+        const seed = i * 123.456 + time * 0.1;
+        const x = (Math.sin(seed) * 0.5 + 0.5) * w;
+        const y = (Math.cos(seed * 1.3) * 0.5 + 0.5) * h;
+
+        const size = 15 + Math.sin(seed * 2) * 25 + audio.average * 30;
+        const rotation = seed + time * P.speed * 0.5;
+
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rotation);
+
+        // Random polygon
+        const sides = 3 + Math.floor(Math.abs(Math.sin(seed * 3)) * 4);
+        ctx.beginPath();
+
+        for (let j = 0; j <= sides; j++) {
+          const angle = (j / sides) * Math.PI * 2;
+          const r = size * (0.5 + Math.sin(angle * 2 + seed) * 0.5);
+          const px = Math.cos(angle) * r;
+          const py = Math.sin(angle) * r;
+
+          if (j === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+
+        ctx.closePath();
+
+        const color = palette[i % palette.length];
+        const alpha = 0.2 + (P.overlap / 100) * 0.4 + audio.average * 0.2;
+        ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+        ctx.fill();
+
+        if (P.outline > 30) {
+          ctx.strokeStyle = `rgba(0, 0, 0, ${P.outline / 200})`;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      }
     }
 
-    function renderInverted(x, barWidth, barHeight, maxHeight, baseY) {
-      const alpha = P.barOpacity / 100;
-      // Draw from top down
-      const gradient = ctx.createLinearGradient(x, 0, x, barHeight);
-      gradient.addColorStop(0, `rgba(255, 0, 0, ${alpha})`);
-      gradient.addColorStop(0.5, `rgba(255, 255, 0, ${alpha})`);
-      gradient.addColorStop(1, `rgba(0, 255, 0, ${alpha})`);
-      ctx.fillStyle = gradient;
-      ctx.fillRect(x, 0, barWidth - P.gapSize, barHeight);
+    function drawCubistShape(ctx, x, y, size, palette, audio, baseAlpha = 0.4) {
+      const angular = P.angular / 100;
+      const numVertices = 3 + Math.floor(angular * 4);
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(time * 0.1 * P.speed);
+
+      ctx.beginPath();
+
+      for (let i = 0; i <= numVertices; i++) {
+        const angle = (i / numVertices) * Math.PI * 2;
+        const radiusVar = 0.6 + Math.sin(angle * 3 + time) * 0.4;
+        const r = size * radiusVar;
+
+        const px = Math.cos(angle) * r;
+        const py = Math.sin(angle) * r;
+
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+
+      ctx.closePath();
+
+      const color = palette[Math.floor(Math.random() * palette.length)];
+      const alpha = baseAlpha + (P.overlap / 100) * 0.3 + audio.average * 0.2;
+      ctx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, ${alpha})`;
+      ctx.fill();
+
+      if (P.outline > 0) {
+        ctx.strokeStyle = `rgba(0, 0, 0, ${P.outline / 150})`;
+        ctx.lineWidth = 1 + audio.bass;
+        ctx.stroke();
+      }
+
+      ctx.restore();
     }
 
     const renderFunctions = [
-      renderClassicBlocks,
-      renderSmoothGradient,
-      renderLEDMatrix,
-      renderHybridGlow,
-      renderNeonOutline,
-      renderRetroCRT,
-      renderMinimal,
-      renderInverted
+      renderShattered,
+      renderPortrait,
+      renderGuitar,
+      renderBluePeriod,
+      renderRosePeriod,
+      renderGuernica,
+      renderPrism,
+      renderDeconstruct
     ];
 
     // ═══════════════════════════════════════════════════════════════════
     // MAIN RENDER
     // ═══════════════════════════════════════════════════════════════════
 
-    let lastTime = 0;
-
-    function render(time) {
-      const deltaTime = (time - lastTime) / 1000;
-      lastTime = time;
-
+    function render() {
       // Resize canvas
       const container = document.getElementById('canvas-container');
       if (canvas.width !== container.clientWidth || canvas.height !== container.clientHeight) {
         canvas.width = container.clientWidth;
         canvas.height = container.clientHeight;
+        fragments = []; // Reset fragments on resize
       }
 
-      // Clear with master brightness
-      const brightness = P.masterBrightness / 100;
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const w = canvas.width;
+      const h = canvas.height;
 
       // Get audio data
-      const frequencies = getFrequencyData();
+      const audio = getAudioData();
 
-      // Ensure bar arrays match count
-      if (barHeights.length !== P.barCount) {
-        initBars();
-      }
+      // Clear with slight fade for trails
+      ctx.fillStyle = 'rgba(240, 235, 230, 0.1)'; // Warm paper tone
+      ctx.fillRect(0, 0, w, h);
 
-      // Calculate dimensions
-      const margin = 40;
-      const totalWidth = canvas.width - margin * 2;
-      const barWidth = totalWidth / P.barCount;
-      const maxHeight = canvas.height * 0.6;
-      const baseY = canvas.height * 0.65;
-
-      // Update bar heights with smoothing
-      for (let i = 0; i < P.barCount; i++) {
-        const target = (frequencies[i] || 0) * maxHeight;
-        const smoothing = 0.3 * P.speed;
-        barHeights[i] += (target - barHeights[i]) * smoothing;
-
-        // Update peaks with gravity physics
-        if (barHeights[i] > peakHeights[i]) {
-          peakHeights[i] = barHeights[i];
-          peakVelocities[i] = 0;
-          peakHoldTimers[i] = P.peakHold;
-        } else {
-          if (peakHoldTimers[i] > 0) {
-            peakHoldTimers[i] -= deltaTime * 1000;
-          } else {
-            // Gravity acceleration
-            peakVelocities[i] += P.peakGravity * 500 * deltaTime;
-            peakHeights[i] -= peakVelocities[i] * deltaTime;
-            if (peakHeights[i] < 0) peakHeights[i] = 0;
-          }
-        }
-      }
+      // Update time
+      time += 0.016 * P.speed;
 
       // Apply master brightness
-      ctx.globalAlpha = brightness;
+      ctx.globalAlpha = P.masterBrightness / 100;
 
-      // Render bars
-      const renderFunc = renderFunctions[P.style] || renderClassicBlocks;
-
-      for (let i = 0; i < P.barCount; i++) {
-        const x = margin + i * barWidth;
-        const barHeight = barHeights[i];
-
-        // Draw bar
-        renderFunc(x, barWidth, barHeight, maxHeight, baseY);
-
-        // Draw peak indicator
-        if (peakHeights[i] > 2) {
-          const peakY = baseY - peakHeights[i];
-          const heightPercent = peakHeights[i] / maxHeight;
-          ctx.fillStyle = getBarColorWithAlpha(heightPercent, P.barOpacity / 100);
-          ctx.fillRect(x, peakY - 3, barWidth - P.gapSize, 3);
-        }
-      }
-
-      // Render reflection
-      if (P.reflection > 0) {
-        const reflectionAlpha = (P.reflection / 100) * (P.barOpacity / 100) * 0.5;
-
-        for (let i = 0; i < P.barCount; i++) {
-          const x = margin + i * barWidth;
-          const barHeight = barHeights[i];
-
-          // Create gradient for reflection fade
-          const gradient = ctx.createLinearGradient(x, baseY, x, baseY + barHeight * 0.6);
-
-          if (P.style === 1 || P.style === 7) {
-            // Smooth gradient reflection
-            gradient.addColorStop(0, `rgba(0, 255, 0, ${reflectionAlpha})`);
-            gradient.addColorStop(0.5, `rgba(255, 255, 0, ${reflectionAlpha * 0.5})`);
-            gradient.addColorStop(1, `rgba(255, 0, 0, 0)`);
-          } else {
-            // Block-style reflection
-            const topColor = getBarColorWithAlpha(barHeight / maxHeight, reflectionAlpha);
-            gradient.addColorStop(0, topColor);
-            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          }
-
-          ctx.fillStyle = gradient;
-          ctx.fillRect(x, baseY + 4, barWidth - P.gapSize, barHeight * 0.5);
-        }
+      // Render current preset
+      const renderFunc = renderFunctions[P.preset];
+      if (renderFunc) {
+        renderFunc(audio, w, h);
       }
 
       ctx.globalAlpha = 1;
 
       // Draw overlay blended onto canvas
-      drawOverlay(ctx, canvas.width, canvas.height);
+      drawOverlay(ctx, w, h);
 
       requestAnimationFrame(render);
     }
@@ -843,8 +1011,8 @@
     // ═══════════════════════════════════════════════════════════════════
 
     const sliderParams = [
-      'barCount', 'speed', 'sensitivity', 'barOpacity',
-      'peakHold', 'peakGravity', 'reflection', 'gapSize',
+      'fragments', 'speed', 'sensitivity', 'angular',
+      'overlap', 'outline', 'palette', 'distort',
       'overlaySize', 'overlayOpacity'
     ];
 
@@ -858,11 +1026,8 @@
         if (display) {
           display.textContent = P[param];
         }
-        if (param === 'overlaySize' || param === 'overlayOpacity') {
-          updateOverlay();
-        }
-        if (param === 'barCount') {
-          initBars();
+        if (param === 'fragments' || param === 'palette') {
+          fragments = []; // Reset fragments when count or palette changes
         }
         if (hardware) hardware.sync();
       });
@@ -882,9 +1047,8 @@
       } else if (e.key === 'Escape') {
         exitFullscreen();
       } else if (e.key >= '1' && e.key <= '8') {
-        // Number keys switch styles
-        const styleIndex = parseInt(e.key) - 1;
-        setStyle(styleIndex);
+        const presetIndex = parseInt(e.key) - 1;
+        setPreset(presetIndex);
       }
     });
 
@@ -913,13 +1077,14 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // STYLE SWITCHING
+    // PRESET SWITCHING
     // ═══════════════════════════════════════════════════════════════════
 
-    function setStyle(index) {
-      if (index >= 0 && index < STYLES.length) {
-        P.style = index;
-        document.getElementById('styleLabel').textContent = STYLES[index];
+    function setPreset(index) {
+      if (index >= 0 && index < PRESETS.length) {
+        P.preset = index;
+        document.getElementById('styleLabel').textContent = PRESETS[index];
+        fragments = []; // Reset fragments on preset change
       }
     }
 
@@ -936,47 +1101,41 @@
       }
 
       hardware = new HardwareControls({
-        name: 'Llama Bars',
-        accentColor: '#ffcc00',
+        name: 'Cubic Zirconia',
+        accentColor: '#e63946',
         params: P,
         knobs: [
-          { id: 'barCount', label: 'Count', min: 16, max: 128, step: 4 },
-          { id: 'speed', label: 'Speed', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+          { id: 'fragments', label: 'Frags', min: 10, max: 100, step: 5 },
+          { id: 'speed', label: 'Speed', min: 0.1, max: 3, step: 0.1, decimals: 1 },
           { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'barOpacity', label: 'Alpha', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'peakHold', label: 'Hold', min: 100, max: 1000, step: 50, suffix: 'ms' },
-          { id: 'peakGravity', label: 'Grav', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'reflection', label: 'Refl', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'gapSize', label: 'Gap', min: 0, max: 8, step: 1, suffix: 'px' }
+          { id: 'angular', label: 'Angle', min: 0, max: 100, step: 5, suffix: '%' },
+          { id: 'overlap', label: 'Ovrlp', min: 0, max: 100, step: 5, suffix: '%' },
+          { id: 'outline', label: 'Outln', min: 0, max: 100, step: 5, suffix: '%' },
+          { id: 'palette', label: 'Paltt', min: 0, max: 4, step: 1 },
+          { id: 'distort', label: 'Dist', min: 0, max: 100, step: 5, suffix: '%' }
         ],
         faders: [
           { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
           { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+          { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
           { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
         ],
-        presets: STYLES.map((name, i) => ({ name })),  // Style presets
+        presets: PRESETS.map((name, i) => ({ name })),
         onParamChange: (id, value) => {
-          // Sync sidebar
           const slider = document.getElementById(id);
           if (slider) {
             slider.value = value;
             const display = document.getElementById(id + 'Val');
             if (display) display.textContent = value;
           }
-          if (id === 'overlaySize' || id === 'overlayOpacity') {
-            updateOverlay();
-          }
-          if (id === 'barCount') {
-            initBars();
+          if (id === 'fragments' || id === 'palette') {
+            fragments = [];
           }
         },
         onPresetLoad: (index) => {
-          // Pads switch styles instead of loading parameter presets
-          setStyle(index);
+          setPreset(index);
         },
         onAudioFile: (file) => {
-          // Trigger the file input change handler
           const input = document.getElementById('audioFile');
           const dataTransfer = new DataTransfer();
           dataTransfer.items.add(file);
@@ -1004,7 +1163,6 @@
           initAudio();
           const systemSource = audioContext.createMediaStreamSource(stream);
           systemSource.connect(analyser);
-          // Note: System audio doesn't go to speakers (no destination connect)
         }
       });
     }
@@ -1013,12 +1171,10 @@
     // INIT
     // ═══════════════════════════════════════════════════════════════════
 
-    // Click to init audio
     document.getElementById('canvas-container').addEventListener('click', () => {
       initAudio();
     });
 
-    // Start
     initHardware();
     requestAnimationFrame(render);
 
