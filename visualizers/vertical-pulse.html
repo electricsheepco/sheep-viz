@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vertical Pulse - Audio Reactive Visualizer</title>
     <link rel="stylesheet" href="../lib/hardware-controls.css">
+    <script src="../lib/embed-adapter.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -346,6 +347,51 @@
     };
     const defaults = {...P};
 
+    const KNOB_DEFS = [
+      { id: 'columnCount', label: 'Cols', min: 20, max: 100, step: 1 },
+      { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'baseBright', label: 'Bright', min: 0.05, max: 0.5, step: 0.01, decimals: 2 },
+      { id: 'blobSize', label: 'Blob', min: 50, max: 300, step: 10 },
+      { id: 'columnWidth', label: 'Width', min: 0.3, max: 1.0, step: 0.05, decimals: 2 },
+      { id: 'blobCount', label: 'Blobs', min: 0, max: 10, step: 1 },
+      { id: 'overlaySize', label: 'OvSize', min: 0.05, max: 0.5, step: 0.01, decimals: 2 },
+      { id: 'overlayOpacity', label: 'OvAlpha', min: 0, max: 1, step: 0.05, decimals: 2 }
+    ];
+    const FADER_DEFS = [
+      { id: 'columnCount', label: 'Cols', min: 20, max: 100, step: 1 },
+      { id: 'blobCount', label: 'Blobs', min: 0, max: 10, step: 1 },
+      { id: 'overlayIntensity', label: 'FX', min: 0, max: 1, step: 0.05, decimals: 2 },
+      { id: 'baseBright', label: 'Bright', min: 0.05, max: 0.5, step: 0.01, decimals: 2 }
+    ];
+
+    const embed = new EmbedAdapter({
+      name: 'Vertical Pulse',
+      accentColor: '#d97757',
+      fftSize: 256,
+      params: P,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: [],
+      onParamChange: (id, value) => {
+        P[id] = value;
+        const slider = document.getElementById(id);
+        if (slider) {
+          if (id === 'columnWidth' || id === 'baseBright' || id === 'overlaySize' || id === 'overlayOpacity' || id === 'overlayIntensity') {
+            slider.value = value * 100;
+          } else if (id === 'sensitivity') {
+            slider.value = value * 100;
+          } else {
+            slider.value = value;
+          }
+          slider.dispatchEvent(new Event('input'));
+        }
+        if (['columnCount', 'columnWidth', 'blobCount', 'blobSize'].includes(id)) {
+          initSystem();
+        }
+      },
+      onPresetLoad: (index) => console.log('Load preset', index)
+    });
+
     // Overlay image
     let overlayImg = null;
     let overlayBlobUrl = null;
@@ -366,7 +412,17 @@
     let audioBlobUrl = null;
     let currentStream = null;
 
+    if (embed.active) {
+      const _eg = embed.audioGlobals();
+      actx = _eg.audioContext;
+      analyser = _eg.analyser;
+      freqData = _eg.dataArray;
+      smoothed = new Float32Array(analyser.frequencyBinCount).fill(0);
+      audioReady = true;
+    }
+
     function initAudio() {
+        if (embed.active) return Promise.resolve();
         if (actx) return Promise.resolve();
         actx = new (window.AudioContext || window.webkitAudioContext)();
         analyser = actx.createAnalyser();
@@ -1217,46 +1273,35 @@
     <script src="../lib/hardware-controls.js?v=4"></script>
     <script>
       // Hardware Controls Integration
-      const hardware = new HardwareControls({
-        name: 'Vertical Pulse',
-        accentColor: '#d97757',
-        params: P,
-        knobs: [
-          { id: 'columnCount', label: 'Cols', min: 20, max: 100, step: 1 },
-          { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'baseBright', label: 'Bright', min: 0.05, max: 0.5, step: 0.01, decimals: 2 },
-          { id: 'blobSize', label: 'Blob', min: 50, max: 300, step: 10 },
-          { id: 'columnWidth', label: 'Width', min: 0.3, max: 1.0, step: 0.05, decimals: 2 },
-          { id: 'blobCount', label: 'Blobs', min: 0, max: 10, step: 1 },
-          { id: 'overlaySize', label: 'OvSize', min: 0.05, max: 0.5, step: 0.01, decimals: 2 },
-          { id: 'overlayOpacity', label: 'OvAlpha', min: 0, max: 1, step: 0.05, decimals: 2 }
-        ],
-        faders: [
-          { id: 'columnCount', label: 'Cols', min: 20, max: 100, step: 1 },
-          { id: 'blobCount', label: 'Blobs', min: 0, max: 10, step: 1 },
-          { id: 'overlayIntensity', label: 'FX', min: 0, max: 1, step: 0.05, decimals: 2 },
-          { id: 'baseBright', label: 'Bright', min: 0.05, max: 0.5, step: 0.01, decimals: 2 }
-        ],
-        presets: new Array(8).fill(null),
-        onParamChange: (id, value) => {
-          P[id] = value;
-          const slider = document.getElementById(id);
-          if (slider) {
-            if (id === 'columnWidth' || id === 'baseBright' || id === 'overlaySize' || id === 'overlayOpacity' || id === 'overlayIntensity') {
-              slider.value = value * 100;
-            } else if (id === 'sensitivity') {
-              slider.value = value * 100;
-            } else {
-              slider.value = value;
+      let hardware = null;
+      if (!embed.active) {
+        hardware = new HardwareControls({
+          name: 'Vertical Pulse',
+          accentColor: '#d97757',
+          params: P,
+          knobs: KNOB_DEFS,
+          faders: FADER_DEFS,
+          presets: new Array(8).fill(null),
+          onParamChange: (id, value) => {
+            P[id] = value;
+            const slider = document.getElementById(id);
+            if (slider) {
+              if (id === 'columnWidth' || id === 'baseBright' || id === 'overlaySize' || id === 'overlayOpacity' || id === 'overlayIntensity') {
+                slider.value = value * 100;
+              } else if (id === 'sensitivity') {
+                slider.value = value * 100;
+              } else {
+                slider.value = value;
+              }
+              slider.dispatchEvent(new Event('input'));
             }
-            slider.dispatchEvent(new Event('input'));
-          }
-          if (['columnCount', 'columnWidth', 'blobCount', 'blobSize'].includes(id)) {
-            initSystem();
-          }
-        },
-        onPresetLoad: (index) => console.log('Load preset', index)
-      });
+            if (['columnCount', 'columnWidth', 'blobCount', 'blobSize'].includes(id)) {
+              initSystem();
+            }
+          },
+          onPresetLoad: (index) => console.log('Load preset', index)
+        });
+      }
     </script>
 </body>
 </html>

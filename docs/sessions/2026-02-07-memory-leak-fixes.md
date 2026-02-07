@@ -78,5 +78,5 @@ static log(...args) {
 
 ## Deployment
 
-- Preview: https://sheep-3fem6hkva-essco.vercel.app
+- Preview: https://sheep-42ok2ts29-essco.vercel.app
 - Production: https://sheep-xi.vercel.app

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cubic Zirconia - sheep-viz</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="../lib/embed-adapter.js"></script>
   <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
   <style>
     * {
@@ -413,6 +414,38 @@
       [[0, 0, 0], [255, 255, 255], [230, 57, 70], [69, 123, 157], [241, 196, 15]]
     ];
 
+    const KNOB_DEFS = [
+      { id: 'fragments', label: 'Frags', min: 10, max: 100, step: 5 },
+      { id: 'speed', label: 'Speed', min: 0.1, max: 3, step: 0.1, decimals: 1 },
+      { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'angular', label: 'Angle', min: 0, max: 100, step: 5, suffix: '%' },
+      { id: 'overlap', label: 'Ovrlp', min: 0, max: 100, step: 5, suffix: '%' },
+      { id: 'outline', label: 'Outln', min: 0, max: 100, step: 5, suffix: '%' },
+      { id: 'palette', label: 'Paltt', min: 0, max: 4, step: 1 },
+      { id: 'distort', label: 'Dist', min: 0, max: 100, step: 5, suffix: '%' }
+    ];
+    const FADER_DEFS = [
+      { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
+      { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
+    ];
+    const embed = new EmbedAdapter({
+      name: 'Cubic Zirconia',
+      accentColor: '#e63946',
+      fftSize: 256,
+      params: P,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: PRESETS.map((name, i) => ({ name })),
+      onParamChange: (id, value) => {
+        P[id] = value;
+      },
+      onPresetLoad: (index) => {
+        setPreset(index);
+      }
+    });
+
     // ═══════════════════════════════════════════════════════════════════
     // AUDIO
     // ═══════════════════════════════════════════════════════════════════
@@ -425,6 +458,10 @@
     let micActive = false;
     let currentStream = null;
     let animFrameId = null;
+
+    if (embed.active) {
+      ({ audioContext, analyser, dataArray, audioInitialized } = embed.audioGlobals());
+    }
 
     function initAudio() {
       if (audioInitialized) return;
@@ -1207,6 +1244,7 @@
     let hardware;
 
     function initHardware() {
+      if (embed.active) return;
       if (typeof HardwareControls === 'undefined') {
         console.error('HardwareControls not loaded!');
         return;
@@ -1216,22 +1254,8 @@
         name: 'Cubic Zirconia',
         accentColor: '#e63946',
         params: P,
-        knobs: [
-          { id: 'fragments', label: 'Frags', min: 10, max: 100, step: 5 },
-          { id: 'speed', label: 'Speed', min: 0.1, max: 3, step: 0.1, decimals: 1 },
-          { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'angular', label: 'Angle', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'overlap', label: 'Ovrlp', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'outline', label: 'Outln', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'palette', label: 'Paltt', min: 0, max: 4, step: 1 },
-          { id: 'distort', label: 'Dist', min: 0, max: 100, step: 5, suffix: '%' }
-        ],
-        faders: [
-          { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
-          { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
-        ],
+        knobs: KNOB_DEFS,
+        faders: FADER_DEFS,
         presets: PRESETS.map((name, i) => ({ name })),
         onParamChange: (id, value) => {
           const slider = document.getElementById(id);

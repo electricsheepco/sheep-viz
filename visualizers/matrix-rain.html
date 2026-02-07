@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Matrix Rain - sheep-viz</title>
+  <script src="../lib/embed-adapter.js"></script>
   <link rel="stylesheet" href="../lib/hardware-controls.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -165,11 +166,49 @@
       colorMode: 'green'
     };
 
+    const KNOB_DEFS = [
+      { id: 'columns', label: 'Cols', min: 20, max: 150, step: 5 },
+      { id: 'speed', label: 'Speed', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'bassSpeed', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
+      { id: 'fontSize', label: 'Size', min: 8, max: 24, step: 1 },
+      { id: 'trail', label: 'Trail', min: 5, max: 40, step: 1 },
+      { id: 'trebleGlitch', label: 'Glitch', min: 0, max: 3, step: 0.1, decimals: 1 },
+      { id: 'columns', label: 'Cols+', min: 20, max: 150, step: 5 },
+      { id: 'speed', label: 'Speed+', min: 0.5, max: 3, step: 0.1, decimals: 1 }
+    ];
+    const FADER_DEFS = [
+      { id: 'columns', label: 'Cols', min: 20, max: 150, step: 5 },
+      { id: 'trail', label: 'Trail', min: 5, max: 40, step: 1 },
+      { id: 'bassSpeed', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
+      { id: 'fontSize', label: 'Size', min: 8, max: 24, step: 1 }
+    ];
+
+    const embed = new EmbedAdapter({
+      name: 'Matrix Rain',
+      accentColor: '#00ff41',
+      fftSize: 256,
+      params: params,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: [],
+      onParamChange: (id, value) => {
+        params[id] = value;
+        if (id === 'columns') initStreams();
+      },
+      onPresetLoad: (index) => {}
+    });
+
     let audioContext, analyser, dataArray, source, audioElement;
     let audioBlobUrl = null;
     let bass = 0, mids = 0, treble = 0;
     let audioReady = false, isPlaying = false;
     let currentStream = null;
+    let audioInitialized = false;
+
+    if (embed.active) {
+      ({ audioContext, analyser, dataArray, audioInitialized } = embed.audioGlobals());
+      audioReady = true;
+    }
 
     // MIDI
     let midiInputs = [];
@@ -256,6 +295,7 @@
     }
 
     function initAudio() {
+      if (embed.active) return;
       if (audioContext) return;
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioContext.createAnalyser();
@@ -557,26 +597,14 @@
   <script src="../lib/hardware-controls.js?v=4"></script>
   <script>
     // Hardware Controls Integration
-    const hardware = new HardwareControls({
+    let hardware = null;
+    if (!embed.active) {
+    hardware = new HardwareControls({
       name: 'Matrix Rain',
       accentColor: '#00ff41',
       params: params,
-      knobs: [
-        { id: 'columns', label: 'Cols', min: 20, max: 150, step: 5 },
-        { id: 'speed', label: 'Speed', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-        { id: 'bassSpeed', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
-        { id: 'fontSize', label: 'Size', min: 8, max: 24, step: 1 },
-        { id: 'trail', label: 'Trail', min: 5, max: 40, step: 1 },
-        { id: 'trebleGlitch', label: 'Glitch', min: 0, max: 3, step: 0.1, decimals: 1 },
-        { id: 'columns', label: 'Cols+', min: 20, max: 150, step: 5 },
-        { id: 'speed', label: 'Speed+', min: 0.5, max: 3, step: 0.1, decimals: 1 }
-      ],
-      faders: [
-        { id: 'columns', label: 'Cols', min: 20, max: 150, step: 5 },
-        { id: 'trail', label: 'Trail', min: 5, max: 40, step: 1 },
-        { id: 'bassSpeed', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
-        { id: 'fontSize', label: 'Size', min: 8, max: 24, step: 1 }
-      ],
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
       presets: new Array(8).fill(null),
       onParamChange: (id, value) => {
         params[id] = value;
@@ -593,6 +621,7 @@
       },
       onPresetLoad: (index) => console.log('Load preset', index)
     });
+    }
   </script>
 </body>
 </html>

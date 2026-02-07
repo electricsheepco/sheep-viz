@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Starfield - sheep-viz</title>
+    <script src="../lib/embed-adapter.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
@@ -1124,6 +1125,39 @@
 
         const defaultParams = { ...params };
 
+        const KNOB_DEFS = [
+            { id: 'starCount', label: 'Stars', min: 100, max: 2000, step: 50 },
+            { id: 'baseSpeed', label: 'Speed', min: 1, max: 50, step: 1 },
+            { id: 'bassBoost', label: 'Bass', min: 0, max: 100, step: 5 },
+            { id: 'starSize', label: 'Size', min: 1, max: 8, step: 0.5, decimals: 1 },
+            { id: 'trailLength', label: 'Trail', min: 0, max: 1, step: 0.05, decimals: 2 },
+            { id: 'centerX', label: 'X', min: 0, max: 1, step: 0.05, decimals: 2 },
+            { id: 'centerY', label: 'Y', min: 0, max: 1, step: 0.05, decimals: 2 },
+            { id: 'starImageSize', label: 'Img', min: 0.2, max: 3, step: 0.1, decimals: 1 }
+        ];
+        const FADER_DEFS = [
+            { id: 'overlaySize', label: 'Size', min: 5, max: 50, step: 1, suffix: '%' },
+            { id: 'overlayOpacity', label: 'Alpha', min: 10, max: 100, step: 1, suffix: '%' },
+            { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+            { id: 'overlayOpacity', label: 'Master', min: 10, max: 100, step: 1, suffix: '%' }
+        ];
+
+        const embed = new EmbedAdapter({
+            name: 'Starfield',
+            accentColor: '#00ff88',
+            fftSize: 256,
+            params: params,
+            knobs: KNOB_DEFS,
+            faders: FADER_DEFS,
+            presets: [],
+            onParamChange: (id, value) => {
+                params[id] = value;
+            },
+            onPresetLoad: (index) => {
+                loadPreset(index);
+            }
+        });
+
         // MiniLab 3 MIDI Mapping
         const MINILAB3_MAP = {
             // 8 Rotary Knobs (Relative Encoders)
@@ -1160,6 +1194,11 @@
         let audioBlobUrl = null;
         let currentStream = null;
         let bass = 0, mids = 0, treble = 0;
+        let audioInitialized = false;
+
+        if (embed.active) {
+            ({ audioContext, analyser, dataArray, audioInitialized } = embed.audioGlobals());
+        }
 
         // MIDI
         let midiInputs = [];
@@ -1350,6 +1389,7 @@
 
         // Audio functions
         async function initAudio() {
+            if (embed.active) return;
             try {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 analyser = audioContext.createAnalyser();
