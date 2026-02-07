@@ -473,6 +473,7 @@
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.js"></script>
+  <script src="../lib/embed-adapter.js"></script>
   <script src="../lib/hardware-controls.js?v=4"></script>
   <script>
     // Parameters
@@ -490,13 +491,58 @@
       color3: '#06b6d4'
     };
 
+    // Embed adapter
+    const KNOB_DEFS = [
+      { id: 'particleCount', label: 'Count', min: 1000, max: 20000, step: 1000 },
+      { id: 'forceScale', label: 'Force', min: 10, max: 200, step: 5 },
+      { id: 'bassForce', label: 'Bass', min: 0, max: 10, step: 0.1, decimals: 1 },
+      { id: 'viscosity', label: 'Visc', min: 0.9, max: 0.999, step: 0.001, decimals: 3 },
+      { id: 'trailLength', label: 'Trail', min: 0.8, max: 0.99, step: 0.01, decimals: 2 },
+      { id: 'midTurbulence', label: 'Turb', min: 0, max: 5, step: 0.1, decimals: 1 },
+      { id: 'trebleSparkle', label: 'Spark', min: 0, max: 5, step: 0.1, decimals: 1 },
+      { id: 'diffusion', label: 'Diff', min: 0, max: 1, step: 0.01, decimals: 2 }
+    ];
+    const FADER_DEFS = [
+      { id: 'overlaySize', label: 'Size', min: 5, max: 50, step: 1, suffix: '%' },
+      { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
+    ];
+    const embed = new EmbedAdapter({
+      name: 'Fluid Flow',
+      accentColor: '#6366f1',
+      fftSize: 256,
+      params: params,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: [],
+      onParamChange: (id, value) => {
+        params[id] = value;
+        if (id === 'particleCount') initParticles();
+      },
+      onPresetLoad: (index) => {
+        const presets = JSON.parse(localStorage.getItem('fluidflow-presets') || 'null') || [];
+        if (presets[index]) {
+          Object.assign(params, presets[index]);
+          initParticles();
+        }
+      }
+    });
+
     // Audio
     let audioContext, analyser, dataArray, source;
     let audioElement;
+    let audioBlobUrl = null;
     let bass = 0, mids = 0, treble = 0;
     let smoothBass = 0, smoothMids = 0, smoothTreble = 0;
     let audioInitialized = false;
     let isPlaying = false;
+    let currentStream = null;
+
+    // In embed mode, use pre-initialized audio from adapter
+    if (embed.active) {
+      ({ audioContext, analyser, dataArray, audioInitialized } = embed.audioGlobals());
+    }
 
     // Fluid simulation
     let particles = [];
@@ -727,7 +773,10 @@
         audioElement = null;
       }
 
-      audioElement = new Audio(URL.createObjectURL(file));
+      if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+      if (source) { try { source.disconnect(); } catch(e) {} }
+      audioBlobUrl = URL.createObjectURL(file);
+      audioElement = new Audio(audioBlobUrl);
       source = audioContext.createMediaElementSource(audioElement);
       source.connect(analyser);
       analyser.connect(audioContext.destination);
@@ -740,7 +789,9 @@
     document.getElementById('useMic').addEventListener('click', async () => {
       initAudio();
       try {
+        if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        currentStream = stream;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
         document.getElementById('useMic').textContent = 'Mic Active';
@@ -1158,35 +1209,16 @@
     // HARDWARE CONTROLS (Shared Component)
     // ═══════════════════════════════════════════════════════════════════
 
-    console.log('HardwareControls class available:', typeof HardwareControls);
-
     const presets = JSON.parse(localStorage.getItem('fluidflow-presets') || 'null') || new Array(8).fill(null);
 
-    if (typeof HardwareControls === 'undefined') {
-      console.error('HardwareControls not loaded! Check script path.');
-    }
-
-    console.log('About to create HardwareControls instance...');
-    const hardware = new HardwareControls({
+    let hardware = null;
+    if (!embed.active) {
+    hardware = new HardwareControls({
       name: 'Fluid Flow',
       accentColor: '#6366f1',
       params: params,
-      knobs: [
-        { id: 'particleCount', label: 'Count', min: 1000, max: 20000, step: 1000 },
-        { id: 'forceScale', label: 'Force', min: 10, max: 200, step: 5 },
-        { id: 'bassForce', label: 'Bass', min: 0, max: 10, step: 0.1, decimals: 1 },
-        { id: 'viscosity', label: 'Visc', min: 0.9, max: 0.999, step: 0.001, decimals: 3 },
-        { id: 'trailLength', label: 'Trail', min: 0.8, max: 0.99, step: 0.01, decimals: 2 },
-        { id: 'midTurbulence', label: 'Turb', min: 0, max: 5, step: 0.1, decimals: 1 },
-        { id: 'trebleSparkle', label: 'Spark', min: 0, max: 5, step: 0.1, decimals: 1 },
-        { id: 'diffusion', label: 'Diff', min: 0, max: 1, step: 0.01, decimals: 2 }
-      ],
-      faders: [
-        { id: 'overlaySize', label: 'Size', min: 5, max: 50, step: 1, suffix: '%' },
-        { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
-        { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
-        { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
-      ],
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
       presets: presets,
       onParamChange: (id, value) => {
         // Sync to sidebar sliders
@@ -1214,6 +1246,7 @@
         }
       }
     });
+    } // end embed guard
 
     // Add overlay params if not present
     if (params.overlaySize === undefined) params.overlaySize = 20;
@@ -1225,7 +1258,7 @@
     window.savePreset = function(index) {
       presets[index] = { ...params };
       localStorage.setItem('fluidflow-presets', JSON.stringify(presets));
-      hardware.setPresets(presets);
+      if (hardware) hardware.setPresets(presets);
     };
   </script>
 </body>

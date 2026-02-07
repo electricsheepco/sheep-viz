@@ -425,9 +425,12 @@
 
     let audioContext, analyser, dataArray, source;
     let audioElement;
+    let audioBlobUrl = null;
     let audioInitialized = false;
     let isPlaying = false;
     let micActive = false;
+    let currentStream = null;
+    let animFrameId = null;
 
     function initAudio() {
       if (audioInitialized) return;
@@ -476,7 +479,10 @@
         audioElement = null;
       }
 
-      audioElement = new Audio(URL.createObjectURL(file));
+      if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+      if (source) { try { source.disconnect(); } catch(e) {} }
+      audioBlobUrl = URL.createObjectURL(file);
+      audioElement = new Audio(audioBlobUrl);
       source = audioContext.createMediaElementSource(audioElement);
       source.connect(analyser);
       analyser.connect(audioContext.destination);
@@ -494,7 +500,9 @@
     document.getElementById('useMic').addEventListener('click', async () => {
       initAudio();
       try {
+        if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        currentStream = stream;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
         document.getElementById('useMic').textContent = 'Mic Active';
@@ -824,7 +832,7 @@
       // Draw overlay blended onto canvas
       drawOverlay(ctx, w, h, audio);
 
-      requestAnimationFrame(render);
+      animFrameId = requestAnimationFrame(render);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -832,17 +840,20 @@
     // ═══════════════════════════════════════════════════════════════════
 
     let overlayImage = null;
+    let overlayBlobUrl = null;
     let overlayLoaded = false;
 
     document.getElementById('overlayFile').addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
 
+      if (overlayBlobUrl) URL.revokeObjectURL(overlayBlobUrl);
+      overlayBlobUrl = URL.createObjectURL(file);
       overlayImage = new Image();
       overlayImage.onload = () => {
         overlayLoaded = true;
       };
-      overlayImage.src = URL.createObjectURL(file);
+      overlayImage.src = overlayBlobUrl;
     });
 
     // Offscreen canvas for overlay effects
@@ -1119,6 +1130,8 @@
         },
         onSystemAudio: (stream) => {
           initAudio();
+          if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+          currentStream = stream;
           const systemSource = audioContext.createMediaStreamSource(stream);
           systemSource.connect(analyser);
         }
@@ -1137,7 +1150,7 @@
     drawBackground(ctx, canvas.width, canvas.height, { average: 0 });
 
     initHardware();
-    requestAnimationFrame(render);
+    animFrameId = requestAnimationFrame(render);
 
   </script>
 </body>

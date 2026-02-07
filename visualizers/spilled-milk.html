@@ -408,9 +408,12 @@
 
     let audioContext, analyser, dataArray, source;
     let audioElement;
+    let audioBlobUrl = null;
     let audioInitialized = false;
     let isPlaying = false;
     let micActive = false;
+    let currentStream = null;
+    let animFrameId = null;
 
     function initAudio() {
       if (audioInitialized) return;
@@ -460,7 +463,10 @@
         audioElement = null;
       }
 
-      audioElement = new Audio(URL.createObjectURL(file));
+      if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+      if (source) { try { source.disconnect(); } catch(e) {} }
+      audioBlobUrl = URL.createObjectURL(file);
+      audioElement = new Audio(audioBlobUrl);
       source = audioContext.createMediaElementSource(audioElement);
       source.connect(analyser);
       analyser.connect(audioContext.destination);
@@ -478,7 +484,9 @@
     document.getElementById('useMic').addEventListener('click', async () => {
       initAudio();
       try {
+        if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        currentStream = stream;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
         document.getElementById('useMic').textContent = 'Mic Active';
@@ -673,9 +681,15 @@
     }
 
     // 3: Plasma Wave - classic plasma with color cycling
+    let _plasmaImageData = null;
+    let _plasmaW = 0, _plasmaH = 0;
     function renderPlasmaWave(audio, w, h, cx, cy) {
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const data = imageData.data;
+      if (!_plasmaImageData || _plasmaW !== w || _plasmaH !== h) {
+        _plasmaImageData = ctx.createImageData(w, h);
+        _plasmaW = w;
+        _plasmaH = h;
+      }
+      const data = _plasmaImageData.data;
       const scale = (P.complexity / 50) * 0.02;
       const t = time * P.speed * 0.5;
 
@@ -710,7 +724,7 @@
         }
       }
 
-      ctx.putImageData(imageData, 0, 0);
+      ctx.putImageData(_plasmaImageData, 0, 0);
     }
 
     // 4: Spiral Vortex - rotating spiral arms
@@ -989,7 +1003,7 @@
       // Draw overlay blended onto canvas
       drawOverlay(ctx, w, h, audio);
 
-      requestAnimationFrame(render);
+      animFrameId = requestAnimationFrame(render);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -997,6 +1011,7 @@
     // ═══════════════════════════════════════════════════════════════════
 
     let overlayImage = null;
+    let overlayBlobUrl = null;
     let overlayLoaded = false;
 
     document.getElementById('overlayFile').addEventListener('change', (e) => {
@@ -1007,7 +1022,9 @@
       overlayImage.onload = () => {
         overlayLoaded = true;
       };
-      overlayImage.src = URL.createObjectURL(file);
+      if (overlayBlobUrl) URL.revokeObjectURL(overlayBlobUrl);
+      overlayBlobUrl = URL.createObjectURL(file);
+      overlayImage.src = overlayBlobUrl;
     });
 
     // Offscreen canvas for overlay effects
@@ -1297,6 +1314,8 @@
         },
         onSystemAudio: (stream) => {
           initAudio();
+          if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+          currentStream = stream;
           const systemSource = audioContext.createMediaStreamSource(stream);
           systemSource.connect(analyser);
         }
@@ -1312,7 +1331,7 @@
     });
 
     initHardware();
-    requestAnimationFrame(render);
+    animFrameId = requestAnimationFrame(render);
 
   </script>
 </body>

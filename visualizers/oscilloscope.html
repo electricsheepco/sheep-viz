@@ -357,6 +357,7 @@
 
   <div id="fullscreen-indicator">Press ESC to exit fullscreen</div>
 
+  <script src="../lib/embed-adapter.js"></script>
   <script src="../lib/hardware-controls.js"></script>
   <script>
     // ═══════════════════════════════════════════════════════════════════
@@ -394,12 +395,58 @@
     ];
 
     // ═══════════════════════════════════════════════════════════════════
+    // EMBED ADAPTER
+    // ═══════════════════════════════════════════════════════════════════
+
+    const KNOB_DEFS = [
+      { id: 'lines', label: 'Lines', min: 1, max: 8, step: 1 },
+      { id: 'speed', label: 'Speed', min: 10, max: 100, step: 1, suffix: '%' },
+      { id: 'sensitivity', label: 'Sens', min: 10, max: 150, step: 1, suffix: '%' },
+      { id: 'thickness', label: 'Thick', min: 1, max: 8, step: 0.5, suffix: 'px' },
+      { id: 'decay', label: 'Decay', min: 50, max: 99, step: 1, suffix: '%' },
+      { id: 'glow', label: 'Glow', min: 0, max: 50, step: 1 },
+      { id: 'xFreq', label: 'X Freq', min: 1, max: 8, step: 1 },
+      { id: 'yFreq', label: 'Y Freq', min: 1, max: 8, step: 1 },
+    ];
+    const FADER_DEFS = [
+      { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
+      { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' },
+    ];
+    const embed = new EmbedAdapter({
+      name: 'Oscilloscope',
+      accentColor: '#00ff88',
+      fftSize: 2048,
+      params: P,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: presets,
+      onPresetLoad: (index) => loadPreset(index),
+      onParamChange: (id, value) => {
+        P[id] = value;
+        const slider = document.getElementById(id);
+        const display = document.getElementById(id + 'Val');
+        if (slider) slider.value = value;
+        if (display) display.textContent = value;
+      }
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
     // AUDIO
     // ═══════════════════════════════════════════════════════════════════
 
     let audioContext, analyser, dataArray, timeDataArray, source;
     let audioElement;
+    let audioBlobUrl = null;
     let audioInitialized = false;
+    let currentStream = null;
+    let animFrameId = null;
+
+    // In embed mode, use pre-initialized audio from adapter
+    if (embed.active) {
+      ({ audioContext, analyser, dataArray, timeDataArray, audioInitialized } = embed.audioGlobals());
+    }
 
     function initAudio() {
       if (audioInitialized) return;
@@ -451,7 +498,10 @@
         audioElement = null;
       }
 
-      audioElement = new Audio(URL.createObjectURL(file));
+      if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+      if (source) { try { source.disconnect(); } catch(e) {} }
+      audioBlobUrl = URL.createObjectURL(file);
+      audioElement = new Audio(audioBlobUrl);
       source = audioContext.createMediaElementSource(audioElement);
       source.connect(analyser);
       analyser.connect(audioContext.destination);
@@ -467,7 +517,9 @@
         return;
       }
       try {
+        if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        currentStream = stream;
         const micSource = audioContext.createMediaStreamSource(stream);
         micSource.connect(analyser);
         micActive = true;
@@ -547,7 +599,7 @@
       // Draw overlay
       drawOverlay(ctx, w, h, audio);
 
-      requestAnimationFrame(render);
+      animFrameId = requestAnimationFrame(render);
     }
 
     function drawGrid(w, h, cx, cy) {
@@ -855,6 +907,7 @@
     // ═══════════════════════════════════════════════════════════════════
 
     let overlayImage = null;
+    let overlayBlobUrl = null;
     let overlayLoaded = false;
 
     document.getElementById('overlayFile').addEventListener('change', (e) => {
@@ -865,7 +918,9 @@
       overlayImage.onload = () => {
         overlayLoaded = true;
       };
-      overlayImage.src = URL.createObjectURL(file);
+      if (overlayBlobUrl) URL.revokeObjectURL(overlayBlobUrl);
+      overlayBlobUrl = URL.createObjectURL(file);
+      overlayImage.src = overlayBlobUrl;
     });
 
     // Offscreen canvas for overlay effects
@@ -1126,26 +1181,13 @@
     let hardware = null;
 
     function initHardware() {
+      if (embed.active) return;
       hardware = new HardwareControls({
         name: 'Oscilloscope',
         accentColor: '#00ff88',
         params: P,
-        knobs: [
-          { id: 'lines', label: 'Lines', min: 1, max: 8, step: 1 },
-          { id: 'speed', label: 'Speed', min: 10, max: 100, step: 1, suffix: '%' },
-          { id: 'sensitivity', label: 'Sens', min: 10, max: 150, step: 1, suffix: '%' },
-          { id: 'thickness', label: 'Thick', min: 1, max: 8, step: 0.5, suffix: 'px' },
-          { id: 'decay', label: 'Decay', min: 50, max: 99, step: 1, suffix: '%' },
-          { id: 'glow', label: 'Glow', min: 0, max: 50, step: 1 },
-          { id: 'xFreq', label: 'X Freq', min: 1, max: 8, step: 1 },
-          { id: 'yFreq', label: 'Y Freq', min: 1, max: 8, step: 1 },
-        ],
-        faders: [
-          { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
-          { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' },
-        ],
+        knobs: KNOB_DEFS,
+        faders: FADER_DEFS,
         presets: presets.map(p => p.name),
         onParamChange: (id, value) => {
           P[id] = value;
@@ -1165,6 +1207,8 @@
         },
         onSystemAudio: async (stream) => {
           initAudio();
+          if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
+          currentStream = stream;
           const systemSource = audioContext.createMediaStreamSource(stream);
           systemSource.connect(analyser);
         },

@@ -348,6 +348,7 @@
 
     // Overlay image
     let overlayImg = null;
+    let overlayBlobUrl = null;
 
     // Cycle mode
     let cycleImages = [];
@@ -362,6 +363,8 @@
     // ═══════════════════════════════════════════════════════════════════
     let actx, analyser, source, audioEl, freqData, smoothed;
     let audioReady = false, playing = false;
+    let audioBlobUrl = null;
+    let currentStream = null;
 
     function initAudio() {
         if (actx) return Promise.resolve();
@@ -376,11 +379,12 @@
 
     function loadFile(file) {
         initAudio().then(() => {
+            if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
             if (source) { try { source.disconnect(); } catch(e){} }
             if (audioEl) audioEl.pause();
 
-            const url = URL.createObjectURL(file);
-            audioEl = new Audio(url);
+            audioBlobUrl = URL.createObjectURL(file);
+            audioEl = new Audio(audioBlobUrl);
 
             audioEl.oncanplay = () => {
                 source = actx.createMediaElementSource(audioEl);
@@ -396,8 +400,10 @@
 
     function useMic() {
         initAudio().then(() => {
+            if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
+                    currentStream = stream;
                     if (source) { try { source.disconnect(); } catch(e){} }
                     if (audioEl) audioEl.pause();
                     source = actx.createMediaStreamSource(stream);
@@ -817,8 +823,9 @@
     }
 
     function loadOverlay(file) {
-        const url = URL.createObjectURL(file);
-        loadImage(url, img => {
+        if (overlayBlobUrl) URL.revokeObjectURL(overlayBlobUrl);
+        overlayBlobUrl = URL.createObjectURL(file);
+        loadImage(overlayBlobUrl, img => {
             overlayImg = img;
             setStatus('overlay-status', 'Loaded: ' + file.name, 'active');
         }, () => {
@@ -957,6 +964,7 @@
         a.href = URL.createObjectURL(blob);
         a.download = name.toLowerCase().replace(/\s+/g, '-') + '.json';
         a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }
 
     function loadPreset(file) {
@@ -1042,6 +1050,7 @@
             a.href = URL.createObjectURL(blob);
             a.download = `vertical-pulse-${P.seed}-${Date.now()}.webm`;
             a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
             setStatus('record-status', 'Saved!', 'active');
             setTimeout(() => setStatus('record-status', 'Ready', ''), 2000);
         };
