@@ -6,6 +6,7 @@
   <title>Pollock Splatter - sheep-viz</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
+  <script src="../lib/embed-adapter.js"></script>
   <style>
     * {
       margin: 0;
@@ -407,6 +408,40 @@
 
     let currentPalette = palettes.number1;
 
+    const KNOB_DEFS = [
+      { id: 'splatRate', label: 'Rate', min: 10, max: 100, step: 1 },
+      { id: 'speed', label: 'Speed', min: 10, max: 100, step: 1, suffix: '%' },
+      { id: 'sensitivity', label: 'Sens', min: 10, max: 150, step: 1, suffix: '%' },
+      { id: 'splatSize', label: 'Size', min: 10, max: 100, step: 1 },
+      { id: 'dripLength', label: 'Drip', min: 10, max: 150, step: 1 },
+      { id: 'chaos', label: 'Chaos', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'density', label: 'Dense', min: 10, max: 100, step: 1, suffix: '%' },
+      { id: 'fade', label: 'Fade', min: 90, max: 100, step: 0.5, suffix: '%' },
+    ];
+
+    const FADER_DEFS = [
+      { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
+      { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' },
+    ];
+
+    const embed = new EmbedAdapter({
+      name: 'Pollock Splatter',
+      accentColor: '#ff6b35',
+      fftSize: 256,
+      params: P,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: presets.map(p => ({ name: p.name })),
+      onParamChange: (id, value) => {
+        P[id] = value;
+      },
+      onPresetLoad: (index) => {
+        loadPreset(index);
+      }
+    });
+
     // ═══════════════════════════════════════════════════════════════════
     // AUDIO
     // ═══════════════════════════════════════════════════════════════════
@@ -417,6 +452,10 @@
     let audioInitialized = false;
     let animFrameId = null;
     let currentStream = null;
+
+    if (embed.active) {
+      ({ audioContext, analyser, dataArray, audioInitialized } = embed.audioGlobals());
+    }
 
     function initAudio() {
       if (audioInitialized) return;
@@ -986,26 +1025,13 @@
     let hardware = null;
 
     function initHardware() {
+      if (embed.active) return;
       hardware = new HardwareControls({
         name: 'Pollock Splatter',
         accentColor: '#ff6b35',
         params: P,
-        knobs: [
-          { id: 'splatRate', label: 'Rate', min: 10, max: 100, step: 1 },
-          { id: 'speed', label: 'Speed', min: 10, max: 100, step: 1, suffix: '%' },
-          { id: 'sensitivity', label: 'Sens', min: 10, max: 150, step: 1, suffix: '%' },
-          { id: 'splatSize', label: 'Size', min: 10, max: 100, step: 1 },
-          { id: 'dripLength', label: 'Drip', min: 10, max: 150, step: 1 },
-          { id: 'chaos', label: 'Chaos', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'density', label: 'Dense', min: 10, max: 100, step: 1, suffix: '%' },
-          { id: 'fade', label: 'Fade', min: 90, max: 100, step: 0.5, suffix: '%' },
-        ],
-        faders: [
-          { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
-          { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'fxIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' },
-        ],
+        knobs: KNOB_DEFS,
+        faders: FADER_DEFS,
         presets: presets.map(p => p.name),
         onParamChange: (id, value) => {
           P[id] = value;

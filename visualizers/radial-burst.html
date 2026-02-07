@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Radial Burst - sheep-viz</title>
+  <script src="../lib/embed-adapter.js"></script>
   <link rel="stylesheet" href="../lib/hardware-controls.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -334,12 +335,53 @@
       colorOuter: '#3366ff'
     };
 
+    const KNOB_DEFS = [
+      { id: 'particleCount', label: 'Count', min: 50, max: 500, step: 10 },
+      { id: 'burstSize', label: 'Burst', min: 20, max: 200, step: 5 },
+      { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'ringRadius', label: 'Ring', min: 50, max: 300, step: 10 },
+      { id: 'trailLength', label: 'Trail', min: 0, max: 50, step: 1 },
+      { id: 'ringThickness', label: 'Thick', min: 1, max: 20, step: 1 },
+      { id: 'beatThreshold', label: 'Beat', min: 0.3, max: 0.8, step: 0.05, decimals: 2 },
+      { id: 'decaySpeed', label: 'Decay', min: 0.9, max: 0.99, step: 0.01, decimals: 2 }
+    ];
+    const FADER_DEFS = [
+      { id: 'burstSize', label: 'Burst', min: 20, max: 200, step: 5 },
+      { id: 'particleCount', label: 'Parts', min: 50, max: 500, step: 10 },
+      { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'ringRadius', label: 'Ring', min: 50, max: 300, step: 10 }
+    ];
+
+    const embed = new EmbedAdapter({
+      name: 'Radial Burst',
+      accentColor: '#ff3366',
+      fftSize: 512,
+      params: P,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: [],
+      onParamChange: (id, value) => {
+        P[id] = value;
+      },
+      onPresetLoad: (index) => {}
+    });
+
     // Audio
     let audioContext, analyser, source, audioElement;
     let audioBlobUrl = null;
     let freqData, waveData, smoothed;
     let audioReady = false, isPlaying = false;
     let currentStream = null;
+
+    if (embed.active) {
+      const globals = embed.audioGlobals();
+      audioContext = globals.audioContext;
+      analyser = globals.analyser;
+      freqData = new Uint8Array(globals.analyser.frequencyBinCount);
+      waveData = new Uint8Array(globals.analyser.fftSize);
+      smoothed = new Float32Array(globals.analyser.frequencyBinCount).fill(0);
+      audioReady = true;
+    }
 
     // MIDI
     let midiInputs = [];
@@ -361,6 +403,7 @@
     }
 
     function initAudio() {
+      if (embed.active) return;
       if (audioContext) return;
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioContext.createAnalyser();
@@ -876,26 +919,14 @@
   <script src="../lib/hardware-controls.js?v=4"></script>
   <script>
     // Hardware Controls Integration
-    const hardware = new HardwareControls({
+    let hardware = null;
+    if (!embed.active) {
+    hardware = new HardwareControls({
       name: 'Radial Burst',
       accentColor: '#ff3366',
       params: P,
-      knobs: [
-        { id: 'particleCount', label: 'Count', min: 50, max: 500, step: 10 },
-        { id: 'burstSize', label: 'Burst', min: 20, max: 200, step: 5 },
-        { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-        { id: 'ringRadius', label: 'Ring', min: 50, max: 300, step: 10 },
-        { id: 'trailLength', label: 'Trail', min: 0, max: 50, step: 1 },
-        { id: 'ringThickness', label: 'Thick', min: 1, max: 20, step: 1 },
-        { id: 'beatThreshold', label: 'Beat', min: 0.3, max: 0.8, step: 0.05, decimals: 2 },
-        { id: 'decaySpeed', label: 'Decay', min: 0.9, max: 0.99, step: 0.01, decimals: 2 }
-      ],
-      faders: [
-        { id: 'burstSize', label: 'Burst', min: 20, max: 200, step: 5 },
-        { id: 'particleCount', label: 'Parts', min: 50, max: 500, step: 10 },
-        { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-        { id: 'ringRadius', label: 'Ring', min: 50, max: 300, step: 10 }
-      ],
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
       presets: new Array(8).fill(null),
       onParamChange: (id, value) => {
         P[id] = value;
@@ -916,6 +947,7 @@
       },
       onPresetLoad: (index) => console.log('Load preset', index)
     });
+    }
   </script>
 </body>
 </html>

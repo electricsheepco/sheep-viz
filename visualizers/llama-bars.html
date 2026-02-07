@@ -6,6 +6,7 @@
   <title>Llama Bars - sheep-viz</title>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../lib/hardware-controls.css?v=4">
+  <script src="../lib/embed-adapter.js"></script>
   <style>
     * {
       margin: 0;
@@ -401,6 +402,40 @@
       'Inverted'
     ];
 
+    const KNOB_DEFS = [
+      { id: 'barCount', label: 'Count', min: 16, max: 128, step: 4 },
+      { id: 'speed', label: 'Speed', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'barOpacity', label: 'Alpha', min: 0, max: 100, step: 5, suffix: '%' },
+      { id: 'peakHold', label: 'Hold', min: 100, max: 1000, step: 50, suffix: 'ms' },
+      { id: 'peakGravity', label: 'Grav', min: 0.5, max: 3, step: 0.1, decimals: 1 },
+      { id: 'reflection', label: 'Refl', min: 0, max: 100, step: 5, suffix: '%' },
+      { id: 'gapSize', label: 'Gap', min: 0, max: 8, step: 1, suffix: 'px' }
+    ];
+
+    const FADER_DEFS = [
+      { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
+      { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
+      { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
+    ];
+
+    const embed = new EmbedAdapter({
+      name: 'Llama Bars',
+      accentColor: '#ffcc00',
+      fftSize: 512,
+      params: P,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: STYLES.map((name, i) => ({ name })),
+      onParamChange: (id, value) => {
+        P[id] = value;
+      },
+      onPresetLoad: (index) => {
+        setStyle(index);
+      }
+    });
+
     // ═══════════════════════════════════════════════════════════════════
     // AUDIO
     // ═══════════════════════════════════════════════════════════════════
@@ -413,6 +448,10 @@
     let micActive = false;
     let currentStream = null;
     let animFrameId = null;
+
+    if (embed.active) {
+      ({ audioContext, analyser, dataArray, audioInitialized } = embed.audioGlobals());
+    }
 
     function initAudio() {
       if (audioInitialized) return;
@@ -1059,6 +1098,7 @@
     let hardware;
 
     function initHardware() {
+      if (embed.active) return;
       if (typeof HardwareControls === 'undefined') {
         console.error('HardwareControls not loaded!');
         return;
@@ -1068,22 +1108,8 @@
         name: 'Llama Bars',
         accentColor: '#ffcc00',
         params: P,
-        knobs: [
-          { id: 'barCount', label: 'Count', min: 16, max: 128, step: 4 },
-          { id: 'speed', label: 'Speed', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'sensitivity', label: 'Sens', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'barOpacity', label: 'Alpha', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'peakHold', label: 'Hold', min: 100, max: 1000, step: 50, suffix: 'ms' },
-          { id: 'peakGravity', label: 'Grav', min: 0.5, max: 3, step: 0.1, decimals: 1 },
-          { id: 'reflection', label: 'Refl', min: 0, max: 100, step: 5, suffix: '%' },
-          { id: 'gapSize', label: 'Gap', min: 0, max: 8, step: 1, suffix: 'px' }
-        ],
-        faders: [
-          { id: 'overlaySize', label: 'Size', min: 5, max: 100, step: 1, suffix: '%' },
-          { id: 'overlayOpacity', label: 'Alpha', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'overlayIntensity', label: 'FX', min: 0, max: 100, step: 1, suffix: '%' },
-          { id: 'masterBrightness', label: 'Master', min: 0, max: 100, step: 1, suffix: '%' }
-        ],
+        knobs: KNOB_DEFS,
+        faders: FADER_DEFS,
         presets: STYLES.map((name, i) => ({ name })),  // Style presets
         onParamChange: (id, value) => {
           // Sync sidebar

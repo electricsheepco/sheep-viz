@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vector Grid - sheep-viz</title>
+  <script src="../lib/embed-adapter.js"></script>
   <link rel="stylesheet" href="../lib/hardware-controls.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -169,12 +170,49 @@
       lineColor: '#00ff41'
     };
 
+    const KNOB_DEFS = [
+      { id: 'gridSize', label: 'Grid', min: 10, max: 50, step: 1 },
+      { id: 'rotation', label: 'Speed', min: 0, max: 5, step: 0.1, decimals: 1 },
+      { id: 'bassWave', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
+      { id: 'waveHeight', label: 'Height', min: 0, max: 150, step: 5 },
+      { id: 'midDistort', label: 'Distort', min: 0, max: 3, step: 0.1, decimals: 1 },
+      { id: 'lineGlow', label: 'Glow', min: 1, max: 5, step: 0.1, decimals: 1 },
+      { id: 'perspective', label: 'Persp', min: 200, max: 1000, step: 50 },
+      { id: 'waveHeight', label: 'Wave+', min: 0, max: 150, step: 5 }
+    ];
+    const FADER_DEFS = [
+      { id: 'gridSize', label: 'Grid', min: 10, max: 50, step: 1 },
+      { id: 'waveHeight', label: 'Wave', min: 0, max: 150, step: 5 },
+      { id: 'bassWave', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
+      { id: 'lineGlow', label: 'Glow', min: 1, max: 5, step: 0.1, decimals: 1 }
+    ];
+
+    const embed = new EmbedAdapter({
+      name: 'Vector Grid',
+      accentColor: '#00ff41',
+      fftSize: 256,
+      params: params,
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
+      presets: [],
+      onParamChange: (id, value) => {
+        params[id] = value;
+      },
+      onPresetLoad: (index) => {}
+    });
+
     let audioContext, analyser, dataArray, source, audioElement;
     let audioBlobUrl = null;
     let bass = 0, mids = 0, treble = 0;
     let audioReady = false, isPlaying = false;
     let currentStream = null;
     let angleX = 0, angleY = 0;
+    let audioInitialized = false;
+
+    if (embed.active) {
+      ({ audioContext, analyser, dataArray, audioInitialized } = embed.audioGlobals());
+      audioReady = true;
+    }
 
     // MIDI
     let midiInputs = [];
@@ -188,6 +226,7 @@
     }
 
     function initAudio() {
+      if (embed.active) return;
       if (audioContext) return;
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       analyser = audioContext.createAnalyser();
@@ -500,26 +539,14 @@
   <script src="../lib/hardware-controls.js?v=4"></script>
   <script>
     // Hardware Controls Integration
-    const hardware = new HardwareControls({
+    let hardware = null;
+    if (!embed.active) {
+    hardware = new HardwareControls({
       name: 'Vector Grid',
       accentColor: '#00ff41',
       params: params,
-      knobs: [
-        { id: 'gridSize', label: 'Grid', min: 10, max: 50, step: 1 },
-        { id: 'rotation', label: 'Speed', min: 0, max: 5, step: 0.1, decimals: 1 },
-        { id: 'bassWave', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
-        { id: 'waveHeight', label: 'Height', min: 0, max: 150, step: 5 },
-        { id: 'midDistort', label: 'Distort', min: 0, max: 3, step: 0.1, decimals: 1 },
-        { id: 'lineGlow', label: 'Glow', min: 1, max: 5, step: 0.1, decimals: 1 },
-        { id: 'perspective', label: 'Persp', min: 200, max: 1000, step: 50 },
-        { id: 'waveHeight', label: 'Wave+', min: 0, max: 150, step: 5 }
-      ],
-      faders: [
-        { id: 'gridSize', label: 'Grid', min: 10, max: 50, step: 1 },
-        { id: 'waveHeight', label: 'Wave', min: 0, max: 150, step: 5 },
-        { id: 'bassWave', label: 'Bass', min: 0, max: 5, step: 0.1, decimals: 1 },
-        { id: 'lineGlow', label: 'Glow', min: 1, max: 5, step: 0.1, decimals: 1 }
-      ],
+      knobs: KNOB_DEFS,
+      faders: FADER_DEFS,
       presets: new Array(8).fill(null),
       onParamChange: (id, value) => {
         params[id] = value;
@@ -535,6 +562,7 @@
       },
       onPresetLoad: (index) => console.log('Load preset', index)
     });
+    }
   </script>
 </body>
 </html>

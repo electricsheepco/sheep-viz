@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>sheep-viz Control Room</title>
+  <link rel="stylesheet" href="lib/hardware-controls.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --cr-bg: #0a0a0f;
+      --cr-panel: #12121a;
+      --cr-border: #1e1e2a;
+      --cr-text: #e8e8ed;
+      --cr-text-dim: #666;
+      --cr-accent: #6366f1;
+      --cr-accent-dim: #4f46e5;
+    }
+
+    body {
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--cr-bg);
+      color: var(--cr-text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ─── TOP BAR ─── */
+    .cr-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: var(--cr-panel);
+      border-bottom: 1px solid var(--cr-border);
+      flex-shrink: 0;
+      height: 48px;
+    }
+
+    .cr-topbar .cr-title {
+      font-family: 'Major Mono Display', monospace;
+      font-size: 14px;
+      text-transform: lowercase;
+      letter-spacing: 2px;
+      color: var(--cr-text-dim);
+      margin-right: 16px;
+      white-space: nowrap;
+    }
+
+    .cr-topbar .cr-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--cr-border);
+    }
+
+    /* Audio controls in top bar */
+    .cr-audio-section {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cr-audio-section .cr-section-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--cr-text-dim);
+      margin-right: 4px;
+    }
+
+    .cr-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+      border: 1px solid #333;
+      color: #888;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+
+    .cr-btn:hover {
+      border-color: var(--cr-accent-dim);
+      color: var(--cr-accent);
+    }
+
+    .cr-btn.active {
+      background: linear-gradient(180deg, var(--cr-accent-dim), var(--cr-accent));
+      border-color: var(--cr-accent);
+      color: #fff;
+    }
+
+    .cr-audio-status {
+      font-size: 8px;
+      color: var(--cr-text-dim);
+      max-width: 120px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .cr-audio-status.active {
+      color: var(--cr-accent);
+    }
+
+    /* Actions section */
+    .cr-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .cr-btn-label {
+      font-size: 9px;
+      padding: 0 8px;
+      width: auto;
+    }
+
+    .cr-midi-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #333;
+    }
+
+    .cr-midi-dot.connected {
+      background: var(--cr-accent);
+      box-shadow: 0 0 6px var(--cr-accent);
+    }
+
+    /* ─── MAIN LAYOUT ─── */
+    .cr-main {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+    }
+
+    /* ─── LEFT: VIZ GRID ─── */
+    .cr-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--cr-border);
+      background: var(--cr-panel);
+    }
+
+    .cr-viz-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      padding: 8px;
+      flex-shrink: 0;
+    }
+
+    .cr-viz-thumb {
+      aspect-ratio: 16/10;
+      border-radius: 4px;
+      background: #000;
+      border: 2px solid transparent;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+
+    .cr-viz-thumb:hover {
+      border-color: #444;
+    }
+
+    .cr-viz-thumb.active {
+      border-color: var(--cr-accent);
+      box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .cr-viz-thumb .cr-thumb-key {
+      position: absolute;
+      top: 2px;
+      left: 4px;
+      font-size: 8px;
+      color: rgba(255,255,255,0.4);
+      font-weight: 600;
+    }
+
+    .cr-viz-thumb .cr-thumb-name {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      font-size: 7px;
+      color: rgba(255,255,255,0.6);
+      background: rgba(0,0,0,0.7);
+      padding: 2px 4px;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .cr-viz-thumb canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Preset row below grid */
+    .cr-presets-section {
+      padding: 8px;
+      border-top: 1px solid var(--cr-border);
+    }
+
+    .cr-presets-section .cr-section-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--cr-text-dim);
+      margin-bottom: 6px;
+    }
+
+    .cr-preset-row {
+      display: flex;
+      gap: 4px;
+    }
+
+    .cr-preset-btn {
+      flex: 1;
+      height: 28px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+      border: 1px solid #333;
+      color: #666;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+
+    .cr-preset-btn:hover {
+      background: linear-gradient(180deg, #333, #252525);
+    }
+
+    .cr-preset-btn.active {
+      background: linear-gradient(180deg, var(--cr-accent-dim), var(--cr-accent));
+      color: #fff;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .cr-preset-btn.filled {
+      border-color: var(--cr-accent-dim);
+      color: var(--cr-accent);
+    }
+
+    .cr-current-info {
+      margin-top: 8px;
+      font-size: 9px;
+      color: var(--cr-text-dim);
+      text-align: center;
+    }
+
+    .cr-current-info .cr-viz-name {
+      color: var(--cr-accent);
+    }
+
+    /* ─── CENTER: PREVIEW ─── */
+    .cr-preview-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .cr-preview-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      min-height: 0;
+    }
+
+    .cr-preview-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    .cr-preview-overlay {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 6px;
+      z-index: 10;
+    }
+
+    /* ─── BOTTOM: CONTROLS ─── */
+    .cr-controls {
+      height: 140px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 8px 16px;
+      background: linear-gradient(180deg, var(--cr-panel) 0%, var(--cr-bg) 100%);
+      border-top: 1px solid var(--cr-border);
+    }
+
+    .cr-control-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .cr-control-section .cr-section-label {
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--cr-text-dim);
+    }
+
+    .cr-knobs-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .cr-knobs-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .cr-faders-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Reuse sknob/sfader styles from hardware-controls.css */
+    .cr-controls .sknob-outer {
+      width: 40px;
+      height: 40px;
+    }
+
+    .cr-controls .sknob-inner {
+      width: 32px;
+      height: 32px;
+    }
+
+    .cr-controls .sknob-indicator {
+      height: 8px;
+      top: 3px;
+    }
+
+    .cr-controls .sfader-track {
+      height: 70px;
+    }
+
+    /* ─── RECORDING INDICATOR ─── */
+    .cr-recording {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: #ff4444;
+    }
+
+    .cr-recording.active {
+      display: flex;
+    }
+
+    .cr-recording .cr-rec-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #ff4444;
+      animation: cr-blink 1s infinite;
+    }
+
+    @keyframes cr-blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* ─── EMPTY STATE ─── */
+    .cr-empty-state {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--cr-text-dim);
+      font-size: 12px;
+      gap: 8px;
+    }
+
+    .cr-empty-state .cr-hint {
+      font-size: 10px;
+      color: #444;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══ TOP BAR ═══ -->
+  <div class="cr-topbar">
+    <span class="cr-title">control room</span>
+    <div class="cr-divider"></div>
+
+    <!-- Audio -->
+    <div class="cr-audio-section">
+      <span class="cr-section-label">Audio</span>
+      <button class="cr-btn" id="btn-file" title="Load audio file">&#128193;</button>
+      <button class="cr-btn" id="btn-mic" title="Microphone">&#127908;</button>
+      <button class="cr-btn" id="btn-system" title="System audio">&#128421;</button>
+      <button class="cr-btn" id="btn-play" title="Play/Pause">&#9654;</button>
+      <span class="cr-audio-status" id="audio-status">No audio</span>
+      <input type="file" id="audio-file-input" accept="audio/*" style="display:none">
+    </div>
+
+    <div class="cr-divider"></div>
+
+    <!-- MIDI -->
+    <div class="cr-audio-section">
+      <span class="cr-section-label">MIDI</span>
+      <span class="cr-midi-dot" id="midi-dot"></span>
+      <span class="cr-audio-status" id="midi-status">Scanning...</span>
+    </div>
+
+    <div class="cr-divider"></div>
+
+    <!-- Overlay -->
+    <div class="cr-audio-section">
+      <span class="cr-section-label">Overlay</span>
+      <button class="cr-btn" id="btn-overlay" title="Load overlay image">&#128444;</button>
+      <button class="cr-btn" id="btn-overlay-clear" title="Clear overlay">&#10005;</button>
+      <input type="file" id="overlay-file-input" accept="image/*" style="display:none">
+    </div>
+
+    <!-- Actions -->
+    <div class="cr-actions">
+      <div class="cr-recording" id="rec-indicator">
+        <span class="cr-rec-dot"></span>
+        <span>REC</span>
+      </div>
+      <button class="cr-btn cr-btn-label" id="btn-popout" title="Pop out to projector (P)">Pop</button>
+      <button class="cr-btn cr-btn-label" id="btn-fullscreen" title="Fullscreen popout (F)">Full</button>
+      <button class="cr-btn cr-btn-label" id="btn-record" title="Record (R)">Rec</button>
+    </div>
+  </div>
+
+  <!-- ═══ MAIN AREA ═══ -->
+  <div class="cr-main">
+
+    <!-- Left sidebar: viz grid + presets -->
+    <div class="cr-sidebar">
+      <div class="cr-viz-grid" id="viz-grid"></div>
+
+      <div class="cr-presets-section">
+        <div class="cr-section-label">Presets (Shift+1-8)</div>
+        <div class="cr-preset-row" id="preset-row"></div>
+        <div class="cr-current-info">
+          <span class="cr-viz-name" id="current-viz-name">--</span>
+          <span id="current-preset-name"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center: preview iframe -->
+    <div class="cr-preview-area">
+      <div class="cr-preview-container" id="preview-container">
+        <div class="cr-empty-state" id="empty-state">
+          <div>Select a visualizer to begin</div>
+          <div class="cr-hint">Press 1-9, 0, or A-F</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ BOTTOM CONTROLS ═══ -->
+  <div class="cr-controls" id="controls-bar">
+    <div class="cr-control-section">
+      <span class="cr-section-label">Parameters</span>
+      <div class="cr-knobs-grid" id="knobs-container">
+        <div class="cr-knobs-row" id="knobs-row-1"></div>
+        <div class="cr-knobs-row" id="knobs-row-2"></div>
+      </div>
+    </div>
+
+    <div class="cr-control-section" style="margin-left:auto">
+      <span class="cr-section-label">Faders</span>
+      <div class="cr-faders-row" id="faders-container"></div>
+    </div>
+  </div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// VISUALIZER REGISTRY
+// ═══════════════════════════════════════════════════════════════
+
+const VISUALIZERS = [
+  { id: 'vertical-pulse-pro', name: 'Vertical Pulse Pro', accent: '#ff3366', file: 'visualizers/vertical-pulse-pro.html', key: '1' },
+  { id: 'fluid-flow',         name: 'Fluid Flow',         accent: '#6366f1', file: 'visualizers/fluid-flow.html',         key: '2' },
+  { id: 'radial-burst',       name: 'Radial Burst',       accent: '#ff3366', file: 'visualizers/radial-burst.html',       key: '3' },
+  { id: 'vector-grid',        name: 'Vector Grid',        accent: '#00ff41', file: 'visualizers/vector-grid.html',        key: '4' },
+  { id: 'matrix-rain',        name: 'Matrix Rain',        accent: '#00ff41', file: 'visualizers/matrix-rain.html',        key: '5' },
+  { id: 'starfield',          name: 'Starfield',          accent: '#00ff88', file: 'visualizers/starfield.html',          key: '6' },
+  { id: 'warp-speed',         name: 'Warp Speed',         accent: '#00aaff', file: 'visualizers/warp-speed.html',         key: '7' },
+  { id: 'vertical-pulse',     name: 'Vertical Pulse',     accent: '#d97757', file: 'visualizers/vertical-pulse.html',     key: '8' },
+  { id: 'llama-bars',         name: 'Llama Bars',         accent: '#ffcc00', file: 'visualizers/llama-bars.html',         key: '9' },
+  { id: 'spilled-milk',       name: 'Spilled Milk',       accent: '#ff00ff', file: 'visualizers/spilled-milk.html',       key: '0' },
+  { id: 'geist',              name: 'Geist',              accent: '#00ffff', file: 'visualizers/geist.html',              key: 'a' },
+  { id: 'gogh-mode',          name: 'Gogh Mode',          accent: '#f4b400', file: 'visualizers/gogh-mode.html',          key: 'b' },
+  { id: 'gilt-trip',          name: 'Gilt Trip',          accent: '#d4af37', file: 'visualizers/gilt-trip.html',          key: 'c' },
+  { id: 'cubic-zirconia',     name: 'Cubic Zirconia',     accent: '#e63946', file: 'visualizers/cubic-zirconia.html',     key: 'd' },
+  { id: 'oscilloscope',       name: 'Oscilloscope',       accent: '#00ff88', file: 'visualizers/oscilloscope.html',       key: 'e' },
+  { id: 'pollock-splatter',   name: 'Pollock Splatter',   accent: '#ff6b35', file: 'visualizers/pollock-splatter.html',   key: 'f' },
+];
+
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+
+let activeVizIndex = -1;
+let vizConfig = null;         // Config reported by active visualizer
+let popoutWindow = null;
+let popoutIframe = null;
+
+// Audio
+let audioContext = null;
+let analyser = null;
+let dataArray = null;
+let timeDataArray = null;
+let source = null;
+let audioElement = null;
+let currentStream = null;
+let audioBlobUrl = null;
+let isPlaying = false;
+
+// MIDI
+const MIDI_KNOB_CCS = [74, 71, 76, 77, 93, 18, 19, 16];
+const MIDI_FADER_CCS = [82, 83, 85, 17];
+const MIDI_PAD_NOTES = [36, 37, 38, 39, 40, 41, 42, 43];
+const MIDI_PAD_CHANNEL = 9;
+let midiAccess = null;
+
+// Recording
+let mediaRecorder = null;
+let recordedChunks = [];
+
+// Controls state
+let knobValues = [];    // current knob values (0-1 normalized)
+let faderValues = [];   // current fader values (0-1 normalized)
+let activePreset = -1;
+let activeKnobEl = null;
+let activeFaderEl = null;
+let dragStartY = 0;
+let dragStartValue = 0;
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO MANAGER
+// ═══════════════════════════════════════════════════════════════
+
+function initAudio() {
+  if (audioContext) return;
+  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioContext.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.8;
+  dataArray = new Uint8Array(analyser.frequencyBinCount);
+  timeDataArray = new Uint8Array(analyser.fftSize);
+}
+
+function loadAudioFile(file) {
+  initAudio();
+  if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
+  if (source) { try { source.disconnect(); } catch(e) {} }
+  if (audioElement) { audioElement.pause(); audioElement.remove(); }
+
+  audioBlobUrl = URL.createObjectURL(file);
+  audioElement = new Audio(audioBlobUrl);
+  audioElement.crossOrigin = 'anonymous';
+  source = audioContext.createMediaElementSource(audioElement);
+  source.connect(analyser);
+  analyser.connect(audioContext.destination);
+
+  audioElement.play();
+  isPlaying = true;
+  updatePlayButton();
+  setAudioStatus(file.name);
+}
+
+async function toggleMic() {
+  initAudio();
+  const btn = document.getElementById('btn-mic');
+
+  if (btn.classList.contains('active')) {
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+    btn.classList.remove('active');
+    setAudioStatus('No audio');
+    return;
+  }
+
+  try {
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    currentStream = stream;
+    if (source) { try { source.disconnect(); } catch(e) {} }
+    source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    btn.classList.add('active');
+    document.getElementById('btn-system').classList.remove('active');
+    setAudioStatus('Microphone');
+  } catch (e) {
+    console.error('Mic error:', e);
+  }
+}
+
+async function toggleSystemAudio() {
+  initAudio();
+  const btn = document.getElementById('btn-system');
+
+  if (btn.classList.contains('active')) {
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+    currentStream = null;
+    btn.classList.remove('active');
+    setAudioStatus('No audio');
+    return;
+  }
+
+  try {
+    if (currentStream) currentStream.getTracks().forEach(t => t.stop());
+    const stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: true });
+    // Stop video track - we only want audio
+    stream.getVideoTracks().forEach(t => t.stop());
+    currentStream = stream;
+    if (source) { try { source.disconnect(); } catch(e) {} }
+    source = audioContext.createMediaStreamSource(stream);
+    source.connect(analyser);
+    btn.classList.add('active');
+    document.getElementById('btn-mic').classList.remove('active');
+    setAudioStatus('System Audio');
+  } catch (e) {
+    console.error('System audio error:', e);
+  }
+}
+
+function togglePlayPause() {
+  if (!audioElement) return;
+  if (audioElement.paused) {
+    audioElement.play();
+    isPlaying = true;
+  } else {
+    audioElement.pause();
+    isPlaying = false;
+  }
+  updatePlayButton();
+}
+
+function updatePlayButton() {
+  const btn = document.getElementById('btn-play');
+  btn.innerHTML = isPlaying ? '&#9646;&#9646;' : '&#9654;';
+  btn.classList.toggle('active', isPlaying);
+}
+
+function setAudioStatus(text) {
+  const el = document.getElementById('audio-status');
+  el.textContent = text;
+  el.classList.toggle('active', text !== 'No audio');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO BROADCAST LOOP
+// ═══════════════════════════════════════════════════════════════
+
+function broadcastAudio() {
+  if (analyser) {
+    analyser.getByteFrequencyData(dataArray);
+    analyser.getByteTimeDomainData(timeDataArray);
+
+    const msg = {
+      type: 'audio',
+      freq: Array.from(dataArray),
+      time: Array.from(timeDataArray)
+    };
+
+    // Send to preview iframe
+    const iframe = document.querySelector('#preview-container iframe');
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage(msg, '*');
+    }
+
+    // Send to popout
+    if (popoutWindow && !popoutWindow.closed) {
+      const popIframe = popoutWindow.document.querySelector('iframe');
+      if (popIframe && popIframe.contentWindow) {
+        popIframe.contentWindow.postMessage(msg, '*');
+      }
+    }
+  }
+
+  requestAnimationFrame(broadcastAudio);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VISUALIZER GRID
+// ═══════════════════════════════════════════════════════════════
+
+function buildVizGrid() {
+  const grid = document.getElementById('viz-grid');
+  grid.innerHTML = '';
+
+  VISUALIZERS.forEach((viz, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'cr-viz-thumb';
+    thumb.dataset.index = i;
+    thumb.style.borderColor = 'transparent';
+
+    // Mini colored preview
+    const canvas = document.createElement('canvas');
+    canvas.width = 80;
+    canvas.height = 50;
+    const ctx = canvas.getContext('2d');
+    // Draw a simple gradient with accent color
+    const grad = ctx.createLinearGradient(0, 0, 80, 50);
+    grad.addColorStop(0, '#000');
+    grad.addColorStop(1, viz.accent + '66');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 80, 50);
+    thumb.appendChild(canvas);
+
+    const key = document.createElement('span');
+    key.className = 'cr-thumb-key';
+    key.textContent = viz.key.toUpperCase();
+    thumb.appendChild(key);
+
+    const name = document.createElement('span');
+    name.className = 'cr-thumb-name';
+    name.textContent = viz.name;
+    thumb.appendChild(name);
+
+    thumb.addEventListener('click', () => switchVisualizer(i));
+    grid.appendChild(thumb);
+  });
+}
+
+function buildPresetRow() {
+  const row = document.getElementById('preset-row');
+  row.innerHTML = '';
+  for (let i = 0; i < 8; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'cr-preset-btn';
+    btn.textContent = i + 1;
+    btn.dataset.index = i;
+    btn.addEventListener('click', () => loadPreset(i));
+    row.appendChild(btn);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// VISUALIZER SWITCHING
+// ═══════════════════════════════════════════════════════════════
+
+function switchVisualizer(index) {
+  if (index === activeVizIndex) return;
+  activeVizIndex = index;
+  const viz = VISUALIZERS[index];
+
+  // Update accent color
+  document.documentElement.style.setProperty('--cr-accent', viz.accent);
+  document.documentElement.style.setProperty('--cr-accent-dim', dimColor(viz.accent));
+
+  // Update grid selection
+  document.querySelectorAll('.cr-viz-thumb').forEach((el, i) => {
+    el.classList.toggle('active', i === index);
+  });
+
+  // Update info
+  document.getElementById('current-viz-name').textContent = viz.name;
+  document.getElementById('current-preset-name').textContent = '';
+
+  // Load in preview iframe
+  const container = document.getElementById('preview-container');
+  const emptyState = document.getElementById('empty-state');
+  if (emptyState) emptyState.remove();
+
+  // Remove existing iframe
+  const oldIframe = container.querySelector('iframe');
+  if (oldIframe) oldIframe.remove();
+
+  const iframe = document.createElement('iframe');
+  iframe.src = viz.file + '?embed=true';
+  iframe.allow = 'autoplay; microphone; display-capture';
+  container.appendChild(iframe);
+
+  // Update popout if open
+  if (popoutWindow && !popoutWindow.closed) {
+    const popIframe = popoutWindow.document.querySelector('iframe');
+    if (popIframe) {
+      popIframe.src = viz.file + '?embed=true';
+    }
+  }
+
+  // Reset preset highlight
+  activePreset = -1;
+  document.querySelectorAll('.cr-preset-btn').forEach(b => b.classList.remove('active'));
+
+  // Wait for iframe to report config
+  vizConfig = null;
+}
+
+function dimColor(hex) {
+  // Darken a hex color by ~30%
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return '#' + [r, g, b].map(c => Math.floor(c * 0.7).toString(16).padStart(2, '0')).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DYNAMIC CONTROLS (from viz-config message)
+// ═══════════════════════════════════════════════════════════════
+
+function rebuildControls(config) {
+  vizConfig = config;
+
+  // Rebuild knobs
+  const row1 = document.getElementById('knobs-row-1');
+  const row2 = document.getElementById('knobs-row-2');
+  row1.innerHTML = '';
+  row2.innerHTML = '';
+
+  knobValues = [];
+  const knobs = config.knobs || [];
+
+  knobs.forEach((knob, i) => {
+    const el = createKnob(knob, i);
+    if (i < 4) row1.appendChild(el);
+    else row2.appendChild(el);
+
+    // Set initial value from config
+    const paramId = knob.param || knob.id;
+    const paramVal = config.currentParams ? config.currentParams[paramId] : null;
+    const normalized = paramVal != null && knob.min != null && knob.max != null
+      ? (paramVal - knob.min) / (knob.max - knob.min)
+      : 0.5;
+    knobValues[i] = normalized;
+    updateKnobVisual(el, normalized);
+  });
+
+  // Rebuild faders
+  const fadersContainer = document.getElementById('faders-container');
+  fadersContainer.innerHTML = '';
+  faderValues = [];
+  const faders = config.faders || [];
+
+  faders.forEach((fader, i) => {
+    const el = createFader(fader, i);
+    fadersContainer.appendChild(el);
+
+    const paramId = fader.param || fader.id;
+    const paramVal = config.currentParams ? config.currentParams[paramId] : null;
+    const normalized = paramVal != null && fader.min != null && fader.max != null
+      ? (paramVal - fader.min) / (fader.max - fader.min)
+      : (i === 3 ? 1 : 0.5); // Master defaults to 1
+    faderValues[i] = normalized;
+    updateFaderVisual(el, normalized);
+  });
+
+  // Update preset buttons
+  const presets = config.presets || [];
+  document.querySelectorAll('.cr-preset-btn').forEach((btn, i) => {
+    const p = presets[i];
+    if (p && p.name) {
+      btn.title = p.name;
+      btn.classList.add('filled');
+    } else {
+      btn.title = `Preset ${i + 1}`;
+      btn.classList.remove('filled');
+    }
+  });
+}
+
+function createKnob(def, index) {
+  const knob = document.createElement('div');
+  knob.className = 'sknob';
+  knob.dataset.index = index;
+  knob.innerHTML = `
+    <span class="sknob-label">${def.label || def.name || 'Knob ' + (index + 1)}</span>
+    <div class="sknob-outer">
+      <div class="sknob-inner">
+        <div class="sknob-indicator"></div>
+      </div>
+    </div>
+    <span class="sknob-value">--</span>
+  `;
+
+  // Drag interaction
+  const outer = knob.querySelector('.sknob-outer');
+  outer.addEventListener('mousedown', (e) => startKnobDrag(e, knob, index));
+
+  return knob;
+}
+
+function createFader(def, index) {
+  const fader = document.createElement('div');
+  fader.className = 'sfader';
+  fader.dataset.index = index;
+  fader.innerHTML = `
+    <span class="sfader-label">${def.label || def.name || 'Fader ' + (index + 1)}</span>
+    <div class="sfader-track">
+      <div class="sfader-slot"></div>
+      <div class="sfader-fill"></div>
+      <div class="sfader-handle"></div>
+    </div>
+    <span class="sfader-value">--</span>
+  `;
+
+  const track = fader.querySelector('.sfader-track');
+  track.addEventListener('mousedown', (e) => startFaderDrag(e, fader, index));
+
+  return fader;
+}
+
+function updateKnobVisual(knob, normalized) {
+  const inner = knob.querySelector('.sknob-inner');
+  const valueEl = knob.querySelector('.sknob-value');
+  const angle = -135 + normalized * 270;
+  inner.style.transform = `rotate(${angle}deg)`;
+
+  // Show actual value if we have config
+  if (vizConfig && vizConfig.knobs && vizConfig.knobs[knob.dataset.index]) {
+    const def = vizConfig.knobs[knob.dataset.index];
+    if (def.min != null && def.max != null) {
+      const actual = def.min + normalized * (def.max - def.min);
+      const step = def.step || 1;
+      valueEl.textContent = step >= 1 ? Math.round(actual) : actual.toFixed(2);
+    } else {
+      valueEl.textContent = Math.round(normalized * 100);
+    }
+  }
+}
+
+function updateFaderVisual(fader, normalized) {
+  const fill = fader.querySelector('.sfader-fill');
+  const handle = fader.querySelector('.sfader-handle');
+  const valueEl = fader.querySelector('.sfader-value');
+  const trackHeight = 70;
+  const fillH = normalized * trackHeight;
+  fill.style.height = fillH + 'px';
+  handle.style.bottom = (5 + fillH - 8) + 'px';
+
+  if (vizConfig && vizConfig.faders && vizConfig.faders[fader.dataset.index]) {
+    const def = vizConfig.faders[fader.dataset.index];
+    if (def.min != null && def.max != null) {
+      const actual = def.min + normalized * (def.max - def.min);
+      valueEl.textContent = Math.round(actual);
+    } else {
+      valueEl.textContent = Math.round(normalized * 100);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KNOB/FADER DRAG
+// ═══════════════════════════════════════════════════════════════
+
+function startKnobDrag(e, knob, index) {
+  e.preventDefault();
+  activeKnobEl = knob;
+  dragStartY = e.clientY;
+  dragStartValue = knobValues[index];
+  knob.classList.add('active');
+
+  const onMove = (e) => {
+    const dy = dragStartY - e.clientY;
+    const delta = dy / 150;
+    const val = Math.max(0, Math.min(1, dragStartValue + delta));
+    knobValues[index] = val;
+    updateKnobVisual(knob, val);
+    sendParamFromKnob(index, val);
+  };
+
+  const onUp = () => {
+    knob.classList.remove('active');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function startFaderDrag(e, fader, index) {
+  e.preventDefault();
+  activeFaderEl = fader;
+  dragStartY = e.clientY;
+  dragStartValue = faderValues[index];
+
+  const onMove = (e) => {
+    const dy = dragStartY - e.clientY;
+    const delta = dy / 70;
+    const val = Math.max(0, Math.min(1, dragStartValue + delta));
+    faderValues[index] = val;
+    updateFaderVisual(fader, val);
+    sendParamFromFader(index, val);
+  };
+
+  const onUp = () => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+  };
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function sendParamFromKnob(index, normalized) {
+  if (!vizConfig || !vizConfig.knobs || !vizConfig.knobs[index]) return;
+  const def = vizConfig.knobs[index];
+  const paramId = def.param || def.id;
+  const min = def.min != null ? def.min : 0;
+  const max = def.max != null ? def.max : 1;
+  const value = min + normalized * (max - min);
+
+  sendToViz({ type: 'param', id: paramId, value: value });
+}
+
+function sendParamFromFader(index, normalized) {
+  if (!vizConfig || !vizConfig.faders || !vizConfig.faders[index]) return;
+  const def = vizConfig.faders[index];
+  const paramId = def.param || def.id;
+  const min = def.min != null ? def.min : 0;
+  const max = def.max != null ? def.max : 1;
+  const value = min + normalized * (max - min);
+
+  sendToViz({ type: 'param', id: paramId, value: value });
+}
+
+function sendToViz(msg) {
+  const iframe = document.querySelector('#preview-container iframe');
+  if (iframe && iframe.contentWindow) {
+    iframe.contentWindow.postMessage(msg, '*');
+  }
+  if (popoutWindow && !popoutWindow.closed) {
+    const popIframe = popoutWindow.document.querySelector('iframe');
+    if (popIframe && popIframe.contentWindow) {
+      popIframe.contentWindow.postMessage(msg, '*');
+    }
+  }
+}
+
+function loadPreset(index) {
+  activePreset = index;
+  document.querySelectorAll('.cr-preset-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', i === index);
+  });
+
+  // Update info
+  if (vizConfig && vizConfig.presets && vizConfig.presets[index]) {
+    document.getElementById('current-preset-name').textContent = ' > ' + vizConfig.presets[index].name;
+  }
+
+  sendToViz({ type: 'preset', index: index });
+
+  // After preset loads, request config refresh to update knob positions
+  setTimeout(() => {
+    sendToViz({ type: 'getConfig' });
+  }, 100);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// POPOUT WINDOW
+// ═══════════════════════════════════════════════════════════════
+
+function openPopout() {
+  if (popoutWindow && !popoutWindow.closed) {
+    popoutWindow.focus();
+    return;
+  }
+
+  if (activeVizIndex < 0) return;
+  const viz = VISUALIZERS[activeVizIndex];
+
+  popoutWindow = window.open('', 'sheep-viz-output', 'width=1280,height=720');
+  if (!popoutWindow) return;
+
+  popoutWindow.document.write(`<!DOCTYPE html>
+<html><head>
+<title>sheep-viz Output</title>
+<style>
+  * { margin: 0; padding: 0; }
+  body { background: #000; overflow: hidden; }
+  iframe { width: 100vw; height: 100vh; border: none; display: block; }
+</style>
+</head><body>
+<iframe src="${viz.file}?embed=true" allow="autoplay"></iframe>
+</body></html>`);
+  popoutWindow.document.close();
+}
+
+function fullscreenPopout() {
+  if (popoutWindow && !popoutWindow.closed) {
+    const body = popoutWindow.document.body;
+    if (body.requestFullscreen) body.requestFullscreen();
+    else if (body.webkitRequestFullscreen) body.webkitRequestFullscreen();
+  } else {
+    // Fullscreen the preview instead
+    const container = document.getElementById('preview-container');
+    if (container.requestFullscreen) container.requestFullscreen();
+    else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RECORDING
+// ═══════════════════════════════════════════════════════════════
+
+function toggleRecording() {
+  const indicator = document.getElementById('rec-indicator');
+  const btn = document.getElementById('btn-record');
+
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    btn.classList.remove('active');
+    indicator.classList.remove('active');
+    return;
+  }
+
+  // Try to capture the iframe's canvas
+  const iframe = document.querySelector('#preview-container iframe');
+  if (!iframe || !iframe.contentWindow) return;
+
+  try {
+    const canvas = iframe.contentDocument.querySelector('canvas');
+    if (!canvas) return;
+
+    const stream = canvas.captureStream(30);
+    // Mix in audio if available
+    if (audioContext && analyser) {
+      const dest = audioContext.createMediaStreamDestination();
+      analyser.connect(dest);
+      stream.addTrack(dest.stream.getAudioTracks()[0]);
+    }
+
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunks.push(e.data);
+    };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sheep-viz-${Date.now()}.webm`;
+      a.click();
+      URL.revokeObjectURL(url);
+    };
+
+    mediaRecorder.start();
+    btn.classList.add('active');
+    indicator.classList.add('active');
+  } catch (e) {
+    console.error('Recording error:', e);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OVERLAY
+// ═══════════════════════════════════════════════════════════════
+
+function loadOverlayFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    sendToViz({ type: 'overlay', dataUrl: e.target.result });
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearOverlay() {
+  sendToViz({ type: 'overlay', dataUrl: null });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MIDI
+// ═══════════════════════════════════════════════════════════════
+
+function initMIDI() {
+  if (!navigator.requestMIDIAccess) {
+    document.getElementById('midi-status').textContent = 'N/A';
+    return;
+  }
+
+  navigator.requestMIDIAccess({ sysex: false }).then(access => {
+    midiAccess = access;
+    const inputs = Array.from(access.inputs.values());
+    if (inputs.length === 0) {
+      document.getElementById('midi-status').textContent = 'No device';
+      return;
+    }
+
+    const controller = inputs.find(i => i.name.includes('MiniLab')) || inputs[0];
+    document.getElementById('midi-status').textContent = controller.name;
+    document.getElementById('midi-dot').classList.add('connected');
+
+    inputs.forEach(input => {
+      input.onmidimessage = handleMIDI;
+    });
+
+    access.onstatechange = (e) => {
+      if (e.port.type === 'input' && e.port.state === 'connected') {
+        e.port.onmidimessage = handleMIDI;
+      }
+    };
+  }).catch(() => {
+    document.getElementById('midi-status').textContent = 'Error';
+  });
+}
+
+function handleMIDI(e) {
+  const [status, data1, data2] = e.data;
+  const type = status & 0xf0;
+  const channel = status & 0x0f;
+
+  // Flash MIDI dot
+  const dot = document.getElementById('midi-dot');
+  dot.classList.add('active');
+  setTimeout(() => dot.classList.remove('active'), 100);
+
+  // CC (knobs/faders)
+  if (type === 0xb0) {
+    const cc = data1;
+    const value = data2;
+
+    const knobIndex = MIDI_KNOB_CCS.indexOf(cc);
+    if (knobIndex !== -1) {
+      const normalized = value / 127;
+      knobValues[knobIndex] = normalized;
+      const knobEl = document.querySelectorAll('.sknob')[knobIndex];
+      if (knobEl) updateKnobVisual(knobEl, normalized);
+      sendParamFromKnob(knobIndex, normalized);
+      return;
+    }
+
+    const faderIndex = MIDI_FADER_CCS.indexOf(cc);
+    if (faderIndex !== -1) {
+      const normalized = value / 127;
+      faderValues[faderIndex] = normalized;
+      const faderEl = document.querySelectorAll('.sfader')[faderIndex];
+      if (faderEl) updateFaderVisual(faderEl, normalized);
+      sendParamFromFader(faderIndex, normalized);
+      return;
+    }
+  }
+
+  // Note On (pads)
+  if (type === 0x90 && data2 > 0) {
+    const note = data1;
+    const padIndex = MIDI_PAD_NOTES.indexOf(note);
+    if (padIndex !== -1 && (channel === MIDI_PAD_CHANNEL || MIDI_PAD_CHANNEL === -1)) {
+      loadPreset(padIndex);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KEYBOARD SHORTCUTS
+// ═══════════════════════════════════════════════════════════════
+
+function handleKeyboard(e) {
+  // Don't capture if typing in an input
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  const key = e.key.toLowerCase();
+
+  // Shift+1-8: Load preset
+  if (e.shiftKey && key >= '1' && key <= '8') {
+    e.preventDefault();
+    loadPreset(parseInt(key) - 1);
+    return;
+  }
+
+  // 1-9, 0: Switch visualizer 1-10
+  if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+    if (key >= '1' && key <= '9') {
+      e.preventDefault();
+      switchVisualizer(parseInt(key) - 1);
+      return;
+    }
+    if (key === '0') {
+      e.preventDefault();
+      switchVisualizer(9);
+      return;
+    }
+    // A-F: Switch visualizer 11-16
+    if (key >= 'a' && key <= 'f') {
+      e.preventDefault();
+      switchVisualizer(10 + (key.charCodeAt(0) - 97));
+      return;
+    }
+  }
+
+  switch (key) {
+    case 'p':
+      e.preventDefault();
+      openPopout();
+      break;
+    case 'f':
+      e.preventDefault();
+      fullscreenPopout();
+      break;
+    case ' ':
+      e.preventDefault();
+      togglePlayPause();
+      break;
+    case 'm':
+      e.preventDefault();
+      toggleMic();
+      break;
+    case 'r':
+      e.preventDefault();
+      toggleRecording();
+      break;
+    case 'escape':
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      break;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MESSAGE HANDLER (from visualizer iframes)
+// ═══════════════════════════════════════════════════════════════
+
+window.addEventListener('message', (e) => {
+  const msg = e.data;
+  if (!msg || !msg.type) return;
+
+  if (msg.type === 'viz-config') {
+    rebuildControls(msg);
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+
+buildVizGrid();
+buildPresetRow();
+initMIDI();
+broadcastAudio();
+
+// Wire up buttons
+document.getElementById('btn-file').addEventListener('click', () => {
+  document.getElementById('audio-file-input').click();
+});
+document.getElementById('audio-file-input').addEventListener('change', (e) => {
+  if (e.target.files[0]) loadAudioFile(e.target.files[0]);
+});
+document.getElementById('btn-mic').addEventListener('click', toggleMic);
+document.getElementById('btn-system').addEventListener('click', toggleSystemAudio);
+document.getElementById('btn-play').addEventListener('click', togglePlayPause);
+document.getElementById('btn-popout').addEventListener('click', openPopout);
+document.getElementById('btn-fullscreen').addEventListener('click', fullscreenPopout);
+document.getElementById('btn-record').addEventListener('click', toggleRecording);
+document.getElementById('btn-overlay').addEventListener('click', () => {
+  document.getElementById('overlay-file-input').click();
+});
+document.getElementById('overlay-file-input').addEventListener('change', (e) => {
+  if (e.target.files[0]) loadOverlayFile(e.target.files[0]);
+});
+document.getElementById('btn-overlay-clear').addEventListener('click', clearOverlay);
+
+document.addEventListener('keydown', handleKeyboard);
+
+</script>
+</body>
+</html>
