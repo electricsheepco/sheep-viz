@@ -454,6 +454,8 @@
 
     let actx, analyser, source, audioEl, freqData, smoothed;
     let audioReady = false, playing = false;
+    let audioBlobUrl = null;
+    let currentStream = null;
 
     function initAudio() {
         if (actx) return Promise.resolve();
@@ -468,10 +470,11 @@
 
     function loadFile(file) {
         initAudio().then(() => {
+            if (audioBlobUrl) URL.revokeObjectURL(audioBlobUrl);
             if (source) { try { source.disconnect(); } catch(e){} }
             if (audioEl) audioEl.pause();
-            const url = URL.createObjectURL(file);
-            audioEl = new Audio(url);
+            audioBlobUrl = URL.createObjectURL(file);
+            audioEl = new Audio(audioBlobUrl);
             audioEl.oncanplay = () => {
                 source = actx.createMediaElementSource(audioEl);
                 source.connect(analyser);
@@ -484,7 +487,9 @@
 
     function useMic() {
         initAudio().then(() => {
+            if (currentStream) { currentStream.getTracks().forEach(t => t.stop()); currentStream = null; }
             navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                currentStream = stream;
                 if (source) { try { source.disconnect(); } catch(e){} }
                 source = actx.createMediaStreamSource(stream);
                 source.connect(analyser);
@@ -818,6 +823,7 @@
             a.href = URL.createObjectURL(blob);
             a.download = `sheep-${Date.now()}.webm`;
             a.click();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
             setStatus('record-status', 'Saved!', 'active');
         };
         recorder.start(100);
