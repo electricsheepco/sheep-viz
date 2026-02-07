@@ -22,27 +22,42 @@ That's it. No npm, no build step, no configuration.
 
 ## Audio Sources
 
+The hardware bar has four audio controls:
+
+| Button | Source | Use Case |
+|--------|--------|----------|
+| File | Local audio file | Music videos, testing |
+| Mic | Microphone/line-in | Live performance with mixer |
+| System | Screen/tab audio | React to YouTube, Spotify, any app |
+| Play/Pause | Toggle playback | Control loaded audio |
+
 ### Local Audio File
-Click "Choose File" and select any audio file (MP3, WAV, FLAC, OGG).
+Click the file button and select any audio file (MP3, WAV, FLAC, OGG).
 
 ### Microphone/Line-In
-1. Click "Use Mic" button
+1. Click the mic button
 2. Grant microphone permission when prompted
 3. Select your audio interface as the input device
 
-This is useful for:
-- Live performances with a mixer
-- Reacting to system audio via loopback
+### System Audio (Screen Share)
+1. Click the system audio button
+2. Choose which tab or window to capture
+3. The visualizer reacts to whatever audio is playing
+
+This works with YouTube, Spotify, or any application.
 
 ## Basic Controls
 
 | Key | Action |
 |-----|--------|
 | Space | Play / Pause |
-| P | Pop out canvas (for dual-screen) |
-| F | Toggle fullscreen |
-| H | Hide / show UI |
+| F | Fullscreen + popout controls |
+| H | Toggle hardware bar |
+| S | Toggle sidebar |
+| P | Pop out canvas (dual-screen) |
 | R | Start / stop recording |
+| 1-8 | Switch preset/style |
+| Esc | Exit fullscreen |
 
 ## Switching Visualizers
 
