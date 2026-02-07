@@ -29,18 +29,26 @@ It's named after [Electric Sheep](https://electricsheep.org/)—the distributed 
 
 Drop in an audio file. The visuals react to bass, mids, and treble in real-time.
 
-**9 Visualizers included:**
+**16 Visualizers included:**
 
-- **Llama Bars** — Classic spectrum analyzer (Winamp tribute). 8 style variants. *NEW*
-- **Starfield** — Classic space tunnel with warp trails. Replace stars with custom images.
-- **Warp Speed** — Star Wars hyperspace effect with directional control (WASD/mouse).
-- **Vertical Pulse** — Light columns breathing with frequency, distorted by floating blobs.
-- **Matrix Rain** — Falling digital characters with audio-reactive speed and density.
-- **Vector Grid** — 80s wireframe landscape reacting to bass waves.
-- **Radial Burst** — Particles explode from center on every beat.
-- **Fluid Flow** — Particles following noise flow fields with audio influence.
-
-**Coming soon:** Spilled Milk (MilkDrop), Geist (tunnels), Gogh Mode (Van Gogh), Gilt Trip (Klimt), Cubic Zirconia (Picasso)
+| Visualizer | Style | Inspiration |
+|------------|-------|-------------|
+| **Llama Bars** | Spectrum analyzer | Winamp classic bars |
+| **Spilled Milk** | Morphing presets | MilkDrop |
+| **Geist** | Chrome tunnels | Geiss |
+| **Starfield** | Star tunnel | Screensaver nostalgia |
+| **Warp Speed** | Hyperspace | Star Wars |
+| **Matrix Rain** | Digital rain | The Matrix |
+| **Vertical Pulse** | Light columns | Audio reactive columns |
+| **Vertical Pulse Pro** | Metaball columns | Organic distortion |
+| **Vector Grid** | Wireframe terrain | Johnny Quest / Tron |
+| **Radial Burst** | Beat explosions | Particle systems |
+| **Fluid Flow** | Flow fields | Fluid dynamics |
+| **Gogh Mode** | Swirling brushstrokes | Van Gogh |
+| **Gilt Trip** | Art Nouveau gold | Gustav Klimt |
+| **Cubic Zirconia** | Cubist fragmentation | Pablo Picasso |
+| **Oscilloscope** | Waveforms & Lissajous | Analog test equipment |
+| **Pollock Splatter** | Action painting | Jackson Pollock |
 
 Fork it and make your own.
 
@@ -133,9 +141,13 @@ The render pipeline:
 | Key | Action |
 |-----|--------|
 | `Space` | Play / Pause |
-| `F` | Toggle fullscreen |
-| `H` | Hide / show UI |
+| `F` | Fullscreen + popout controls |
+| `H` | Toggle hardware bar |
+| `S` | Toggle sidebar |
+| `P` | Pop out canvas (dual-screen) |
 | `R` | Start / stop recording |
+| `1-8` | Switch preset/style |
+| `Esc` | Exit fullscreen |
 
 ---
 
@@ -148,13 +160,6 @@ The architecture is simple:
 3. **Parameters** — Sliders in the UI, exposed for MIDI
 
 Look at `vertical-pulse-pro.html`. It's one self-contained file. Copy it, change the `draw()` function, add your own parameters. That's it.
-
-Ideas I haven't built yet:
-- Geometric kaleidoscope
-- Liquid/fluid simulation
-- Shader-based morphing (MilkDrop style)
-- Tunnel effects (Geiss style)
-- Art-inspired: Van Gogh swirls, Klimt gold, Picasso cubism
 
 If you build something cool, open a PR.
 
@@ -169,14 +174,21 @@ sheep/
 │   └── hardware-controls.css     # Dark metal aesthetic styling
 ├── visualizers/
 │   ├── llama-bars.html           # Spectrum analyzer (Winamp tribute)
-│   ├── starfield.html            # Classic star tunnel with trails
-│   ├── warp-speed.html           # Star Wars hyperspace effect
-│   ├── vertical-pulse.html       # Full-featured light columns
-│   ├── vertical-pulse-pro.html   # Light columns (simplified)
+│   ├── spilled-milk.html         # MilkDrop morphing presets
+│   ├── geist.html                # Chrome tunnel effects
+│   ├── starfield.html            # Classic star tunnel
+│   ├── warp-speed.html           # Star Wars hyperspace
 │   ├── matrix-rain.html          # Matrix digital rain
+│   ├── vertical-pulse.html       # Light columns (full)
+│   ├── vertical-pulse-pro.html   # Light columns (metaball)
 │   ├── vector-grid.html          # 3D wireframe grid
-│   ├── radial-burst.html         # Particle explosion
-│   ├── fluid-flow.html           # Fluid dynamics particles
+│   ├── radial-burst.html         # Beat-reactive particles
+│   ├── fluid-flow.html           # Flow field particles
+│   ├── gogh-mode.html            # Van Gogh brushstrokes
+│   ├── gilt-trip.html            # Klimt Art Nouveau gold
+│   ├── cubic-zirconia.html       # Picasso cubist
+│   ├── oscilloscope.html         # Waveforms & Lissajous
+│   ├── pollock-splatter.html     # Jackson Pollock action painting
 │   └── presets/                  # Saved configurations
 ├── tools/
 │   ├── render-video.sh           # Full render pipeline
