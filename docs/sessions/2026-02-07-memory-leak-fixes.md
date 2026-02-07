@@ -80,3 +80,44 @@ static log(...args) {
 
 - Preview: https://sheep-42ok2ts29-essco.vercel.app
 - Production: https://sheep-xi.vercel.app
+
+---
+
+# Session: Control Room Build - Phase 2
+
+**Date:** 2026-02-07
+**Commits:** db91451 (control room + embed adapters), plus uncommitted layout polish
+
+## Session Summary
+
+Built the complete Control Room interface and integrated embed adapter into all 16 visualizers. Then iterated on the layout based on feedback: enlarged viz grid thumbnails, moved presets from sidebar to bottom bar, replaced all emoji icons with Lucide, added crossfade transitions between visualizers, and added fullscreen support for the popout window.
+
+## What Got Done
+- [x] Integrated embed adapter into all 14 remaining visualizers (4 parallel agents)
+- [x] Built control-room.html with full DJ booth interface
+- [x] Shipped first version to preview (db91451)
+- [x] Enlarged viz grid thumbnails (sidebar 240px to 320px)
+- [x] Moved presets from sidebar to bottom controls bar (Knobs | Faders | Presets)
+- [x] Replaced all emoji icons with Lucide icons (folder-open, mic, monitor, play/pause, image, x, picture-in-picture-2, maximize, circle)
+- [x] Added crossfade transition when switching visualizers (0.4s opacity, waits for iframe load)
+- [x] Added fullscreen support for popout window (F key, Ctrl+Enter, double-click)
+- [x] Audio broadcast sends to all iframes during crossfade
+- [x] Cursor hidden in popout window for projector mode
+
+## TODO (Next Session)
+- [ ] Test crossfade and fullscreen in browser
+- [ ] Ship latest changes and deploy preview
+- [ ] Promote to production after testing
+- [ ] Popout window polish (Task #9)
+- [ ] PWA support - manifest.json, sw.js (Task #10)
+- [ ] Consider live preview thumbnails in viz grid
+
+## Key Files
+- `control-room.html` - Main control room interface (~1400 lines)
+- `lib/embed-adapter.js` - Embed mode detection + audio patching
+- All 16 `visualizers/*.html` - Each has embed adapter integration
+
+## Links
+- Preview (v1): https://sheep-ag9mx05f2-essco.vercel.app
+- Production: https://sheep-xi.vercel.app
+- Plan: `/Users/zod/.claude/plans/sprightly-mixing-babbage.md`
