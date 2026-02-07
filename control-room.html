@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>sheep-viz Control Room</title>
   <link rel="stylesheet" href="lib/hardware-controls.css">
+  <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
@@ -88,6 +89,12 @@
       transition: all 0.15s;
     }
 
+    .cr-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 2;
+    }
+
     .cr-btn:hover {
       border-color: var(--cr-accent-dim);
       color: var(--cr-accent);
@@ -120,12 +127,6 @@
       margin-left: auto;
     }
 
-    .cr-btn-label {
-      font-size: 9px;
-      padding: 0 8px;
-      width: auto;
-    }
-
     .cr-midi-dot {
       width: 8px;
       height: 8px;
@@ -147,7 +148,7 @@
 
     /* ─── LEFT: VIZ GRID ─── */
     .cr-sidebar {
-      width: 240px;
+      width: 320px;
       flex-shrink: 0;
       display: flex;
       flex-direction: column;
@@ -158,9 +159,9 @@
     .cr-viz-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
-      padding: 8px;
-      flex-shrink: 0;
+      gap: 6px;
+      padding: 10px;
+      flex: 1;
     }
 
     .cr-viz-thumb {
@@ -187,8 +188,8 @@
       position: absolute;
       top: 2px;
       left: 4px;
-      font-size: 8px;
-      color: rgba(255,255,255,0.4);
+      font-size: 9px;
+      color: rgba(255,255,255,0.5);
       font-weight: 600;
     }
 
@@ -197,8 +198,8 @@
       bottom: 0;
       left: 0;
       right: 0;
-      font-size: 7px;
-      color: rgba(255,255,255,0.6);
+      font-size: 8px;
+      color: rgba(255,255,255,0.7);
       background: rgba(0,0,0,0.7);
       padding: 2px 4px;
       text-align: center;
@@ -213,59 +214,13 @@
       display: block;
     }
 
-    /* Preset row below grid */
-    .cr-presets-section {
-      padding: 8px;
-      border-top: 1px solid var(--cr-border);
-    }
-
-    .cr-presets-section .cr-section-label {
-      font-size: 8px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--cr-text-dim);
-      margin-bottom: 6px;
-    }
-
-    .cr-preset-row {
-      display: flex;
-      gap: 4px;
-    }
-
-    .cr-preset-btn {
-      flex: 1;
-      height: 28px;
-      border-radius: 3px;
-      background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
-      border: 1px solid #333;
-      color: #666;
-      font-size: 10px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      transition: all 0.1s;
-    }
-
-    .cr-preset-btn:hover {
-      background: linear-gradient(180deg, #333, #252525);
-    }
-
-    .cr-preset-btn.active {
-      background: linear-gradient(180deg, var(--cr-accent-dim), var(--cr-accent));
-      color: #fff;
-      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
-    }
-
-    .cr-preset-btn.filled {
-      border-color: var(--cr-accent-dim);
-      color: var(--cr-accent);
-    }
-
     .cr-current-info {
-      margin-top: 8px;
+      padding: 6px 10px;
       font-size: 9px;
       color: var(--cr-text-dim);
       text-align: center;
+      border-top: 1px solid var(--cr-border);
+      flex-shrink: 0;
     }
 
     .cr-current-info .cr-viz-name {
@@ -288,10 +243,13 @@
     }
 
     .cr-preview-container iframe {
+      position: absolute;
+      inset: 0;
       width: 100%;
       height: 100%;
       border: none;
       display: block;
+      transition: opacity 0.4s ease;
     }
 
     .cr-preview-overlay {
@@ -305,11 +263,11 @@
 
     /* ─── BOTTOM: CONTROLS ─── */
     .cr-controls {
-      height: 140px;
+      height: 150px;
       flex-shrink: 0;
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 20px;
       padding: 8px 16px;
       background: linear-gradient(180deg, var(--cr-panel) 0%, var(--cr-bg) 100%);
       border-top: 1px solid var(--cr-border);
@@ -343,6 +301,41 @@
     .cr-faders-row {
       display: flex;
       gap: 10px;
+    }
+
+    .cr-presets-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+
+    .cr-preset-btn {
+      width: 36px;
+      height: 28px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
+      border: 1px solid #333;
+      color: #666;
+      font-size: 10px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.1s;
+    }
+
+    .cr-preset-btn:hover {
+      background: linear-gradient(180deg, #333, #252525);
+    }
+
+    .cr-preset-btn.active {
+      background: linear-gradient(180deg, var(--cr-accent-dim), var(--cr-accent));
+      color: #fff;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+    }
+
+    .cr-preset-btn.filled {
+      border-color: var(--cr-accent-dim);
+      color: var(--cr-accent);
     }
 
     /* Reuse sknob/sfader styles from hardware-controls.css */
@@ -420,10 +413,10 @@
     <!-- Audio -->
     <div class="cr-audio-section">
       <span class="cr-section-label">Audio</span>
-      <button class="cr-btn" id="btn-file" title="Load audio file">&#128193;</button>
-      <button class="cr-btn" id="btn-mic" title="Microphone">&#127908;</button>
-      <button class="cr-btn" id="btn-system" title="System audio">&#128421;</button>
-      <button class="cr-btn" id="btn-play" title="Play/Pause">&#9654;</button>
+      <button class="cr-btn" id="btn-file" title="Load audio file"><i data-lucide="folder-open"></i></button>
+      <button class="cr-btn" id="btn-mic" title="Microphone"><i data-lucide="mic"></i></button>
+      <button class="cr-btn" id="btn-system" title="System audio"><i data-lucide="monitor"></i></button>
+      <button class="cr-btn" id="btn-play" title="Play/Pause"><i data-lucide="play"></i></button>
       <span class="cr-audio-status" id="audio-status">No audio</span>
       <input type="file" id="audio-file-input" accept="audio/*" style="display:none">
     </div>
@@ -442,8 +435,8 @@
     <!-- Overlay -->
     <div class="cr-audio-section">
       <span class="cr-section-label">Overlay</span>
-      <button class="cr-btn" id="btn-overlay" title="Load overlay image">&#128444;</button>
-      <button class="cr-btn" id="btn-overlay-clear" title="Clear overlay">&#10005;</button>
+      <button class="cr-btn" id="btn-overlay" title="Load overlay image"><i data-lucide="image"></i></button>
+      <button class="cr-btn" id="btn-overlay-clear" title="Clear overlay"><i data-lucide="x"></i></button>
       <input type="file" id="overlay-file-input" accept="image/*" style="display:none">
     </div>
 
@@ -453,26 +446,21 @@
         <span class="cr-rec-dot"></span>
         <span>REC</span>
       </div>
-      <button class="cr-btn cr-btn-label" id="btn-popout" title="Pop out to projector (P)">Pop</button>
-      <button class="cr-btn cr-btn-label" id="btn-fullscreen" title="Fullscreen popout (F)">Full</button>
-      <button class="cr-btn cr-btn-label" id="btn-record" title="Record (R)">Rec</button>
+      <button class="cr-btn" id="btn-popout" title="Pop out to projector (P)"><i data-lucide="picture-in-picture-2"></i></button>
+      <button class="cr-btn" id="btn-fullscreen" title="Fullscreen popout (F)"><i data-lucide="maximize"></i></button>
+      <button class="cr-btn" id="btn-record" title="Record (R)"><i data-lucide="circle"></i></button>
     </div>
   </div>
 
   <!-- ═══ MAIN AREA ═══ -->
   <div class="cr-main">
 
-    <!-- Left sidebar: viz grid + presets -->
+    <!-- Left sidebar: viz grid -->
     <div class="cr-sidebar">
       <div class="cr-viz-grid" id="viz-grid"></div>
-
-      <div class="cr-presets-section">
-        <div class="cr-section-label">Presets (Shift+1-8)</div>
-        <div class="cr-preset-row" id="preset-row"></div>
-        <div class="cr-current-info">
-          <span class="cr-viz-name" id="current-viz-name">--</span>
-          <span id="current-preset-name"></span>
-        </div>
+      <div class="cr-current-info">
+        <span class="cr-viz-name" id="current-viz-name">--</span>
+        <span id="current-preset-name"></span>
       </div>
     </div>
 
@@ -497,9 +485,14 @@
       </div>
     </div>
 
-    <div class="cr-control-section" style="margin-left:auto">
+    <div class="cr-control-section">
       <span class="cr-section-label">Faders</span>
       <div class="cr-faders-row" id="faders-container"></div>
+    </div>
+
+    <div class="cr-control-section" style="margin-left:auto">
+      <span class="cr-section-label">Presets (Shift+1-8)</span>
+      <div class="cr-presets-grid" id="preset-row"></div>
     </div>
   </div>
 
@@ -670,7 +663,8 @@ function togglePlayPause() {
 
 function updatePlayButton() {
   const btn = document.getElementById('btn-play');
-  btn.innerHTML = isPlaying ? '&#9646;&#9646;' : '&#9654;';
+  btn.innerHTML = `<i data-lucide="${isPlaying ? 'pause' : 'play'}"></i>`;
+  lucide.createIcons();
   btn.classList.toggle('active', isPlaying);
 }
 
@@ -695,11 +689,10 @@ function broadcastAudio() {
       time: Array.from(timeDataArray)
     };
 
-    // Send to preview iframe
-    const iframe = document.querySelector('#preview-container iframe');
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage(msg, '*');
-    }
+    // Send to all preview iframes (may have two during crossfade)
+    document.querySelectorAll('#preview-container iframe').forEach(iframe => {
+      if (iframe.contentWindow) iframe.contentWindow.postMessage(msg, '*');
+    });
 
     // Send to popout
     if (popoutWindow && !popoutWindow.closed) {
@@ -790,19 +783,33 @@ function switchVisualizer(index) {
   document.getElementById('current-viz-name').textContent = viz.name;
   document.getElementById('current-preset-name').textContent = '';
 
-  // Load in preview iframe
+  // Load in preview iframe with crossfade
   const container = document.getElementById('preview-container');
   const emptyState = document.getElementById('empty-state');
   if (emptyState) emptyState.remove();
 
-  // Remove existing iframe
-  const oldIframe = container.querySelector('iframe');
-  if (oldIframe) oldIframe.remove();
+  // Mark all existing iframes as outgoing
+  const oldIframes = container.querySelectorAll('iframe');
 
+  // Create new iframe (starts invisible)
   const iframe = document.createElement('iframe');
   iframe.src = viz.file + '?embed=true';
   iframe.allow = 'autoplay; microphone; display-capture';
+  iframe.style.opacity = '0';
   container.appendChild(iframe);
+
+  // When new iframe loads, crossfade
+  iframe.addEventListener('load', () => {
+    // Fade in the new one
+    requestAnimationFrame(() => {
+      iframe.style.opacity = '1';
+    });
+    // Fade out and remove old iframes
+    oldIframes.forEach(old => {
+      old.style.opacity = '0';
+      setTimeout(() => { if (old.parentNode) old.remove(); }, 500);
+    });
+  });
 
   // Update popout if open
   if (popoutWindow && !popoutWindow.closed) {
@@ -1049,7 +1056,9 @@ function sendParamFromFader(index, normalized) {
 }
 
 function sendToViz(msg) {
-  const iframe = document.querySelector('#preview-container iframe');
+  // Send to the last (newest) iframe during crossfade
+  const iframes = document.querySelectorAll('#preview-container iframe');
+  const iframe = iframes[iframes.length - 1];
   if (iframe && iframe.contentWindow) {
     iframe.contentWindow.postMessage(msg, '*');
   }
@@ -1101,20 +1110,46 @@ function openPopout() {
 <title>sheep-viz Output</title>
 <style>
   * { margin: 0; padding: 0; }
-  body { background: #000; overflow: hidden; }
+  body { background: #000; overflow: hidden; cursor: none; }
   iframe { width: 100vw; height: 100vh; border: none; display: block; }
 </style>
 </head><body>
 <iframe src="${viz.file}?embed=true" allow="autoplay"></iframe>
+<script>
+function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    document.exitFullscreen();
+  } else {
+    document.documentElement.requestFullscreen().catch(function(){});
+  }
+}
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'f' || e.key === 'F' ||
+      (e.ctrlKey && e.key === 'Enter') ||
+      (e.metaKey && e.key === 'Enter')) {
+    e.preventDefault();
+    toggleFullscreen();
+  }
+  if (e.key === 'Escape' && document.fullscreenElement) {
+    document.exitFullscreen();
+  }
+});
+document.addEventListener('dblclick', toggleFullscreen);
+<\/script>
 </body></html>`);
   popoutWindow.document.close();
 }
 
 function fullscreenPopout() {
   if (popoutWindow && !popoutWindow.closed) {
-    const body = popoutWindow.document.body;
-    if (body.requestFullscreen) body.requestFullscreen();
-    else if (body.webkitRequestFullscreen) body.webkitRequestFullscreen();
+    // Send a message to trigger fullscreen from within the popout (user gesture required)
+    popoutWindow.focus();
+    // Try direct fullscreen - works if called from user gesture in main window
+    try {
+      const doc = popoutWindow.document.documentElement;
+      if (doc.requestFullscreen) doc.requestFullscreen();
+      else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
+    } catch(e) {}
   } else {
     // Fullscreen the preview instead
     const container = document.getElementById('preview-container');
@@ -1285,6 +1320,13 @@ function handleKeyboard(e) {
 
   const key = e.key.toLowerCase();
 
+  // Ctrl+Enter or Cmd+Enter: Fullscreen
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    fullscreenPopout();
+    return;
+  }
+
   // Shift+1-8: Load preset
   if (e.shiftKey && key >= '1' && key <= '8') {
     e.preventDefault();
@@ -1362,6 +1404,7 @@ buildVizGrid();
 buildPresetRow();
 initMIDI();
 broadcastAudio();
+lucide.createIcons();
 
 // Wire up buttons
 document.getElementById('btn-file').addEventListener('click', () => {
