@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>sheep-viz Control Room</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#6366f1">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
   <link rel="stylesheet" href="lib/hardware-controls.css">
   <script src="https://unpkg.com/lucide@0.469.0/dist/umd/lucide.min.js"></script>
   <style>
@@ -1428,6 +1432,11 @@ document.getElementById('overlay-file-input').addEventListener('change', (e) => 
 document.getElementById('btn-overlay-clear').addEventListener('click', clearOverlay);
 
 document.addEventListener('keydown', handleKeyboard);
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 
 </script>
 </body>

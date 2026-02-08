@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="64" fill="#0a0a0f"/>
+  <g transform="translate(256,240)">
+    <!-- Waveform bars -->
+    <rect x="-140" y="-30" width="20" height="60" rx="4" fill="#6366f1" opacity="0.6"/>
+    <rect x="-105" y="-55" width="20" height="110" rx="4" fill="#6366f1" opacity="0.7"/>
+    <rect x="-70" y="-75" width="20" height="150" rx="4" fill="#6366f1" opacity="0.8"/>
+    <rect x="-35" y="-90" width="20" height="180" rx="4" fill="#6366f1" opacity="0.9"/>
+    <rect x="0" y="-100" width="20" height="200" rx="4" fill="#6366f1"/>
+    <rect x="35" y="-85" width="20" height="170" rx="4" fill="#6366f1" opacity="0.9"/>
+    <rect x="70" y="-65" width="20" height="130" rx="4" fill="#6366f1" opacity="0.8"/>
+    <rect x="105" y="-45" width="20" height="90" rx="4" fill="#6366f1" opacity="0.7"/>
+    <rect x="140" y="-25" width="20" height="50" rx="4" fill="#6366f1" opacity="0.6"/>
+  </g>
+  <text x="256" y="410" text-anchor="middle" font-family="monospace" font-size="48" font-weight="bold" fill="#666">sheep-viz</text>
+</svg>
