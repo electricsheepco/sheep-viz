@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sheep-viz-v2';
+const CACHE_NAME = 'sheep-viz-v3';
 
 const PRECACHE = [
   '/',
@@ -7,6 +7,7 @@ const PRECACHE = [
   '/lib/hardware-controls.js',
   '/lib/hardware-controls.css',
   '/lib/embed-adapter.js',
+  '/lib/lyrics-engine.js',
   '/icon.svg',
   '/manifest.json'
 ];
