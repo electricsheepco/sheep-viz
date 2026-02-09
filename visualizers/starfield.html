@@ -1114,6 +1114,10 @@
             centerX: 0.5,
             centerY: 0.5,
             colorMode: 'white',
+            preset: 0,
+            presetR: 255,
+            presetG: 255,
+            presetB: 255,
             overlaySize: 0.2,
             overlayOpacity: 0.8,
             overlayPosition: 'center',
@@ -1142,6 +1146,35 @@
             { id: 'overlayOpacity', label: 'Master', min: 10, max: 100, step: 1, suffix: '%' }
         ];
 
+        const STAR_PRESETS = ['Classic', 'Warp Core', 'Ember', 'Cosmic', 'Void', 'Firefly', 'Snow', 'Hyperdrive'];
+        const STAR_COLORS = [
+            { r: 255, g: 255, b: 255, mode: 'white' },
+            { r: 150, g: 180, b: 255, mode: 'preset' },
+            { r: 255, g: 150, b: 80, mode: 'preset' },
+            { r: 0, g: 0, b: 0, mode: 'rainbow' },
+            { r: 180, g: 100, b: 255, mode: 'preset' },
+            { r: 100, g: 255, b: 150, mode: 'preset' },
+            { r: 240, g: 245, b: 255, mode: 'preset' },
+            { r: 100, g: 255, b: 255, mode: 'preset' }
+        ];
+
+        function setPreset(index) {
+            if (index < 0 || index >= STAR_PRESETS.length) return;
+            params.preset = index;
+            const sc = STAR_COLORS[index];
+            params.colorMode = sc.mode;
+            params.presetR = sc.r;
+            params.presetG = sc.g;
+            params.presetB = sc.b;
+            // Update color mode UI
+            const cm = document.getElementById('colorMode');
+            if (cm) { cm.value = sc.mode === 'preset' ? 'white' : sc.mode; }
+            document.getElementById('colorModeVal').textContent = STAR_PRESETS[index];
+            // Update preset button UI
+            selectedPresetSlot = index;
+            updatePresetUI();
+        }
+
         const embed = new EmbedAdapter({
             name: 'Starfield',
             accentColor: '#00ff88',
@@ -1149,12 +1182,12 @@
             params: params,
             knobs: KNOB_DEFS,
             faders: FADER_DEFS,
-            presets: [],
+            presets: STAR_PRESETS.map(name => ({ name })),
             onParamChange: (id, value) => {
                 params[id] = value;
             },
             onPresetLoad: (index) => {
-                loadPreset(index);
+                setPreset(index);
             }
         });
 
@@ -1328,6 +1361,13 @@
 
         function getStarColor(z, alpha) {
             const brightness = map(z, 0, width, 255, 50);
+
+            if (params.colorMode === 'preset') {
+                const r = params.presetR * brightness / 255;
+                const g = params.presetG * brightness / 255;
+                const b = params.presetB * brightness / 255;
+                return color(r, g, b, alpha);
+            }
 
             switch (params.colorMode) {
                 case 'white':
@@ -2330,17 +2370,8 @@
         // PRESET SYSTEM
         // ═══════════════════════════════════════════════════════════════════
         function loadPreset(index) {
-            selectedPresetSlot = index;
-            updatePresetUI();
-
-            if (presets[index]) {
-                Object.assign(params, presets[index]);
-                syncUIFromParams();
-                if (hardwareMode) syncHardwareFromParams();
-                document.getElementById('presetStatus').textContent = `Loaded preset ${index + 1}`;
-            } else {
-                document.getElementById('presetStatus').textContent = `Preset ${index + 1} empty`;
-            }
+            setPreset(index);
+            document.getElementById('presetStatus').textContent = `Loaded: ${STAR_PRESETS[index]}`;
         }
 
         function savePresetToSlot() {

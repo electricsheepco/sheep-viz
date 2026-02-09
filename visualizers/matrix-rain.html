@@ -163,7 +163,9 @@
       fontSize: 14,
       bassSpeed: 2.0,
       trebleGlitch: 1.0,
-      colorMode: 'green'
+      colorMode: 'green',
+      preset: 0,
+      presetHue: 120
     };
 
     const KNOB_DEFS = [
@@ -183,6 +185,28 @@
       { id: 'fontSize', label: 'Size', min: 8, max: 24, step: 1 }
     ];
 
+    const PRESETS = ['Classic', 'Amber', 'Cyan', 'Blood', 'Vapor', 'White', 'Multi', 'Audio'];
+    const PALETTE_HUES = [120, 30, 180, 0, 300, -1, -2, -3];
+    // -1 = achromatic (white), -2 = multi mode, -3 = audio mode
+
+    function setPreset(index) {
+      if (index < 0 || index >= PRESETS.length) return;
+      params.preset = index;
+      const hue = PALETTE_HUES[index];
+      if (hue === -2) {
+        params.colorMode = 'multi';
+      } else if (hue === -3) {
+        params.colorMode = 'audio';
+      } else {
+        params.colorMode = 'preset';
+        params.presetHue = hue;
+      }
+      // Update toggle buttons
+      document.querySelectorAll('.toggle-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.mode === params.colorMode);
+      });
+    }
+
     const embed = new EmbedAdapter({
       name: 'Matrix Rain',
       accentColor: '#00ff41',
@@ -190,12 +214,12 @@
       params: params,
       knobs: KNOB_DEFS,
       faders: FADER_DEFS,
-      presets: [],
+      presets: PRESETS.map(name => ({ name })),
       onParamChange: (id, value) => {
         params[id] = value;
         if (id === 'columns') initStreams();
       },
-      onPresetLoad: (index) => {}
+      onPresetLoad: (index) => { setPreset(index); }
     });
 
     let audioContext, analyser, dataArray, source, audioElement;
@@ -255,6 +279,14 @@
 
           if (params.colorMode === 'green') {
             fill(0, brightness, brightness * 0.4, alpha);
+          } else if (params.colorMode === 'preset') {
+            if (params.presetHue === -1) {
+              fill(brightness, brightness, brightness, alpha);
+            } else {
+              colorMode(HSB, 360, 100, 100, 255);
+              fill(params.presetHue, 80, brightness / 2.55, alpha);
+              colorMode(RGB, 255);
+            }
           } else if (params.colorMode === 'multi') {
             colorMode(HSB, 360, 100, 100, 255);
             fill(this.hue, 80, brightness / 2.55, alpha);
@@ -605,7 +637,7 @@
       params: params,
       knobs: KNOB_DEFS,
       faders: FADER_DEFS,
-      presets: new Array(8).fill(null),
+      presets: PRESETS.map((name, i) => ({ name, action: () => setPreset(i) })),
       onParamChange: (id, value) => {
         params[id] = value;
         const slider = document.getElementById(id);
@@ -619,7 +651,7 @@
         }
         if (id === 'columns') initStreams();
       },
-      onPresetLoad: (index) => console.log('Load preset', index)
+      onPresetLoad: (index) => { setPreset(index); }
     });
     }
   </script>

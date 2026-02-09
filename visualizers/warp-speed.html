@@ -552,6 +552,31 @@
           { id: 'coreGlow', label: 'Glow', min: 0, max: 1, step: 0.05, decimals: 2 }
         ];
 
+        const PRESETS = ['Hyperspace', 'Red Shift', 'Blue Shift', 'Solar Wind', 'Void Jump', 'Nebula Run', 'Stealth', 'Superluminal'];
+        const PALETTES = [
+          { colorTemp: 6500, coreGlow: 0.5 },
+          { colorTemp: 2000, coreGlow: 0.8 },
+          { colorTemp: 12000, coreGlow: 0.7 },
+          { colorTemp: 4000, coreGlow: 0.6 },
+          { colorTemp: 8000, coreGlow: 0.4 },
+          { colorTemp: 5000, coreGlow: 0.9 },
+          { colorTemp: 6500, coreGlow: 0.1 },
+          { colorTemp: 10000, coreGlow: 1.0 }
+        ];
+
+        function setPreset(index) {
+          if (index < 0 || index >= PRESETS.length) return;
+          params.preset = index;
+          const pal = PALETTES[index];
+          params.colorTemp = pal.colorTemp;
+          params.coreGlow = pal.coreGlow;
+          // Update UI sliders
+          const ct = document.getElementById('colorTemp');
+          const cg = document.getElementById('coreGlow');
+          if (ct) { ct.value = pal.colorTemp; document.getElementById('colorTempVal').textContent = pal.colorTemp; }
+          if (cg) { cg.value = pal.coreGlow; document.getElementById('coreGlowVal').textContent = pal.coreGlow.toFixed(1); }
+        }
+
         const embed = new EmbedAdapter({
           name: 'Warp Speed',
           accentColor: '#00aaff',
@@ -559,13 +584,13 @@
           params: params,
           knobs: KNOB_DEFS,
           faders: FADER_DEFS,
-          presets: [],
+          presets: PRESETS.map(name => ({ name })),
           onParamChange: (id, value) => {
             params[id] = value;
             updateParam(id, value);
             if (id === 'tunnelRadius' || id === 'starCount') initStars();
           },
-          onPresetLoad: (index) => console.log('Load preset', index)
+          onPresetLoad: (index) => { setPreset(index); }
         });
 
         // Direction control
@@ -1399,13 +1424,13 @@
           params: params,
           knobs: KNOB_DEFS,
           faders: FADER_DEFS,
-          presets: new Array(8).fill(null),
+          presets: PRESETS.map((name, i) => ({ name, action: () => setPreset(i) })),
           onParamChange: (id, value) => {
             params[id] = value;
             updateParam(id, value);
             if (id === 'tunnelRadius' || id === 'starCount') initStars();
           },
-          onPresetLoad: (index) => console.log('Load preset', index)
+          onPresetLoad: (index) => { setPreset(index); }
         });
       }
     </script>
