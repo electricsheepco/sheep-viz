@@ -18,3 +18,27 @@ Redesigned Control Room with a bottom bar layout. Viz grid, knobs, faders, prese
 
 - Preview: https://sheep-8g46weh5g-essco.vercel.app
 - Production: https://sheep-xi.vercel.app
+
+---
+
+# Session: Controls Popout + Vertical Pulse Fix
+
+**Date:** 2026-02-10
+**Commit:** 7caab6a
+
+## Summary
+
+Popout now opens two windows: fullscreen viz + separate controls window with the bottom bar. Controls use DOM reparenting so all interactions stay wired. Fixed Vertical Pulse canvas to use responsive container sizing instead of hardcoded 1200x800.
+
+## Changes
+
+| File | Change |
+|------|--------|
+| control-room.html | Replaced controller-mode with controls popout window. Added $id()/$$ helpers for cross-document element lookup. Fixed drag events with ownerDocument. Accent color sync to popout. Keyboard forwarding. |
+| visualizers/vertical-pulse-pro.html | Responsive canvas: container dimensions + windowResized() handler |
+| visualizers/vertical-pulse.html | Responsive canvas: container dimensions + windowResized() handler |
+
+## Deployment
+
+- Preview: https://sheep-q2wsv2yh3-essco.vercel.app
+- Production: https://sheep-xi.vercel.app
