@@ -87,6 +87,7 @@
         .file-wrap input[type="file"] { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; top: 0; left: 0; }
         .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; }
         #canvas-container {
+            flex: 1;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0,0,0,0.2);
@@ -640,7 +641,8 @@
     // P5
     // ═══════════════════════════════════════════════════════════════════
     function setup() {
-        const c = createCanvas(1200, 800);
+        const container = document.getElementById('canvas-container');
+        const c = createCanvas(container.offsetWidth, container.offsetHeight);
         c.parent('canvas-container');
         initSystem();
 
@@ -650,6 +652,12 @@
                 setStatus('audio-status', 'Audio enabled - load file or use mic', 'active');
             });
         });
+    }
+
+    function windowResized() {
+        const container = document.getElementById('canvas-container');
+        resizeCanvas(container.offsetWidth, container.offsetHeight);
+        initSystem();
     }
 
     function draw() {

@@ -157,7 +157,7 @@
             background: var(--bg);
             position: relative;
         }
-        #canvas-container { background: #000; }
+        #canvas-container { background: #000; flex: 1; }
         #defaultCanvas0 { display: block; }
         .fullscreen #canvas-container {
             position: fixed;
@@ -690,11 +690,18 @@
     // ═══════════════════════════════════════════════════════════════════
 
     function setup() {
-        const c = createCanvas(1200, 800);
+        const container = document.getElementById('canvas-container');
+        const c = createCanvas(container.offsetWidth, container.offsetHeight);
         c.parent('canvas-container');
         initSystem();
         initMIDI();
         c.mousePressed(() => initAudio().then(() => setStatus('audio-status', 'Audio enabled', 'active')));
+    }
+
+    function windowResized() {
+        const container = document.getElementById('canvas-container');
+        resizeCanvas(container.offsetWidth, container.offsetHeight);
+        initSystem();
     }
 
     function draw() {

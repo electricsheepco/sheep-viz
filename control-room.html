@@ -664,115 +664,9 @@
       color: var(--cr-accent);
     }
 
-    /* ─── CONTROLLER MODE (popout active) ─── */
-    body.controller-mode .cr-preview-area {
+    /* ─── POPOUT MODE (controls in separate window) ─── */
+    body.popout-mode .cr-controls {
       display: none;
-    }
-
-    body.controller-mode .cr-controls {
-      flex: 1;
-      height: auto;
-      flex-wrap: wrap;
-      padding: 16px 24px;
-      gap: 24px;
-      align-content: center;
-      justify-content: center;
-    }
-
-    body.controller-mode .cr-viz-section {
-      width: 320px;
-    }
-
-    body.controller-mode .cr-section-divider {
-      display: none;
-    }
-
-    body.controller-mode .cr-viz-thumb .cr-thumb-name {
-      display: block;
-      font-size: 7px;
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      color: rgba(255,255,255,0.7);
-      background: rgba(0,0,0,0.7);
-      padding: 1px 2px;
-      text-align: center;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    body.controller-mode .cr-controls .sknob-outer {
-      width: 90px;
-      height: 90px;
-    }
-
-    body.controller-mode .cr-controls .sknob-inner {
-      width: 72px;
-      height: 72px;
-    }
-
-    body.controller-mode .cr-controls .sknob-indicator {
-      height: 18px;
-      top: 7px;
-    }
-
-    body.controller-mode .sknob-label {
-      font-size: 12px;
-    }
-
-    body.controller-mode .sknob-value {
-      font-size: 12px;
-    }
-
-    body.controller-mode .cr-controls .sfader-track {
-      height: 280px;
-    }
-
-    body.controller-mode .sfader-label {
-      font-size: 12px;
-    }
-
-    body.controller-mode .sfader-value {
-      font-size: 12px;
-    }
-
-    body.controller-mode .cr-preset-btn {
-      width: 72px;
-      height: 56px;
-      font-size: 16px;
-    }
-
-    body.controller-mode .cr-control-section .cr-section-label {
-      font-size: 13px;
-    }
-
-    body.controller-mode .cr-current-info {
-      font-size: 13px;
-    }
-
-    body.controller-mode .cr-bottom-extra .cr-btn {
-      width: 56px;
-      height: 56px;
-    }
-
-    body.controller-mode .cr-bottom-extra .cr-btn svg {
-      width: 28px;
-      height: 28px;
-    }
-
-    body.controller-mode .cr-bottom-extra .cr-section-label {
-      font-size: 13px;
-    }
-
-    body.controller-mode .cr-lyrics-panel {
-      position: fixed;
-      top: 48px;
-      right: 0;
-      bottom: 0;
-      width: 360px;
-      z-index: 100;
     }
   </style>
 </head>
@@ -970,6 +864,8 @@ let activeVizIndex = -1;
 let vizConfig = null;         // Config reported by active visualizer
 let popoutWindow = null;
 let popoutIframe = null;
+let controlsPopout = null;
+let controlsPopoutCloseInterval = null;
 
 // Audio
 let audioContext = null;
@@ -1185,6 +1081,26 @@ function broadcastAudio() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// CROSS-DOCUMENT HELPERS (controls may be in popout window)
+// ═══════════════════════════════════════════════════════════════
+
+function $id(id) {
+  let el = document.getElementById(id);
+  if (!el && controlsPopout && !controlsPopout.closed) {
+    el = controlsPopout.document.getElementById(id);
+  }
+  return el;
+}
+
+function $$(selector) {
+  const main = Array.from(document.querySelectorAll(selector));
+  if (controlsPopout && !controlsPopout.closed) {
+    return main.concat(Array.from(controlsPopout.document.querySelectorAll(selector)));
+  }
+  return main;
+}
+
+// ═══════════════════════════════════════════════════════════════
 // VISUALIZER GRID
 // ═══════════════════════════════════════════════════════════════
 
@@ -1193,7 +1109,7 @@ function getInitials(name) {
 }
 
 function buildVizGrid() {
-  const grid = document.getElementById('viz-grid');
+  const grid = $id('viz-grid');
   grid.innerHTML = '';
 
   VISUALIZERS.forEach((viz, i) => {
@@ -1230,7 +1146,7 @@ function buildVizGrid() {
 }
 
 function buildPresetRow() {
-  const row = document.getElementById('preset-row');
+  const row = $id('preset-row');
   row.innerHTML = '';
   for (let i = 0; i < 8; i++) {
     const btn = document.createElement('button');
@@ -1254,15 +1170,19 @@ function switchVisualizer(index) {
   // Update accent color
   document.documentElement.style.setProperty('--cr-accent', viz.accent);
   document.documentElement.style.setProperty('--cr-accent-dim', dimColor(viz.accent));
+  if (controlsPopout && !controlsPopout.closed) {
+    controlsPopout.document.documentElement.style.setProperty('--cr-accent', viz.accent);
+    controlsPopout.document.documentElement.style.setProperty('--cr-accent-dim', dimColor(viz.accent));
+  }
 
   // Update grid selection
-  document.querySelectorAll('.cr-viz-thumb').forEach((el, i) => {
+  $$('.cr-viz-thumb').forEach((el, i) => {
     el.classList.toggle('active', i === index);
   });
 
   // Update info
-  document.getElementById('current-viz-name').textContent = viz.name;
-  document.getElementById('current-preset-name').textContent = '';
+  $id('current-viz-name').textContent = viz.name;
+  $id('current-preset-name').textContent = '';
 
   // Load in preview iframe with crossfade
   const container = document.getElementById('preview-container');
@@ -1302,7 +1222,7 @@ function switchVisualizer(index) {
 
   // Reset preset highlight
   activePreset = -1;
-  document.querySelectorAll('.cr-preset-btn').forEach(b => b.classList.remove('active'));
+  $$('.cr-preset-btn').forEach(b => b.classList.remove('active'));
 
   // Wait for iframe to report config
   vizConfig = null;
@@ -1324,8 +1244,8 @@ function rebuildControls(config) {
   vizConfig = config;
 
   // Rebuild knobs
-  const row1 = document.getElementById('knobs-row-1');
-  const row2 = document.getElementById('knobs-row-2');
+  const row1 = $id('knobs-row-1');
+  const row2 = $id('knobs-row-2');
   row1.innerHTML = '';
   row2.innerHTML = '';
 
@@ -1348,7 +1268,7 @@ function rebuildControls(config) {
   });
 
   // Rebuild faders
-  const fadersContainer = document.getElementById('faders-container');
+  const fadersContainer = $id('faders-container');
   fadersContainer.innerHTML = '';
   faderValues = [];
   const faders = config.faders || [];
@@ -1368,7 +1288,7 @@ function rebuildControls(config) {
 
   // Update preset buttons
   const presets = config.presets || [];
-  document.querySelectorAll('.cr-preset-btn').forEach((btn, i) => {
+  $$('.cr-preset-btn').forEach((btn, i) => {
     const p = presets[i];
     if (p && p.name) {
       btn.title = p.name;
@@ -1471,6 +1391,7 @@ function startKnobDrag(e, knob, index) {
   dragStartY = e.clientY;
   dragStartValue = knobValues[index];
   knob.classList.add('active');
+  const doc = knob.ownerDocument;
 
   const onMove = (e) => {
     const dy = dragStartY - e.clientY;
@@ -1483,12 +1404,12 @@ function startKnobDrag(e, knob, index) {
 
   const onUp = () => {
     knob.classList.remove('active');
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
+    doc.removeEventListener('mousemove', onMove);
+    doc.removeEventListener('mouseup', onUp);
   };
 
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+  doc.addEventListener('mousemove', onMove);
+  doc.addEventListener('mouseup', onUp);
 }
 
 function startFaderDrag(e, fader, index) {
@@ -1498,6 +1419,7 @@ function startFaderDrag(e, fader, index) {
   dragStartValue = faderValues[index];
   const track = fader.querySelector('.sfader-track');
   const dragTrackHeight = track ? track.clientHeight - 10 : 90;
+  const doc = fader.ownerDocument;
 
   const onMove = (e) => {
     const dy = dragStartY - e.clientY;
@@ -1509,12 +1431,12 @@ function startFaderDrag(e, fader, index) {
   };
 
   const onUp = () => {
-    document.removeEventListener('mousemove', onMove);
-    document.removeEventListener('mouseup', onUp);
+    doc.removeEventListener('mousemove', onMove);
+    doc.removeEventListener('mouseup', onUp);
   };
 
-  document.addEventListener('mousemove', onMove);
-  document.addEventListener('mouseup', onUp);
+  doc.addEventListener('mousemove', onMove);
+  doc.addEventListener('mouseup', onUp);
 }
 
 function sendParamFromKnob(index, normalized) {
@@ -1556,13 +1478,13 @@ function sendToViz(msg) {
 
 function loadPreset(index) {
   activePreset = index;
-  document.querySelectorAll('.cr-preset-btn').forEach((btn, i) => {
+  $$('.cr-preset-btn').forEach((btn, i) => {
     btn.classList.toggle('active', i === index);
   });
 
   // Update info
   if (vizConfig && vizConfig.presets && vizConfig.presets[index]) {
-    document.getElementById('current-preset-name').textContent = ' > ' + vizConfig.presets[index].name;
+    $id('current-preset-name').textContent = ' > ' + vizConfig.presets[index].name;
   }
 
   sendToViz({ type: 'preset', index: index });
@@ -1574,7 +1496,7 @@ function loadPreset(index) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// POPOUT WINDOW
+// POPOUT WINDOWS (viz + controls)
 // ═══════════════════════════════════════════════════════════════
 
 let popoutCloseInterval = null;
@@ -1588,6 +1510,7 @@ function openPopout() {
   if (activeVizIndex < 0) return;
   const viz = VISUALIZERS[activeVizIndex];
 
+  // Open viz window
   popoutWindow = window.open('', 'sheep-viz-output', 'width=1280,height=720');
   if (!popoutWindow) return;
 
@@ -1625,45 +1548,128 @@ document.addEventListener('dblclick', toggleFullscreen);
 </body></html>`);
   popoutWindow.document.close();
 
-  // Enter controller mode
-  enterControllerMode();
-}
+  // Open controls window
+  openControlsPopout();
 
-function enterControllerMode() {
-  document.body.classList.add('controller-mode');
+  // Mark popout active
+  document.body.classList.add('popout-mode');
   document.getElementById('btn-popout').classList.add('active');
 
-  // Refresh fader visuals after layout reflow
-  requestAnimationFrame(() => {
-    if (vizConfig) rebuildControls(vizConfig);
-  });
-
-  // Poll for popout close
+  // Poll for viz popout close
   if (popoutCloseInterval) clearInterval(popoutCloseInterval);
   popoutCloseInterval = setInterval(() => {
     if (!popoutWindow || popoutWindow.closed) {
-      exitControllerMode();
+      closeAllPopouts();
       clearInterval(popoutCloseInterval);
       popoutCloseInterval = null;
     }
   }, 500);
 }
 
-function exitControllerMode() {
-  document.body.classList.remove('controller-mode');
+function openControlsPopout() {
+  if (controlsPopout && !controlsPopout.closed) {
+    controlsPopout.focus();
+    return;
+  }
+
+  const controlsBar = document.getElementById('controls-bar');
+  if (!controlsBar) return;
+
+  const screenW = screen.availWidth;
+  const screenH = screen.availHeight;
+  const popH = 260;
+
+  controlsPopout = window.open(
+    '',
+    'sheep-viz-controls',
+    `width=${screenW},height=${popH},left=0,top=${screenH - popH},menubar=no,toolbar=no,location=no,status=no`
+  );
+
+  if (!controlsPopout) return;
+
+  // Copy main stylesheet into controls popout
+  const mainStyle = document.querySelector('style');
+  const cssText = mainStyle ? mainStyle.textContent : '';
+
+  controlsPopout.document.write(`<!DOCTYPE html>
+<html><head>
+<title>sheep-viz Controls</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lib/hardware-controls.css">
+<style>${cssText}</style>
+</head><body style="margin:0; overflow:hidden; background:#0a0a0f; font-family:'JetBrains Mono',monospace;">
+</body></html>`);
+  controlsPopout.document.close();
+
+  // Copy CSS custom properties (accent color)
+  const accent = getComputedStyle(document.documentElement).getPropertyValue('--cr-accent').trim();
+  const accentDim = getComputedStyle(document.documentElement).getPropertyValue('--cr-accent-dim').trim();
+  if (accent) controlsPopout.document.documentElement.style.setProperty('--cr-accent', accent);
+  if (accentDim) controlsPopout.document.documentElement.style.setProperty('--cr-accent-dim', accentDim);
+
+  // Move controls element to popout (DOM reparenting - preserves event listeners)
+  controlsPopout.document.body.appendChild(controlsBar);
+  controlsBar.style.height = '100%';
+  controlsBar.style.borderTop = 'none';
+
+  // Forward keyboard events from controls popout to main handler
+  controlsPopout.document.addEventListener('keydown', handleKeyboard);
+
+  // Poll for controls popout close
+  if (controlsPopoutCloseInterval) clearInterval(controlsPopoutCloseInterval);
+  controlsPopoutCloseInterval = setInterval(() => {
+    if (!controlsPopout || controlsPopout.closed) {
+      restoreControls();
+      // Also close viz popout
+      if (popoutWindow && !popoutWindow.closed) popoutWindow.close();
+      clearInterval(controlsPopoutCloseInterval);
+      controlsPopoutCloseInterval = null;
+    }
+  }, 500);
+}
+
+function restoreControls() {
+  // Find the controls bar (may be in popout or main doc)
+  let controlsBar = document.getElementById('controls-bar');
+  if (!controlsBar && controlsPopout && !controlsPopout.closed) {
+    controlsBar = controlsPopout.document.getElementById('controls-bar');
+  }
+
+  if (controlsBar) {
+    // Move back to main window (after preview area)
+    const previewArea = document.querySelector('.cr-preview-area');
+    if (previewArea) {
+      previewArea.after(controlsBar);
+    } else {
+      document.body.appendChild(controlsBar);
+    }
+
+    // Reset inline styles
+    controlsBar.style.height = '';
+    controlsBar.style.borderTop = '';
+  }
+
+  document.body.classList.remove('popout-mode');
   document.getElementById('btn-popout').classList.remove('active');
 
-  // Refresh fader visuals after layout reflow
+  // Refresh controls for main window layout
   requestAnimationFrame(() => {
     if (vizConfig) rebuildControls(vizConfig);
   });
 }
 
+function closeAllPopouts() {
+  if (controlsPopout && !controlsPopout.closed) controlsPopout.close();
+  if (popoutWindow && !popoutWindow.closed) popoutWindow.close();
+  restoreControls();
+  if (popoutCloseInterval) { clearInterval(popoutCloseInterval); popoutCloseInterval = null; }
+  if (controlsPopoutCloseInterval) { clearInterval(controlsPopoutCloseInterval); controlsPopoutCloseInterval = null; }
+}
+
 function fullscreenPopout() {
   if (popoutWindow && !popoutWindow.closed) {
-    // Send a message to trigger fullscreen from within the popout (user gesture required)
     popoutWindow.focus();
-    // Try direct fullscreen - works if called from user gesture in main window
     try {
       const doc = popoutWindow.document.documentElement;
       if (doc.requestFullscreen) doc.requestFullscreen();
@@ -1802,7 +1808,7 @@ function handleMIDI(e) {
     if (knobIndex !== -1) {
       const normalized = value / 127;
       knobValues[knobIndex] = normalized;
-      const knobEl = document.querySelectorAll('.sknob')[knobIndex];
+      const knobEl = $$('.sknob')[knobIndex];
       if (knobEl) updateKnobVisual(knobEl, normalized);
       sendParamFromKnob(knobIndex, normalized);
       return;
@@ -1812,7 +1818,7 @@ function handleMIDI(e) {
     if (faderIndex !== -1) {
       const normalized = value / 127;
       faderValues[faderIndex] = normalized;
-      const faderEl = document.querySelectorAll('.sfader')[faderIndex];
+      const faderEl = $$('.sfader')[faderIndex];
       if (faderEl) updateFaderVisual(faderEl, normalized);
       sendParamFromFader(faderIndex, normalized);
       return;
@@ -1836,12 +1842,14 @@ function handleMIDI(e) {
 function toggleLyricsPanel() {
   lyricsPanelOpen = !lyricsPanelOpen;
   document.getElementById('lyrics-panel').classList.toggle('open', lyricsPanelOpen);
-  document.getElementById('btn-lyrics-panel').classList.toggle('active', lyricsPanelOpen);
+  const btn = $id('btn-lyrics-panel');
+  if (btn) btn.classList.toggle('active', lyricsPanelOpen);
 }
 
 function toggleLyricsDisplay() {
   lyricsDisplayOn = !lyricsDisplayOn;
-  document.getElementById('btn-lyrics-display').classList.toggle('active', lyricsDisplayOn);
+  const btn = $id('btn-lyrics-display');
+  if (btn) btn.classList.toggle('active', lyricsDisplayOn);
 }
 
 function switchLyricsTab(tab) {
@@ -1967,7 +1975,7 @@ function exportLRC() {
 }
 
 function setLyricsStatus(text) {
-  const el = document.getElementById('lyrics-status');
+  const el = $id('lyrics-status');
   el.textContent = text;
   el.classList.toggle('active', text !== 'No lyrics');
 }
@@ -2090,7 +2098,7 @@ document.getElementById('btn-popout').addEventListener('click', openPopout);
 document.getElementById('btn-fullscreen').addEventListener('click', fullscreenPopout);
 document.getElementById('btn-record').addEventListener('click', toggleRecording);
 document.getElementById('btn-overlay').addEventListener('click', () => {
-  document.getElementById('overlay-file-input').click();
+  $id('overlay-file-input').click();
 });
 document.getElementById('overlay-file-input').addEventListener('change', (e) => {
   if (e.target.files[0]) loadOverlayFile(e.target.files[0]);
@@ -2118,7 +2126,7 @@ document.getElementById('lyrics-size').addEventListener('input', (e) => {
 
 // Lyrics file import
 document.getElementById('btn-lyrics-import').addEventListener('click', () => {
-  document.getElementById('lyrics-file-input').click();
+  $id('lyrics-file-input').click();
 });
 document.getElementById('lyrics-file-input').addEventListener('change', (e) => {
   if (e.target.files[0]) importLyricsFile(e.target.files[0]);
