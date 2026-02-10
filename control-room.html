@@ -15,6 +15,24 @@
     @import url('https://fonts.googleapis.com/css2?family=Major+Mono+Display&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* Instant tooltips via data-tip (no native delay) */
+    [data-tip] { position: relative; }
+    [data-tip]:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #222;
+      color: #ccc;
+      font-size: 10px;
+      padding: 3px 8px;
+      border-radius: 3px;
+      white-space: nowrap;
+      z-index: 1000;
+      pointer-events: none;
+      border: 1px solid #444;
+    }
 
     :root {
       --cr-bg: #0a0a0f;
@@ -144,108 +162,17 @@
       box-shadow: 0 0 6px var(--cr-accent);
     }
 
-    /* ─── MAIN LAYOUT ─── */
-    .cr-main {
-      display: flex;
-      flex: 1;
-      min-height: 0;
-    }
-
-    /* ─── LEFT: VIZ GRID ─── */
-    .cr-sidebar {
-      width: 320px;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
-      border-right: 1px solid var(--cr-border);
-      background: var(--cr-panel);
-    }
-
-    .cr-viz-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      grid-template-rows: repeat(4, 1fr);
-      gap: 6px;
-      padding: 10px;
-      flex: 1;
-      align-content: stretch;
-    }
-
-    .cr-viz-thumb {
-      border-radius: 4px;
-      background: #000;
-      border: 2px solid transparent;
-      cursor: pointer;
-      overflow: hidden;
-      position: relative;
-      transition: border-color 0.15s;
-    }
-
-    .cr-viz-thumb:hover {
-      border-color: #444;
-    }
-
-    .cr-viz-thumb.active {
-      border-color: var(--cr-accent);
-      box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
-    }
-
-    .cr-viz-thumb .cr-thumb-key {
-      position: absolute;
-      top: 2px;
-      left: 4px;
-      font-size: 9px;
-      color: rgba(255,255,255,0.5);
-      font-weight: 600;
-    }
-
-    .cr-viz-thumb .cr-thumb-name {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      font-size: 9px;
-      color: rgba(255,255,255,0.7);
-      background: rgba(0,0,0,0.7);
-      padding: 2px 4px;
-      text-align: center;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .cr-viz-thumb canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    .cr-current-info {
-      padding: 6px 10px;
-      font-size: 9px;
-      color: var(--cr-text-dim);
-      text-align: center;
-      border-top: 1px solid var(--cr-border);
-      flex-shrink: 0;
-    }
-
-    .cr-current-info .cr-viz-name {
-      color: var(--cr-accent);
-    }
-
-    /* ─── CENTER: PREVIEW ─── */
+    /* ─── PREVIEW AREA (full width, direct body child) ─── */
     .cr-preview-area {
       flex: 1;
-      display: flex;
-      flex-direction: column;
-      min-width: 0;
+      position: relative;
+      min-height: 0;
     }
 
     .cr-preview-container {
-      flex: 1;
-      position: relative;
+      position: absolute;
+      inset: 0;
       background: #000;
-      min-height: 0;
     }
 
     .cr-preview-container iframe {
@@ -258,23 +185,14 @@
       transition: opacity 0.4s ease;
     }
 
-    .cr-preview-overlay {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      display: flex;
-      gap: 6px;
-      z-index: 10;
-    }
-
     /* ─── BOTTOM: CONTROLS ─── */
     .cr-controls {
-      height: 150px;
+      height: 240px;
       flex-shrink: 0;
       display: flex;
-      align-items: center;
+      align-items: stretch;
       gap: 20px;
-      padding: 8px 16px;
+      padding: 12px 16px;
       background: linear-gradient(180deg, var(--cr-panel) 0%, var(--cr-bg) 100%);
       border-top: 1px solid var(--cr-border);
     }
@@ -283,46 +201,137 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
 
     .cr-control-section .cr-section-label {
-      font-size: 9px;
+      font-size: 10px;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--cr-text-dim);
+      flex-shrink: 0;
+    }
+
+    /* ─── Section dividers ─── */
+    .cr-controls .cr-section-divider {
+      width: 1px;
+      align-self: stretch;
+      background: var(--cr-border);
+      flex-shrink: 0;
+    }
+
+    /* ─── VIZ GRID (in bottom bar) ─── */
+    .cr-viz-section {
+      width: 220px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .cr-viz-section .cr-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--cr-text-dim);
+      flex-shrink: 0;
+    }
+
+    .cr-viz-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: 4px;
+      flex: 1;
+    }
+
+    .cr-viz-thumb {
+      border-radius: 3px;
+      background: #000;
+      border: 1.5px solid transparent;
+      cursor: pointer;
+      overflow: hidden;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+
+    .cr-viz-thumb:hover {
+      border-color: #444;
+    }
+
+    .cr-viz-thumb.active {
+      border-color: var(--cr-accent);
+      box-shadow: 0 0 6px rgba(99, 102, 241, 0.3);
+    }
+
+    .cr-viz-thumb .cr-thumb-key {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      color: rgba(255,255,255,0.7);
+      font-weight: 700;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      letter-spacing: 0.5px;
+    }
+
+    .cr-viz-thumb .cr-thumb-name {
+      display: none;
+    }
+
+    .cr-viz-thumb canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .cr-current-info {
+      font-size: 10px;
+      color: var(--cr-text-dim);
+      text-align: center;
+      flex-shrink: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .cr-current-info .cr-viz-name {
+      color: var(--cr-accent);
     }
 
     .cr-knobs-grid {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
 
     .cr-knobs-row {
       display: flex;
-      gap: 6px;
+      gap: 8px;
     }
 
     .cr-faders-row {
       display: flex;
-      gap: 10px;
+      gap: 14px;
     }
 
     .cr-presets-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
+      gap: 6px;
     }
 
     .cr-preset-btn {
-      width: 36px;
-      height: 28px;
-      border-radius: 3px;
+      width: 48px;
+      height: 40px;
+      border-radius: 4px;
       background: linear-gradient(180deg, #2a2a2a, #1a1a1a);
       border: 1px solid #333;
       color: #666;
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 600;
       font-family: inherit;
       cursor: pointer;
@@ -344,24 +353,55 @@
       color: var(--cr-accent);
     }
 
-    /* Reuse sknob/sfader styles from hardware-controls.css */
-    .cr-controls .sknob-outer {
+    /* ─── OVERLAY & LYRICS sections in bottom bar ─── */
+    .cr-bottom-extra {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cr-bottom-extra .cr-section-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--cr-text-dim);
+      flex-shrink: 0;
+    }
+
+    .cr-bottom-extra .cr-btn-row {
+      display: flex;
+      gap: 6px;
+    }
+
+    .cr-bottom-extra .cr-btn {
       width: 40px;
       height: 40px;
     }
 
+    .cr-bottom-extra .cr-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Reuse sknob/sfader styles from hardware-controls.css */
+    .cr-controls .sknob-outer {
+      width: 52px;
+      height: 52px;
+    }
+
     .cr-controls .sknob-inner {
-      width: 32px;
-      height: 32px;
+      width: 42px;
+      height: 42px;
     }
 
     .cr-controls .sknob-indicator {
-      height: 8px;
-      top: 3px;
+      height: 10px;
+      top: 4px;
     }
 
     .cr-controls .sfader-track {
-      height: 70px;
+      height: 140px;
     }
 
     /* ─── RECORDING INDICATOR ─── */
@@ -623,6 +663,117 @@
       border-color: var(--cr-accent);
       color: var(--cr-accent);
     }
+
+    /* ─── CONTROLLER MODE (popout active) ─── */
+    body.controller-mode .cr-preview-area {
+      display: none;
+    }
+
+    body.controller-mode .cr-controls {
+      flex: 1;
+      height: auto;
+      flex-wrap: wrap;
+      padding: 16px 24px;
+      gap: 24px;
+      align-content: center;
+      justify-content: center;
+    }
+
+    body.controller-mode .cr-viz-section {
+      width: 320px;
+    }
+
+    body.controller-mode .cr-section-divider {
+      display: none;
+    }
+
+    body.controller-mode .cr-viz-thumb .cr-thumb-name {
+      display: block;
+      font-size: 7px;
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      color: rgba(255,255,255,0.7);
+      background: rgba(0,0,0,0.7);
+      padding: 1px 2px;
+      text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    body.controller-mode .cr-controls .sknob-outer {
+      width: 90px;
+      height: 90px;
+    }
+
+    body.controller-mode .cr-controls .sknob-inner {
+      width: 72px;
+      height: 72px;
+    }
+
+    body.controller-mode .cr-controls .sknob-indicator {
+      height: 18px;
+      top: 7px;
+    }
+
+    body.controller-mode .sknob-label {
+      font-size: 12px;
+    }
+
+    body.controller-mode .sknob-value {
+      font-size: 12px;
+    }
+
+    body.controller-mode .cr-controls .sfader-track {
+      height: 280px;
+    }
+
+    body.controller-mode .sfader-label {
+      font-size: 12px;
+    }
+
+    body.controller-mode .sfader-value {
+      font-size: 12px;
+    }
+
+    body.controller-mode .cr-preset-btn {
+      width: 72px;
+      height: 56px;
+      font-size: 16px;
+    }
+
+    body.controller-mode .cr-control-section .cr-section-label {
+      font-size: 13px;
+    }
+
+    body.controller-mode .cr-current-info {
+      font-size: 13px;
+    }
+
+    body.controller-mode .cr-bottom-extra .cr-btn {
+      width: 56px;
+      height: 56px;
+    }
+
+    body.controller-mode .cr-bottom-extra .cr-btn svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    body.controller-mode .cr-bottom-extra .cr-section-label {
+      font-size: 13px;
+    }
+
+    body.controller-mode .cr-lyrics-panel {
+      position: fixed;
+      top: 48px;
+      right: 0;
+      bottom: 0;
+      width: 360px;
+      z-index: 100;
+    }
   </style>
 </head>
 <body>
@@ -635,8 +786,8 @@
     <!-- Audio -->
     <div class="cr-audio-section">
       <span class="cr-section-label">Audio</span>
-      <button class="cr-btn" id="btn-file" title="Load audio file"><i data-lucide="folder-open"></i></button>
-      <button class="cr-btn" id="btn-mic" title="Microphone"><i data-lucide="mic"></i></button>
+      <button class="cr-btn" id="btn-file" data-tip="Load audio file"><i data-lucide="folder-open"></i></button>
+      <button class="cr-btn" id="btn-mic" data-tip="Microphone"><i data-lucide="mic"></i></button>
       <button class="cr-btn" id="btn-system" title="System audio"><i data-lucide="monitor"></i></button>
       <button class="cr-btn" id="btn-play" title="Play/Pause"><i data-lucide="play"></i></button>
       <span class="cr-audio-status" id="audio-status">No audio</span>
@@ -652,27 +803,6 @@
       <span class="cr-audio-status" id="midi-status">Scanning...</span>
     </div>
 
-    <div class="cr-divider"></div>
-
-    <!-- Overlay -->
-    <div class="cr-audio-section">
-      <span class="cr-section-label">Overlay</span>
-      <button class="cr-btn" id="btn-overlay" title="Load overlay image"><i data-lucide="image"></i></button>
-      <button class="cr-btn" id="btn-overlay-clear" title="Clear overlay"><i data-lucide="x"></i></button>
-      <input type="file" id="overlay-file-input" accept="image/*" style="display:none">
-    </div>
-
-    <div class="cr-divider"></div>
-
-    <!-- Lyrics -->
-    <div class="cr-audio-section">
-      <span class="cr-section-label">Lyrics</span>
-      <button class="cr-btn" id="btn-lyrics-panel" title="Lyrics panel (L)"><i data-lucide="text"></i></button>
-      <button class="cr-btn" id="btn-lyrics-display" title="Toggle lyrics display"><i data-lucide="captions"></i></button>
-      <span class="cr-audio-status" id="lyrics-status">No lyrics</span>
-      <input type="file" id="lyrics-file-input" accept=".lrc,.txt,.LRC,.TXT" style="display:none">
-    </div>
-
     <!-- Actions -->
     <div class="cr-actions">
       <div class="cr-recording" id="rec-indicator">
@@ -685,11 +815,69 @@
     </div>
   </div>
 
-  <!-- ═══ MAIN AREA ═══ -->
-  <div class="cr-main">
+  <!-- ═══ PREVIEW AREA (full width) ═══ -->
+  <div class="cr-preview-area">
+    <div class="cr-preview-container" id="preview-container">
+      <div class="cr-empty-state" id="empty-state">
+        <div>Select a visualizer to begin</div>
+        <div class="cr-hint">Press 1-9, 0, or A-F</div>
+      </div>
+    </div>
 
-    <!-- Left sidebar: viz grid -->
-    <div class="cr-sidebar">
+    <!-- Lyrics panel (right drawer) -->
+    <div class="cr-lyrics-panel" id="lyrics-panel">
+      <div class="cr-lyrics-tabs">
+        <button class="cr-lyrics-tab active" data-tab="view">View</button>
+        <button class="cr-lyrics-tab" data-tab="edit">Edit</button>
+        <button class="cr-lyrics-tab" data-tab="tap">Tap Sync</button>
+      </div>
+
+      <!-- View tab -->
+      <div class="cr-lyrics-tab-content active" id="lyrics-tab-view">
+        <div class="cr-lyrics-view" id="lyrics-view-list"></div>
+      </div>
+
+      <!-- Edit tab -->
+      <div class="cr-lyrics-tab-content" id="lyrics-tab-edit">
+        <div class="cr-lyrics-edit">
+          <textarea class="cr-lyrics-textarea" id="lyrics-textarea" placeholder="Paste lyrics here...&#10;&#10;Supports LRC format:&#10;[00:12.34] First line&#10;[00:15.00] Second line&#10;&#10;Or plain text (one line per line)"></textarea>
+          <div style="display:flex;gap:6px">
+            <button class="cr-lyrics-apply-btn" id="btn-lyrics-apply" style="flex:1">Apply</button>
+            <button class="cr-lyrics-apply-btn" id="btn-lyrics-import" style="flex:0;background:none;border:1px solid var(--cr-border);color:var(--cr-text-dim)">Import file</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tap Sync tab -->
+      <div class="cr-lyrics-tab-content" id="lyrics-tab-tap">
+        <div class="cr-lyrics-tap">
+          <div class="cr-tap-progress" id="tap-progress">No lyrics loaded</div>
+          <div class="cr-tap-current-line" id="tap-current-line"></div>
+          <button class="cr-tap-btn" id="btn-tap">TAP</button>
+          <div class="cr-tap-hint">Press Space or click to mark line timing</div>
+        </div>
+      </div>
+
+      <!-- Style controls + export -->
+      <div class="cr-lyrics-style">
+        <label>Pos</label>
+        <select id="lyrics-position">
+          <option value="bottom" selected>Bottom</option>
+          <option value="center">Center</option>
+          <option value="top">Top</option>
+        </select>
+        <label>Size</label>
+        <input type="range" id="lyrics-size" min="0.02" max="0.1" step="0.005" value="0.05" style="width:60px">
+        <button class="cr-lyrics-export-btn" id="btn-lyrics-export">Export .lrc</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ BOTTOM CONTROLS ═══ -->
+  <div class="cr-controls" id="controls-bar">
+    <!-- Viz Grid -->
+    <div class="cr-viz-section">
+      <span class="cr-section-label">Visualizers</span>
       <div class="cr-viz-grid" id="viz-grid"></div>
       <div class="cr-current-info">
         <span class="cr-viz-name" id="current-viz-name">--</span>
@@ -697,67 +885,9 @@
       </div>
     </div>
 
-    <!-- Center: preview iframe -->
-    <div class="cr-preview-area" style="position:relative">
-      <div class="cr-preview-container" id="preview-container">
-        <div class="cr-empty-state" id="empty-state">
-          <div>Select a visualizer to begin</div>
-          <div class="cr-hint">Press 1-9, 0, or A-F</div>
-        </div>
-      </div>
+    <div class="cr-section-divider"></div>
 
-      <!-- Lyrics panel (right drawer) -->
-      <div class="cr-lyrics-panel" id="lyrics-panel">
-        <div class="cr-lyrics-tabs">
-          <button class="cr-lyrics-tab active" data-tab="view">View</button>
-          <button class="cr-lyrics-tab" data-tab="edit">Edit</button>
-          <button class="cr-lyrics-tab" data-tab="tap">Tap Sync</button>
-        </div>
-
-        <!-- View tab -->
-        <div class="cr-lyrics-tab-content active" id="lyrics-tab-view">
-          <div class="cr-lyrics-view" id="lyrics-view-list"></div>
-        </div>
-
-        <!-- Edit tab -->
-        <div class="cr-lyrics-tab-content" id="lyrics-tab-edit">
-          <div class="cr-lyrics-edit">
-            <textarea class="cr-lyrics-textarea" id="lyrics-textarea" placeholder="Paste lyrics here...&#10;&#10;Supports LRC format:&#10;[00:12.34] First line&#10;[00:15.00] Second line&#10;&#10;Or plain text (one line per line)"></textarea>
-            <div style="display:flex;gap:6px">
-              <button class="cr-lyrics-apply-btn" id="btn-lyrics-apply" style="flex:1">Apply</button>
-              <button class="cr-lyrics-apply-btn" id="btn-lyrics-import" style="flex:0;background:none;border:1px solid var(--cr-border);color:var(--cr-text-dim)">Import file</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tap Sync tab -->
-        <div class="cr-lyrics-tab-content" id="lyrics-tab-tap">
-          <div class="cr-lyrics-tap">
-            <div class="cr-tap-progress" id="tap-progress">No lyrics loaded</div>
-            <div class="cr-tap-current-line" id="tap-current-line"></div>
-            <button class="cr-tap-btn" id="btn-tap">TAP</button>
-            <div class="cr-tap-hint">Press Space or click to mark line timing</div>
-          </div>
-        </div>
-
-        <!-- Style controls + export -->
-        <div class="cr-lyrics-style">
-          <label>Pos</label>
-          <select id="lyrics-position">
-            <option value="bottom" selected>Bottom</option>
-            <option value="center">Center</option>
-            <option value="top">Top</option>
-          </select>
-          <label>Size</label>
-          <input type="range" id="lyrics-size" min="0.02" max="0.1" step="0.005" value="0.05" style="width:60px">
-          <button class="cr-lyrics-export-btn" id="btn-lyrics-export">Export .lrc</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══ BOTTOM CONTROLS ═══ -->
-  <div class="cr-controls" id="controls-bar">
+    <!-- Knobs -->
     <div class="cr-control-section">
       <span class="cr-section-label">Parameters</span>
       <div class="cr-knobs-grid" id="knobs-container">
@@ -766,14 +896,45 @@
       </div>
     </div>
 
+    <div class="cr-section-divider"></div>
+
+    <!-- Faders -->
     <div class="cr-control-section">
       <span class="cr-section-label">Faders</span>
       <div class="cr-faders-row" id="faders-container"></div>
     </div>
 
-    <div class="cr-control-section" style="margin-left:auto">
-      <span class="cr-section-label">Presets (Shift+1-8)</span>
+    <div class="cr-section-divider"></div>
+
+    <!-- Presets -->
+    <div class="cr-control-section">
+      <span class="cr-section-label">Presets</span>
       <div class="cr-presets-grid" id="preset-row"></div>
+    </div>
+
+    <div class="cr-section-divider"></div>
+
+    <!-- Overlay -->
+    <div class="cr-bottom-extra">
+      <span class="cr-section-label">Overlay</span>
+      <div class="cr-btn-row">
+        <button class="cr-btn" id="btn-overlay" title="Load overlay image"><i data-lucide="image"></i></button>
+        <button class="cr-btn" id="btn-overlay-clear" title="Clear overlay"><i data-lucide="x"></i></button>
+      </div>
+      <input type="file" id="overlay-file-input" accept="image/*" style="display:none">
+    </div>
+
+    <div class="cr-section-divider"></div>
+
+    <!-- Lyrics -->
+    <div class="cr-bottom-extra">
+      <span class="cr-section-label">Lyrics</span>
+      <div class="cr-btn-row">
+        <button class="cr-btn" id="btn-lyrics-panel" title="Lyrics panel (L)"><i data-lucide="text"></i></button>
+        <button class="cr-btn" id="btn-lyrics-display" title="Toggle lyrics display"><i data-lucide="captions"></i></button>
+      </div>
+      <span class="cr-audio-status" id="lyrics-status" style="font-size:9px">No lyrics</span>
+      <input type="file" id="lyrics-file-input" accept=".lrc,.txt,.LRC,.TXT" style="display:none">
     </div>
   </div>
 
@@ -1027,6 +1188,10 @@ function broadcastAudio() {
 // VISUALIZER GRID
 // ═══════════════════════════════════════════════════════════════
 
+function getInitials(name) {
+  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase();
+}
+
 function buildVizGrid() {
   const grid = document.getElementById('viz-grid');
   grid.innerHTML = '';
@@ -1035,14 +1200,13 @@ function buildVizGrid() {
     const thumb = document.createElement('div');
     thumb.className = 'cr-viz-thumb';
     thumb.dataset.index = i;
-    thumb.style.borderColor = 'transparent';
+    thumb.title = viz.name + ' (' + viz.key.toUpperCase() + ')';
 
     // Mini colored preview
     const canvas = document.createElement('canvas');
     canvas.width = 80;
     canvas.height = 50;
     const ctx = canvas.getContext('2d');
-    // Draw a simple gradient with accent color
     const grad = ctx.createLinearGradient(0, 0, 80, 50);
     grad.addColorStop(0, '#000');
     grad.addColorStop(1, viz.accent + '66');
@@ -1052,7 +1216,7 @@ function buildVizGrid() {
 
     const key = document.createElement('span');
     key.className = 'cr-thumb-key';
-    key.textContent = viz.key.toUpperCase();
+    key.textContent = getInitials(viz.name);
     thumb.appendChild(key);
 
     const name = document.createElement('span');
@@ -1280,7 +1444,8 @@ function updateFaderVisual(fader, normalized) {
   const fill = fader.querySelector('.sfader-fill');
   const handle = fader.querySelector('.sfader-handle');
   const valueEl = fader.querySelector('.sfader-value');
-  const trackHeight = 70;
+  const track = fader.querySelector('.sfader-track');
+  const trackHeight = track ? track.clientHeight - 10 : 90;
   const fillH = normalized * trackHeight;
   fill.style.height = fillH + 'px';
   handle.style.bottom = (5 + fillH - 8) + 'px';
@@ -1331,10 +1496,12 @@ function startFaderDrag(e, fader, index) {
   activeFaderEl = fader;
   dragStartY = e.clientY;
   dragStartValue = faderValues[index];
+  const track = fader.querySelector('.sfader-track');
+  const dragTrackHeight = track ? track.clientHeight - 10 : 90;
 
   const onMove = (e) => {
     const dy = dragStartY - e.clientY;
-    const delta = dy / 70;
+    const delta = dy / dragTrackHeight;
     const val = Math.max(0, Math.min(1, dragStartValue + delta));
     faderValues[index] = val;
     updateFaderVisual(fader, val);
@@ -1410,6 +1577,8 @@ function loadPreset(index) {
 // POPOUT WINDOW
 // ═══════════════════════════════════════════════════════════════
 
+let popoutCloseInterval = null;
+
 function openPopout() {
   if (popoutWindow && !popoutWindow.closed) {
     popoutWindow.focus();
@@ -1455,6 +1624,39 @@ document.addEventListener('dblclick', toggleFullscreen);
 <\/script>
 </body></html>`);
   popoutWindow.document.close();
+
+  // Enter controller mode
+  enterControllerMode();
+}
+
+function enterControllerMode() {
+  document.body.classList.add('controller-mode');
+  document.getElementById('btn-popout').classList.add('active');
+
+  // Refresh fader visuals after layout reflow
+  requestAnimationFrame(() => {
+    if (vizConfig) rebuildControls(vizConfig);
+  });
+
+  // Poll for popout close
+  if (popoutCloseInterval) clearInterval(popoutCloseInterval);
+  popoutCloseInterval = setInterval(() => {
+    if (!popoutWindow || popoutWindow.closed) {
+      exitControllerMode();
+      clearInterval(popoutCloseInterval);
+      popoutCloseInterval = null;
+    }
+  }, 500);
+}
+
+function exitControllerMode() {
+  document.body.classList.remove('controller-mode');
+  document.getElementById('btn-popout').classList.remove('active');
+
+  // Refresh fader visuals after layout reflow
+  requestAnimationFrame(() => {
+    if (vizConfig) rebuildControls(vizConfig);
+  });
 }
 
 function fullscreenPopout() {
