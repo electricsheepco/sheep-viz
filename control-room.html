@@ -1669,6 +1669,7 @@ function closeAllPopouts() {
 
 function fullscreenPopout() {
   if (popoutWindow && !popoutWindow.closed) {
+    // Already popped out — just fullscreen the viz window
     popoutWindow.focus();
     try {
       const doc = popoutWindow.document.documentElement;
@@ -1676,10 +1677,8 @@ function fullscreenPopout() {
       else if (doc.webkitRequestFullscreen) doc.webkitRequestFullscreen();
     } catch(e) {}
   } else {
-    // Fullscreen the preview instead
-    const container = document.getElementById('preview-container');
-    if (container.requestFullscreen) container.requestFullscreen();
-    else if (container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+    // Not popped out — trigger the full split (same as popout)
+    openPopout();
   }
 }
 
