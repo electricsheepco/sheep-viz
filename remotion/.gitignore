@@ -5,3 +5,11 @@ dist
 
 # Ignore the output video from Git but not videos you import into src/.
 out
+
+# Large video files
+public/assets/*.mp4
+public/assets/*.mov
+public/assets/viz-clips/*.mp4
+
+# Rendered outputs
+out/
