@@ -1980,6 +1980,12 @@ function syncWatermarkUI() {
   lucide.createIcons();  // Re-render Lucide icons
 }
 
+// ═══════════════════════════════════════════════════════════════
+// WATERMARK SYSTEM
+// Upload custom logo, adjust size/opacity, toggle visibility
+// Syncs to all visualizers via postMessage
+// ═══════════════════════════════════════════════════════════════
+
 function sendWatermarkToViz() {
   sendToViz({
     type: 'watermark',
