@@ -384,6 +384,50 @@
       height: 20px;
     }
 
+    .cr-slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 120px;
+    }
+
+    .cr-slider-group label {
+      font-size: 9px;
+      color: var(--cr-text-dim);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cr-slider-group input[type="range"] {
+      width: 100%;
+      height: 4px;
+      background: var(--cr-border);
+      border-radius: 2px;
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .cr-slider-group input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--cr-accent);
+      cursor: pointer;
+    }
+
+    .cr-slider-group input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--cr-accent);
+      cursor: pointer;
+      border: none;
+    }
+
     /* Reuse sknob/sfader styles from hardware-controls.css */
     .cr-controls .sknob-outer {
       width: 52px;
@@ -816,6 +860,37 @@
         <button class="cr-btn" id="btn-overlay-clear" title="Clear overlay"><i data-lucide="x"></i></button>
       </div>
       <input type="file" id="overlay-file-input" accept="image/*" style="display:none">
+    </div>
+
+    <div class="cr-section-divider"></div>
+
+    <!-- Watermark Section -->
+    <div class="cr-bottom-extra">
+      <span class="cr-section-label">Watermark</span>
+
+      <div class="cr-btn-row">
+        <button class="cr-btn" id="btn-watermark-upload" data-tip="Upload logo">
+          <i data-lucide="image-plus"></i>
+        </button>
+        <button class="cr-btn" id="btn-watermark-toggle" data-tip="Toggle visibility">
+          <i data-lucide="eye"></i>
+        </button>
+        <button class="cr-btn" id="btn-watermark-reset" data-tip="Reset to default">
+          <i data-lucide="rotate-ccw"></i>
+        </button>
+      </div>
+
+      <input type="file" id="watermark-file-input" accept="image/*" style="display:none">
+
+      <div class="cr-slider-group">
+        <label>Size <span id="watermark-size-val">40</span>px</label>
+        <input type="range" id="watermark-size" min="20" max="100" value="40" step="5">
+      </div>
+
+      <div class="cr-slider-group">
+        <label>Opacity <span id="watermark-opacity-val">50</span>%</label>
+        <input type="range" id="watermark-opacity" min="20" max="100" value="50" step="5">
+      </div>
     </div>
 
     <div class="cr-section-divider"></div>
