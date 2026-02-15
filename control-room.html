@@ -1985,6 +1985,32 @@ function sendWatermarkToViz() {
   });
 }
 
+function uploadWatermarkLogo(file) {
+  // Validate file size (max 500KB)
+  if (file.size > 500 * 1024) {
+    alert('Logo file too large (max 500KB). Please use a smaller image.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    watermarkState.logo = e.target.result;
+
+    try {
+      localStorage.setItem('watermark_logo', watermarkState.logo);
+    } catch (err) {
+      if (err.name === 'QuotaExceededError') {
+        alert('Storage full. Please use a smaller logo or clear browser data.');
+        return;
+      }
+      throw err;
+    }
+
+    sendWatermarkToViz();
+  };
+  reader.readAsDataURL(file);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // LYRICS
 // ═══════════════════════════════════════════════════════════════
@@ -2255,6 +2281,17 @@ document.getElementById('overlay-file-input').addEventListener('change', (e) => 
   if (e.target.files[0]) loadOverlayFile(e.target.files[0]);
 });
 document.getElementById('btn-overlay-clear').addEventListener('click', clearOverlay);
+
+// Watermark upload
+$id('btn-watermark-upload').addEventListener('click', () => {
+  $id('watermark-file-input').click();
+});
+
+$id('watermark-file-input').addEventListener('change', (e) => {
+  if (e.target.files[0]) {
+    uploadWatermarkLogo(e.target.files[0]);
+  }
+});
 
 // Lyrics buttons
 document.getElementById('btn-lyrics-panel').addEventListener('click', toggleLyricsPanel);
