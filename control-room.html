@@ -981,6 +981,12 @@ let lyricsStyle = { position: 'bottom', currentSize: 0.05 };
 let lyricsActiveTab = 'view';
 
 // ═══════════════════════════════════════════════════════════════
+// WATERMARK STATE
+// ═══════════════════════════════════════════════════════════════
+
+let watermarkState = null;
+
+// ═══════════════════════════════════════════════════════════════
 // AUDIO MANAGER
 // ═══════════════════════════════════════════════════════════════
 
@@ -1910,6 +1916,76 @@ function handleMIDI(e) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// WATERMARK
+// ═══════════════════════════════════════════════════════════════
+
+async function getDefaultLogoBase64() {
+  try {
+    const response = await fetch('icon.svg');
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(blob);
+    });
+  } catch (err) {
+    console.error('Failed to load default logo:', err);
+    return null;  // Fallback to text in hardware-controls
+  }
+}
+
+async function initWatermark() {
+  // Load default logo (icon.svg) as base64
+  const defaultLogo = await getDefaultLogoBase64();
+
+  // Load from localStorage or use defaults
+  watermarkState = {
+    logo: localStorage.getItem('watermark_logo') || defaultLogo,
+    size: parseInt(localStorage.getItem('watermark_size')) || 40,
+    opacity: parseInt(localStorage.getItem('watermark_opacity')) || 50,
+    visible: localStorage.getItem('watermark_visible') !== 'false'
+  };
+
+  // Sync UI controls to state
+  syncWatermarkUI();
+
+  // Send to current visualizer
+  sendWatermarkToViz();
+}
+
+function syncWatermarkUI() {
+  const sizeSlider = $id('watermark-size');
+  const sizeVal = $id('watermark-size-val');
+  const opacitySlider = $id('watermark-opacity');
+  const opacityVal = $id('watermark-opacity-val');
+  const toggleBtn = $id('btn-watermark-toggle');
+
+  if (!sizeSlider || !sizeVal || !opacitySlider || !opacityVal || !toggleBtn) {
+    console.warn('Watermark UI elements not found');
+    return;
+  }
+
+  sizeSlider.value = watermarkState.size;
+  sizeVal.textContent = watermarkState.size;
+  opacitySlider.value = watermarkState.opacity;
+  opacityVal.textContent = watermarkState.opacity;
+
+  const icon = toggleBtn.querySelector('i');
+  icon.setAttribute('data-lucide', watermarkState.visible ? 'eye' : 'eye-off');
+  lucide.createIcons();  // Re-render Lucide icons
+}
+
+function sendWatermarkToViz() {
+  sendToViz({
+    type: 'watermark',
+    logo: watermarkState.logo,
+    size: watermarkState.size,
+    opacity: watermarkState.opacity,
+    visible: watermarkState.visible
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
 // LYRICS
 // ═══════════════════════════════════════════════════════════════
 
@@ -2155,6 +2231,7 @@ window.addEventListener('message', (e) => {
 buildVizGrid();
 buildPresetRow();
 initMIDI();
+initWatermark();
 broadcastAudio();
 lucide.createIcons();
 
