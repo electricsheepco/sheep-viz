@@ -8,11 +8,11 @@ Creative coding for **Electric Sheep Supply Co.** music visuals, videos, and gen
 
 ## Recent Changes
 
+- **2026-02-15**: YouTube-style customizable watermark feature - upload custom band logos, adjust size/opacity, persist across visualizers
 - **2026-02-10**: Add controls popout window, fix Vertical Pulse canvas sizing
 - **2026-02-10**: Overhaul Control Room: bottom bar layout, crossfade, popout controller mode
 - **2026-02-09**: Add presets to 7 visualizers, improve UI readability
 - **2026-02-09**: Add lyrics system and Control Room link on landing page
-- **2026-02-07**: Eliminate memory leaks across all 16 visualizers and shared controls
 
 ## Project Overview
 
