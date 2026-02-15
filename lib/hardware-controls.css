@@ -523,6 +523,7 @@ body.hardware-mode .sidebar {
     letter-spacing: 1px;
     pointer-events: none;
     user-select: none;
+    transition: opacity 0.2s ease;
 }
 
 .sheep-watermark img {
@@ -530,6 +531,7 @@ body.hardware-mode .sidebar {
     max-width: 120px;
     opacity: 0.5;
     filter: grayscale(30%);
+    transition: opacity 0.2s ease, max-height 0.2s ease, max-width 0.2s ease;
 }
 
 /* Move watermark up when hardware bar is visible */
