@@ -2309,6 +2309,31 @@ $id('watermark-opacity').addEventListener('input', (e) => {
   sendWatermarkToViz();
 });
 
+// Watermark visibility toggle
+$id('btn-watermark-toggle').addEventListener('click', () => {
+  watermarkState.visible = !watermarkState.visible;
+  localStorage.setItem('watermark_visible', watermarkState.visible);
+  syncWatermarkUI();
+  sendWatermarkToViz();
+});
+
+// Watermark reset to default
+$id('btn-watermark-reset').addEventListener('click', async () => {
+  const defaultLogo = await getDefaultLogoBase64();
+  watermarkState.logo = defaultLogo;
+  watermarkState.size = 40;
+  watermarkState.opacity = 50;
+  watermarkState.visible = true;
+
+  localStorage.setItem('watermark_logo', watermarkState.logo);
+  localStorage.setItem('watermark_size', watermarkState.size);
+  localStorage.setItem('watermark_opacity', watermarkState.opacity);
+  localStorage.setItem('watermark_visible', watermarkState.visible);
+
+  syncWatermarkUI();
+  sendWatermarkToViz();
+});
+
 // Lyrics buttons
 document.getElementById('btn-lyrics-panel').addEventListener('click', toggleLyricsPanel);
 document.getElementById('btn-lyrics-display').addEventListener('click', toggleLyricsDisplay);
