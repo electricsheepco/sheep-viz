@@ -2293,6 +2293,22 @@ $id('watermark-file-input').addEventListener('change', (e) => {
   }
 });
 
+// Watermark size slider
+$id('watermark-size').addEventListener('input', (e) => {
+  watermarkState.size = parseInt(e.target.value);
+  localStorage.setItem('watermark_size', watermarkState.size);
+  $id('watermark-size-val').textContent = watermarkState.size;
+  sendWatermarkToViz();
+});
+
+// Watermark opacity slider
+$id('watermark-opacity').addEventListener('input', (e) => {
+  watermarkState.opacity = parseInt(e.target.value);
+  localStorage.setItem('watermark_opacity', watermarkState.opacity);
+  $id('watermark-opacity-val').textContent = watermarkState.opacity;
+  sendWatermarkToViz();
+});
+
 // Lyrics buttons
 document.getElementById('btn-lyrics-panel').addEventListener('click', toggleLyricsPanel);
 document.getElementById('btn-lyrics-display').addEventListener('click', toggleLyricsDisplay);
