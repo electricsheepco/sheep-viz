@@ -1291,6 +1291,11 @@ function switchVisualizer(index) {
       old.style.opacity = '0';
       setTimeout(() => { if (old.parentNode) old.remove(); }, 500);
     });
+
+    // Send watermark config to new visualizer
+    setTimeout(() => {
+      sendWatermarkToViz();
+    }, 100);  // Small delay to ensure visualizer is ready
   });
 
   // Update popout if open
