@@ -2374,6 +2374,27 @@ document.getElementById('lyrics-file-input').addEventListener('change', (e) => {
 
 document.addEventListener('keydown', handleKeyboard);
 
+// Show default knobs/faders before any visualizer is selected
+rebuildControls({
+  knobs: [
+    { id: 'k1', label: 'Param 1', min: 0, max: 1 },
+    { id: 'k2', label: 'Param 2', min: 0, max: 1 },
+    { id: 'k3', label: 'Param 3', min: 0, max: 1 },
+    { id: 'k4', label: 'Param 4', min: 0, max: 1 },
+    { id: 'k5', label: 'Param 5', min: 0, max: 1 },
+    { id: 'k6', label: 'Param 6', min: 0, max: 1 },
+    { id: 'k7', label: 'Param 7', min: 0, max: 1 },
+    { id: 'k8', label: 'Param 8', min: 0, max: 1 },
+  ],
+  faders: [
+    { id: 'f1', label: 'Overlay Size', min: 0, max: 1 },
+    { id: 'f2', label: 'Overlay Alpha', min: 0, max: 1 },
+    { id: 'f3', label: 'FX Intensity', min: 0, max: 1 },
+    { id: 'f4', label: 'Master', min: 0, max: 1 },
+  ],
+  presets: [],
+});
+
 // Register service worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
