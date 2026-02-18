@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sheep-viz-v4';
+const CACHE_NAME = 'sheep-viz-v5';
 
 const PRECACHE = [
   '/',
