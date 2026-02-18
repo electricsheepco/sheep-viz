@@ -8,6 +8,7 @@ Creative coding for **Electric Sheep Supply Co.** music visuals, videos, and gen
 
 ## Recent Changes
 
+- **2026-02-18**: Show default knobs/faders on Control Room cold start; hide Hardware View band in embed mode
 - **2026-02-15**: YouTube-style customizable watermark feature - upload custom band logos, adjust size/opacity, persist across visualizers
 - **2026-02-10**: Add controls popout window, fix Vertical Pulse canvas sizing
 - **2026-02-10**: Overhaul Control Room: bottom bar layout, crossfade, popout controller mode
