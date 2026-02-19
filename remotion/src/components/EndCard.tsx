@@ -1,4 +1,5 @@
-import { AbsoluteFill, Img, staticFile } from "remotion";
+import { AbsoluteFill, Img, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { NeonText } from "./NeonText";
 
 interface EndCardProps {
   url: string;
@@ -6,6 +7,23 @@ interface EndCardProps {
 }
 
 export const EndCard: React.FC<EndCardProps> = ({ url, tagline }) => {
+  const frame = useCurrentFrame();
+
+  const logoOpacity = interpolate(frame, [0, 20], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const logoScale = interpolate(frame, [0, 20], [0.8, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  const taglineOpacity = interpolate(frame, [30, 50], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
   return (
     <AbsoluteFill
       style={{
@@ -13,30 +31,37 @@ export const EndCard: React.FC<EndCardProps> = ({ url, tagline }) => {
         justifyContent: "center",
         alignItems: "center",
         flexDirection: "column",
-        gap: 30,
+        gap: 40,
       }}
     >
-      <Img
-        src={staticFile("assets/sheep-logo.svg")}
-        style={{ width: 120, height: 120 }}
-      />
       <div
         style={{
-          fontFamily: "Major Mono Display, monospace",
-          fontSize: 40,
-          color: "#e8e8ed",
-          textTransform: "lowercase",
-          textShadow: "0 0 20px rgba(99, 102, 241, 0.5)",
+          opacity: logoOpacity,
+          transform: `scale(${logoScale})`,
         }}
       >
-        {url}
+        <Img
+          src={staticFile("assets/sheep-logo.svg")}
+          style={{ width: 120, height: 120 }}
+        />
       </div>
+
+      <NeonText
+        text={url}
+        color="#6366f1"
+        startFrame={20}
+        flicker={true}
+        style={{ fontSize: 38 }}
+      />
+
       <div
         style={{
-          fontFamily: "Major Mono Display, monospace",
-          fontSize: 24,
+          fontFamily: "'Major Mono Display', monospace",
+          fontSize: 22,
           color: "#6366f1",
           textTransform: "lowercase",
+          opacity: taglineOpacity,
+          letterSpacing: "0.05em",
         }}
       >
         {tagline}

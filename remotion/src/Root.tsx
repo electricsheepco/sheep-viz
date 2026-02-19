@@ -4,6 +4,9 @@ import { Video2Origin } from "./Video2-Origin";
 import { Video3Why } from "./Video3-Why";
 import { Video4HowToUse } from "./Video4-HowToUse";
 import { Video5Who } from "./Video5-Who";
+import { loadFonts } from "./lib/fonts";
+
+loadFonts();
 
 export const RemotionRoot: React.FC = () => {
   return (

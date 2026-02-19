@@ -1,45 +1,41 @@
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 
-interface FullscreenTextProps {
+interface NeonTextProps {
   text: string;
+  color?: string;
   startFrame?: number;
-  durationInFrames?: number;
+  flicker?: boolean;
   style?: React.CSSProperties;
   containerStyle?: React.CSSProperties;
 }
 
-export const FullscreenText: React.FC<FullscreenTextProps> = ({
+export const NeonText: React.FC<NeonTextProps> = ({
   text,
+  color = "#6366f1",
   startFrame = 0,
-  durationInFrames,
+  flicker = true,
   style,
   containerStyle,
 }) => {
   const frame = useCurrentFrame();
 
-  const fadeIn = interpolate(frame, [startFrame, startFrame + 15], [0, 1], {
+  const fadeOpacity = interpolate(frame, [startFrame, startFrame + 20], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
 
-  const fadeOut =
-    durationInFrames !== undefined
-      ? interpolate(
-          frame,
-          [startFrame + durationInFrames - 10, startFrame + durationInFrames],
-          [1, 0],
-          { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
-        )
+  const flickerMult =
+    flicker && frame > startFrame + 20
+      ? 0.85 + 0.15 * Math.abs(Math.sin(frame * 0.7) * Math.cos(frame * 1.3))
       : 1;
 
-  const opacity = Math.min(fadeIn, fadeOut);
+  const glowSize = 15 + 8 * Math.abs(Math.sin(frame * 0.4));
 
   return (
     <AbsoluteFill
       style={{
         justifyContent: "center",
         alignItems: "center",
-        padding: 40,
         pointerEvents: "none",
         ...containerStyle,
       }}
@@ -47,13 +43,13 @@ export const FullscreenText: React.FC<FullscreenTextProps> = ({
       <div
         style={{
           fontFamily: "'Major Mono Display', monospace",
-          fontSize: 36,
-          color: "#e8e8ed",
-          textAlign: "center",
+          fontSize: 44,
+          color,
           textTransform: "lowercase",
-          opacity,
-          textShadow: "0 2px 20px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8)",
-          lineHeight: 1.3,
+          opacity: fadeOpacity * flickerMult,
+          filter: `drop-shadow(0 0 ${glowSize}px ${color}) drop-shadow(0 0 ${glowSize * 1.5}px ${color})`,
+          textShadow: `0 0 10px ${color}, 0 0 30px ${color}`,
+          textAlign: "center",
           ...style,
         }}
       >

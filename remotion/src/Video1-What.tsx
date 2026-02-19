@@ -1,13 +1,18 @@
 import { AbsoluteFill, Sequence } from "remotion";
 import { SplitScreen } from "./components/SplitScreen";
 import { FullscreenText } from "./components/FullscreenText";
+import { TypeOnText } from "./components/TypeOnText";
+import { GlitchTransition } from "./components/GlitchTransition";
 import { EndCard } from "./components/EndCard";
 import { Screenshot } from "./components/Screenshot";
 
+// Video 1: WHAT (The Hook) — 20s
+// Hook with visuals, establish "no install" value prop
 export const Video1What: React.FC = () => {
   return (
     <AbsoluteFill style={{ background: "#0a0a0f" }}>
-      {/* 0-3s: Opening hook - Visualizer in action */}
+
+      {/* 0-3s: Opening hook — visualizer + hands */}
       <Sequence from={0} durationInFrames={90}>
         <SplitScreen
           topContent={
@@ -25,13 +30,16 @@ export const Video1What: React.FC = () => {
             />
           }
         />
-        <FullscreenText
+        <TypeOnText
           text="music visuals in your browser"
-          startFrame={0}
-          durationInFrames={90}
-          style={{ fontSize: 34, top: "35%" }}
+          startFrame={10}
+          durationInFrames={60}
+          style={{ fontSize: 32 }}
+          containerStyle={{ alignItems: "flex-end", paddingBottom: 420 }}
         />
       </Sequence>
+
+      <GlitchTransition startFrame={88} />
 
       {/* 3-7s: No download needed */}
       <Sequence from={90} durationInFrames={120}>
@@ -40,13 +48,15 @@ export const Video1What: React.FC = () => {
           fallbackColor="#2c3e50"
           fallbackText="Browser URL Bar"
         />
-        <FullscreenText
-          text="no download, no install"
-          startFrame={0}
-          durationInFrames={120}
+        <TypeOnText
+          text="no download. no install."
+          startFrame={15}
+          durationInFrames={70}
           style={{ fontSize: 40 }}
         />
       </Sequence>
+
+      <GlitchTransition startFrame={208} />
 
       {/* 7-11s: MIDI control */}
       <Sequence from={210} durationInFrames={120}>
@@ -66,13 +76,16 @@ export const Video1What: React.FC = () => {
             />
           }
         />
-        <FullscreenText
-          text="real-time control with MIDI"
-          startFrame={0}
-          durationInFrames={120}
-          style={{ fontSize: 34 }}
+        <TypeOnText
+          text="real-time midi control"
+          startFrame={10}
+          durationInFrames={60}
+          style={{ fontSize: 36 }}
+          containerStyle={{ alignItems: "flex-end", paddingBottom: 420 }}
         />
       </Sequence>
+
+      <GlitchTransition startFrame={328} />
 
       {/* 11-15s: Upload watermark */}
       <Sequence from={330} durationInFrames={120}>
@@ -89,10 +102,13 @@ export const Video1What: React.FC = () => {
         />
       </Sequence>
 
+      <GlitchTransition startFrame={448} />
+
       {/* 15-20s: End card */}
       <Sequence from={450} durationInFrames={150}>
         <EndCard url="sheep-xi.vercel.app" tagline="no bullshit" />
       </Sequence>
+
     </AbsoluteFill>
   );
 };
