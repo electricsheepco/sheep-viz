@@ -1,4 +1,4 @@
-# Sheep Imager — Design Spec
+# Scatter — Design Spec
 **Date:** 2026-03-12
 **Project:** Electric Sheep Supply Co.
 **Format:** AU + VST3
@@ -8,9 +8,9 @@
 
 ## 1. Product Overview
 
-**Sheep Imager** is a 6-band multiband stereo imager plugin built for mixing and mastering. Its core purpose: keep low frequencies glued to the center and push high frequencies to the sides — automatically, with surgical control over where each frequency range lives in the stereo field.
+**Scatter** is a 6-band multiband stereo imager plugin built for mixing and mastering. Its core purpose: keep low frequencies glued to the center and push high frequencies to the sides — automatically, with surgical control over where each frequency range lives in the stereo field.
 
-Primary use case: a mix where kick and bass need to stay mono-compatible while guitars, synths, and hi-hats breathe wide. Load Sheep Imager on the stereo bus or any track. Drag the crossovers. Done.
+Primary use case: a mix where kick and bass need to stay mono-compatible while guitars, synths, and hi-hats breathe wide. Load Scatter on the stereo bus or any track. Drag the crossovers. Done.
 
 Ships as:
 - **Audio Unit v2/v3 (AU)** — Logic Pro, GarageBand, MainStage
@@ -281,7 +281,7 @@ Band colors (6):  #6366f1  #8b5cf6  #ec4899  #f97316  #eab308  #22d3ee
 ## 7. Project Structure
 
 ```
-sheep-imager/
+plugins/scatter/
 ├── CMakeLists.txt
 ├── CLAUDE.md
 ├── Source/
@@ -304,7 +304,7 @@ sheep-imager/
 └── docs/
     └── superpowers/
         └── specs/
-            └── 2026-03-12-sheep-imager-design.md
+            └── 2026-03-12-scatter-design.md
 ```
 
 ---
@@ -314,11 +314,11 @@ sheep-imager/
 ### 8.1 CMake Targets
 
 ```cmake
-juce_add_plugin(SheepImager
+juce_add_plugin(Scatter
     FORMATS AU VST3
-    PLUGIN_NAME "Sheep Imager"
+    PLUGIN_NAME "Scatter"
     PLUGIN_MANUFACTURER_CODE Essc   # Must be unique; verify via Apple AU registry
-    PLUGIN_CODE Shim                # Must be unique; verify no collision before shipping
+    PLUGIN_CODE Scat                # Must be unique; verify no collision before shipping
     PLUGIN_MANUFACTURER "Electric Sheep Supply Co."
     PLUGIN_VERSION "1.0.0"          # Required for Info.plist generation
     IS_SYNTH FALSE
@@ -334,7 +334,7 @@ juce_add_plugin(SheepImager
 
 **Channel layout:** The plugin declares a single stereo bus layout (2-in, 2-out) via `isBusesLayoutSupported`. Mono input is not supported in v1. This must be declared explicitly so hosts can reject invalid configurations gracefully.
 
-**Plugin code uniqueness:** `Shim` / `Essc` must be verified as unused before distribution. Collision causes AU validation failure. Search the community registry and run `auval -a` locally after install to confirm no conflict.
+**Plugin code uniqueness:** `Scat` / `Essc` must be verified as unused before distribution. Collision causes AU validation failure. Search the community registry and run `auval -a` locally after install to confirm no conflict.
 
 **Universal binary:** JUCE CMake produces a universal binary (arm64 + x86_64) by default on macOS when building with Xcode. No additional configuration required.
 
@@ -347,8 +347,8 @@ juce_add_plugin(SheepImager
 
 ### 8.3 Output Locations
 
-- AU: `~/Library/Audio/Plug-Ins/Components/SheepImager.component`
-- VST3: `~/Library/Audio/Plug-Ins/VST3/SheepImager.vst3`
+- AU: `~/Library/Audio/Plug-Ins/Components/Scatter.component`
+- VST3: `~/Library/Audio/Plug-Ins/VST3/Scatter.vst3`
 
 ---
 
@@ -379,7 +379,7 @@ juce_add_plugin(SheepImager
 | Sample rate change | Switch host sample rate mid-session, verify no silence/crash and filter recalculates |
 | Solo + bypass interaction | Bypass a band, solo it, verify silence |
 | No CPU spikes | Profile in Logic Pro with 256-sample buffer, verify <5% CPU on M-series chip |
-| AU validation | `auval -v aufx Shim Essc` — note: codes are case-sensitive, must match compiled binary exactly |
+| AU validation | `auval -v aufx Scat Essc` — note: codes are case-sensitive, must match compiled binary exactly |
 | VST3 validation | JUCE pluginval — run against VST3 binary |
 | Crossover drag UI | All 5 crossovers draggable to hard limits without crash or visual artifact |
 | State save/load | Save in Logic, reload session — all 20 automatable params + soloState restore correctly |

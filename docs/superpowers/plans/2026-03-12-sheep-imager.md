@@ -1,14 +1,14 @@
-# Sheep Imager Implementation Plan
+# Scatter Implementation Plan
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a 6-band multiband stereo imager AU + VST3 plugin using JUCE 8 and C++17, with a flat dark UI and the Sheep brand.
+**Goal:** Build a 6-band multiband stereo imager AU + VST3 plugin ("Scatter by sheep") using JUCE 8 and C++17, with a flat dark UI and the Sheep brand.
 
 **Architecture:** An `AudioProcessorValueTreeState` (APVTS) manages 20 parameters. The audio callback feeds stereo input through a `MultibandSplitter` (LR4 crossovers, 6 bands) and then a `StereoImager` (M/S width per band), sums the bands, and writes to output. The UI is a single fixed 600×380px editor with a `FrequencyDisplay` (crossover drag), six `BandStrip` columns, a `HeaderBar`, and a `FooterBar` with the sheep logo.
 
 **Tech Stack:** JUCE 8, C++17, CMake 3.22+, Xcode 15+, macOS 12+
 
-**Spec:** `docs/superpowers/specs/2026-03-12-sheep-imager-design.md`
+**Spec:** `docs/superpowers/specs/2026-03-12-scatter-design.md`
 
 ---
 
@@ -70,8 +70,8 @@
 - [ ] **Create directory**
 
   ```bash
-  mkdir -p /Volumes/zodlightning/sites/sheep-imager
-  cd /Volumes/zodlightning/sites/sheep-imager
+  mkdir -p /Volumes/zodlightning/sites/sheep/plugins/scatter
+  cd /Volumes/zodlightning/sites/sheep/plugins/scatter
   git init
   ```
 
@@ -89,7 +89,7 @@
 
   ```cmake
   cmake_minimum_required(VERSION 3.22)
-  project(SheepImager VERSION 1.0.0)
+  project(Scatter VERSION 1.0.0)
 
   set(CMAKE_CXX_STANDARD 17)
   set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -106,11 +106,11 @@
   FetchContent_MakeAvailable(JUCE)
 
   # ── Plugin target ─────────────────────────────────────────────────────────
-  juce_add_plugin(SheepImager
+  juce_add_plugin(Scatter
       FORMATS                 AU VST3
-      PLUGIN_NAME             "Sheep Imager"
+      PLUGIN_NAME             "Scatter"
       PLUGIN_MANUFACTURER_CODE Essc
-      PLUGIN_CODE             Shim
+      PLUGIN_CODE             Scat
       PLUGIN_MANUFACTURER     "Electric Sheep Supply Co."
       PLUGIN_VERSION          "1.0.0"
       IS_SYNTH                FALSE
@@ -123,7 +123,7 @@
       COPY_PLUGIN_AFTER_BUILD TRUE
   )
 
-  target_sources(SheepImager PRIVATE
+  target_sources(Scatter PRIVATE
       Source/PluginProcessor.cpp
       Source/PluginEditor.cpp
       Source/dsp/CrossoverFilter.cpp
@@ -136,13 +136,13 @@
       Source/ui/FrequencyDisplay.cpp
   )
 
-  target_compile_definitions(SheepImager PUBLIC
+  target_compile_definitions(Scatter PUBLIC
       JUCE_WEB_BROWSER=0
       JUCE_USE_CURL=0
       JUCE_VST3_CAN_REPLACE_VST2=0
   )
 
-  target_link_libraries(SheepImager PRIVATE
+  target_link_libraries(Scatter PRIVATE
       juce::juce_audio_processors
       juce::juce_audio_utils
       juce::juce_dsp
@@ -153,11 +153,11 @@
   )
 
   # ── Test runner target ─────────────────────────────────────────────────────
-  juce_add_console_app(SheepImagerTests
-      PRODUCT_NAME "SheepImagerTests"
+  juce_add_console_app(ScatterTests
+      PRODUCT_NAME "ScatterTests"
   )
 
-  target_sources(SheepImagerTests PRIVATE
+  target_sources(ScatterTests PRIVATE
       Tests/TestRunner.cpp
       Tests/CrossoverFilterTests.cpp
       Tests/StereoImagerTests.cpp
@@ -167,13 +167,13 @@
       Source/dsp/StereoImager.cpp
   )
 
-  target_include_directories(SheepImagerTests PRIVATE Source)
+  target_include_directories(ScatterTests PRIVATE Source)
 
-  target_compile_definitions(SheepImagerTests PRIVATE
+  target_compile_definitions(ScatterTests PRIVATE
       JUCE_STANDALONE_APPLICATION=1
   )
 
-  target_link_libraries(SheepImagerTests PRIVATE
+  target_link_libraries(ScatterTests PRIVATE
       juce::juce_audio_basics
       juce::juce_dsp
       juce::juce_core
@@ -194,11 +194,11 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
   #pragma once
   #include <JuceHeader.h>
 
-  class SheepImagerProcessor : public juce::AudioProcessor
+  class ScatterProcessor : public juce::AudioProcessor
   {
   public:
-      SheepImagerProcessor();
-      ~SheepImagerProcessor() override = default;
+      ScatterProcessor();
+      ~ScatterProcessor() override = default;
 
       void prepareToPlay(double sampleRate, int samplesPerBlock) override;
       void releaseResources() override {}
@@ -207,7 +207,7 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
       juce::AudioProcessorEditor* createEditor() override;
       bool hasEditor() const override { return true; }
 
-      const juce::String getName() const override { return "Sheep Imager"; }
+      const juce::String getName() const override { return "Scatter"; }
       bool acceptsMidi() const override { return false; }
       bool producesMidi() const override { return false; }
       double getTailLengthSeconds() const override { return 0.0; }
@@ -231,7 +231,7 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
   #include "PluginProcessor.h"
   #include "PluginEditor.h"
 
-  SheepImagerProcessor::SheepImagerProcessor()
+  ScatterProcessor::ScatterProcessor()
       : AudioProcessor(BusesProperties()
             .withInput("Input", juce::AudioChannelSet::stereo(), true)
             .withOutput("Output", juce::AudioChannelSet::stereo(), true))
@@ -239,30 +239,30 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
       setLatencySamples(0);
   }
 
-  bool SheepImagerProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
+  bool ScatterProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
   {
       return layouts.getMainInputChannelSet() == juce::AudioChannelSet::stereo()
           && layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
   }
 
-  void SheepImagerProcessor::prepareToPlay(double /*sampleRate*/, int /*samplesPerBlock*/) {}
+  void ScatterProcessor::prepareToPlay(double /*sampleRate*/, int /*samplesPerBlock*/) {}
 
-  void SheepImagerProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+  void ScatterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
   {
       // passthrough stub
   }
 
-  juce::AudioProcessorEditor* SheepImagerProcessor::createEditor()
+  juce::AudioProcessorEditor* ScatterProcessor::createEditor()
   {
       return new juce::GenericAudioProcessorEditor(*this);
   }
 
-  void SheepImagerProcessor::getStateInformation(juce::MemoryBlock&) {}
-  void SheepImagerProcessor::setStateInformation(const void*, int) {}
+  void ScatterProcessor::getStateInformation(juce::MemoryBlock&) {}
+  void ScatterProcessor::setStateInformation(const void*, int) {}
 
   juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
   {
-      return new SheepImagerProcessor();
+      return new ScatterProcessor();
   }
   ```
 
@@ -273,15 +273,15 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
   #include <JuceHeader.h>
   #include "PluginProcessor.h"
 
-  class SheepImagerEditor : public juce::AudioProcessorEditor
+  class ScatterEditor : public juce::AudioProcessorEditor
   {
   public:
-      explicit SheepImagerEditor(SheepImagerProcessor&);
-      ~SheepImagerEditor() override = default;
+      explicit ScatterEditor(ScatterProcessor&);
+      ~ScatterEditor() override = default;
       void paint(juce::Graphics&) override;
       void resized() override;
   private:
-      SheepImagerProcessor& processor;
+      ScatterProcessor& processor;
   };
   ```
 
@@ -290,18 +290,18 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
   ```cpp
   #include "PluginEditor.h"
 
-  SheepImagerEditor::SheepImagerEditor(SheepImagerProcessor& p)
+  ScatterEditor::ScatterEditor(ScatterProcessor& p)
       : AudioProcessorEditor(&p), processor(p)
   {
       setSize(600, 380);
   }
 
-  void SheepImagerEditor::paint(juce::Graphics& g)
+  void ScatterEditor::paint(juce::Graphics& g)
   {
       g.fillAll(juce::Colour(0xff111114));
   }
 
-  void SheepImagerEditor::resized() {}
+  void ScatterEditor::resized() {}
   ```
 
 - [ ] **Create all DSP stubs** (empty `.h` + `.cpp` pairs)
@@ -354,7 +354,7 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
   ```cpp
   #pragma once
   #include <JuceHeader.h>
-  class SheepLookAndFeel : public juce::LookAndFeel_V4 {};
+  class ScatterLookAndFeel : public juce::LookAndFeel_V4 {};
   ```
   `Source/ui/LookAndFeel.cpp`: `#include "LookAndFeel.h"`
 
@@ -405,7 +405,7 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
 - [ ] **Configure CMake**
 
   ```bash
-  cd /Volumes/zodlightning/sites/sheep-imager
+  cd /Volumes/zodlightning/sites/sheep/plugins/scatter
   cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
   # Expected: -- Configuring done / -- Build files have been written to: .../build
   # JUCE will be downloaded (~200MB). This takes 1-2 minutes on first run.
@@ -414,15 +414,15 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
 - [ ] **Build plugin**
 
   ```bash
-  cmake --build build --config Debug --target SheepImager_AU SheepImager_VST3 -- -quiet
+  cmake --build build --config Debug --target Scatter_AU Scatter_VST3 -- -quiet
   # Expected: Build succeeded with 0 errors
   ```
 
 - [ ] **Build and run tests**
 
   ```bash
-  cmake --build build --config Debug --target SheepImagerTests -- -quiet
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target ScatterTests -- -quiet
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   # Expected: All tests passed: CrossoverFilter (1 test), StereoImager (1 test), MultibandSplitter (1 test)
   ```
 
@@ -430,13 +430,13 @@ Every `.cpp` file listed in CMakeLists.txt must exist (even empty stubs) before 
 
   ```bash
   ls ~/Library/Audio/Plug-Ins/Components/ | grep -i sheep
-  # Expected: SheepImager.component
+  # Expected: Scatter.component
   ```
 
 - [ ] **Initial commit**
 
   ```bash
-  cd /Volumes/zodlightning/sites/sheep-imager
+  cd /Volumes/zodlightning/sites/sheep/plugins/scatter
   echo "build/" > .gitignore
   echo ".DS_Store" >> .gitignore
   git add .
@@ -560,8 +560,8 @@ A `CrossoverFilter` takes a stereo audio buffer and produces two outputs: LP ban
 - [ ] **Run test to verify it fails**
 
   ```bash
-  cmake --build build --config Debug --target SheepImagerTests -- -quiet
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target ScatterTests -- -quiet
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   # Expected: FAIL — CrossoverFilter struct is empty
   ```
 
@@ -699,8 +699,8 @@ A `CrossoverFilter` takes a stereo audio buffer and produces two outputs: LP ban
 - [ ] **Run CrossoverFilter tests**
 
   ```bash
-  cmake --build build --config Debug --target SheepImagerTests -- -quiet
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target ScatterTests -- -quiet
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   # Expected: CrossoverFilter — 3 tests, 0 failures
   ```
 
@@ -830,8 +830,8 @@ A `CrossoverFilter` takes a stereo audio buffer and produces two outputs: LP ban
 - [ ] **Run to confirm failure**
 
   ```bash
-  cmake --build build --config Debug --target SheepImagerTests -- -quiet
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target ScatterTests -- -quiet
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   # Expected: StereoImager tests FAIL
   ```
 
@@ -904,8 +904,8 @@ A `CrossoverFilter` takes a stereo audio buffer and produces two outputs: LP ban
 - [ ] **Run StereoImager tests**
 
   ```bash
-  cmake --build build --config Debug --target SheepImagerTests -- -quiet
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target ScatterTests -- -quiet
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   # Expected: StereoImager — 4 tests, 0 failures
   ```
 
@@ -1005,8 +1005,8 @@ A `CrossoverFilter` takes a stereo audio buffer and produces two outputs: LP ban
 - [ ] **Run to confirm failure**
 
   ```bash
-  cmake --build build --config Debug --target SheepImagerTests -- -quiet
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target ScatterTests -- -quiet
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   # Expected: MultibandSplitter tests FAIL
   ```
 
@@ -1149,8 +1149,8 @@ A `CrossoverFilter` takes a stereo audio buffer and produces two outputs: LP ban
 - [ ] **Run MultibandSplitter tests**
 
   ```bash
-  cmake --build build --config Debug --target SheepImagerTests -- -quiet
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target ScatterTests -- -quiet
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   # Expected: All 3 test suites pass (CrossoverFilter, StereoImager, MultibandSplitter)
   ```
 
@@ -1165,7 +1165,7 @@ A `CrossoverFilter` takes a stereo audio buffer and produces two outputs: LP ban
 
 ## Chunk 3: PluginProcessor
 
-**Goal:** `SheepImagerProcessor` wires APVTS parameters into the DSP pipeline. All 20 parameters registered, `processBlock` runs the full signal chain, state persists across DAW session save/reload.
+**Goal:** `ScatterProcessor` wires APVTS parameters into the DSP pipeline. All 20 parameters registered, `processBlock` runs the full signal chain, state persists across DAW session save/reload.
 
 ### Background: JUCE APVTS
 
@@ -1180,7 +1180,7 @@ Usage pattern:
 juce::AudioProcessorValueTreeState apvts;
 
 // In constructor, AFTER calling AudioProcessor base constructor:
-apvts(*this, nullptr, "SheepImager", createParameterLayout())
+apvts(*this, nullptr, "Scatter", createParameterLayout())
 
 // Parameter access in processBlock (audio thread):
 float w = apvts.getRawParameterValue("band_1_width")->load();
@@ -1200,11 +1200,11 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
   #include "dsp/MultibandSplitter.h"
   #include "dsp/StereoImager.h"
 
-  class SheepImagerProcessor : public juce::AudioProcessor
+  class ScatterProcessor : public juce::AudioProcessor
   {
   public:
-      SheepImagerProcessor();
-      ~SheepImagerProcessor() override = default;
+      ScatterProcessor();
+      ~ScatterProcessor() override = default;
 
       void prepareToPlay(double sampleRate, int samplesPerBlock) override;
       void releaseResources() override {}
@@ -1213,7 +1213,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       juce::AudioProcessorEditor* createEditor() override;
       bool hasEditor() const override { return true; }
 
-      const juce::String getName() const override { return "Sheep Imager"; }
+      const juce::String getName() const override { return "Scatter"; }
       bool acceptsMidi() const override { return false; }
       bool producesMidi() const override { return false; }
       double getTailLengthSeconds() const override { return 0.0; }
@@ -1312,22 +1312,22 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       return { params.begin(), params.end() };
   }
 
-  SheepImagerProcessor::SheepImagerProcessor()
+  ScatterProcessor::ScatterProcessor()
       : AudioProcessor(BusesProperties()
             .withInput("Input",  juce::AudioChannelSet::stereo(), true)
             .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
-        apvts(*this, nullptr, "SheepImager", createLayout())
+        apvts(*this, nullptr, "Scatter", createLayout())
   {
       setLatencySamples(0);
   }
 
-  bool SheepImagerProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
+  bool ScatterProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const
   {
       return layouts.getMainInputChannelSet()  == juce::AudioChannelSet::stereo()
           && layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
   }
 
-  void SheepImagerProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
+  void ScatterProcessor::prepareToPlay(double sampleRate, int samplesPerBlock)
   {
       juce::FloatVectorOperations::disableDenormalisedNumberSupport();
 
@@ -1360,7 +1360,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       splitter.setCrossovers(xo[0], xo[1], xo[2], xo[3], xo[4]);
   }
 
-  void SheepImagerProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+  void ScatterProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
   {
       juce::ScopedNoDenormals noDenormals;
 
@@ -1453,12 +1453,12 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       }
   }
 
-  juce::AudioProcessorEditor* SheepImagerProcessor::createEditor()
+  juce::AudioProcessorEditor* ScatterProcessor::createEditor()
   {
       return new juce::GenericAudioProcessorEditor(*this); // placeholder until UI is built
   }
 
-  void SheepImagerProcessor::getStateInformation(juce::MemoryBlock& destData)
+  void ScatterProcessor::getStateInformation(juce::MemoryBlock& destData)
   {
       auto state = apvts.copyState();
       state.setProperty("soloState", (int)soloState, nullptr);
@@ -1466,7 +1466,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       copyXmlToBinary(*xml, destData);
   }
 
-  void SheepImagerProcessor::setStateInformation(const void* data, int sizeInBytes)
+  void ScatterProcessor::setStateInformation(const void* data, int sizeInBytes)
   {
       std::unique_ptr<juce::XmlElement> xml(getXmlFromBinary(data, sizeInBytes));
       if (xml && xml->hasTagName(apvts.state.getType()))
@@ -1479,14 +1479,14 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
 
   juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
   {
-      return new SheepImagerProcessor();
+      return new ScatterProcessor();
   }
   ```
 
 - [ ] **Build plugin to confirm it compiles**
 
   ```bash
-  cmake --build build --config Debug --target SheepImager_AU SheepImager_VST3 -- -quiet
+  cmake --build build --config Debug --target Scatter_AU Scatter_VST3 -- -quiet
   # Expected: Build succeeded with 0 errors
   ```
 
@@ -1496,7 +1496,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
 
   1. Open Logic Pro
   2. Create an audio track with a signal
-  3. Add an AU plugin → "Sheep Imager" (may need to re-scan AU)
+  3. Add an AU plugin → "Scatter" (may need to re-scan AU)
   4. Verify the generic parameter editor appears, knobs respond
   5. Save the session, reopen — parameters should restore
 
@@ -1511,7 +1511,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
 
 ## Chunk 4: UI Foundation
 
-**Goal:** `SheepLookAndFeel`, `HeaderBar`, and `FooterBar` implemented. The editor uses the real layout (placeholder content, correct colors and geometry).
+**Goal:** `ScatterLookAndFeel`, `HeaderBar`, and `FooterBar` implemented. The editor uses the real layout (placeholder content, correct colors and geometry).
 
 ### Background: JUCE UI primer
 
@@ -1523,7 +1523,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
 
 ---
 
-### Task 13: `SheepLookAndFeel`
+### Task 13: `ScatterLookAndFeel`
 
 - [ ] **Write `Source/ui/LookAndFeel.h`**
 
@@ -1532,13 +1532,13 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
   #include <JuceHeader.h>
 
   /**
-   * Flat dark theme for Sheep Imager.
+   * Flat dark theme for Scatter.
    * Override default JUCE LookAndFeel rendering with brand colors and clean typography.
    */
-  class SheepLookAndFeel : public juce::LookAndFeel_V4
+  class ScatterLookAndFeel : public juce::LookAndFeel_V4
   {
   public:
-      SheepLookAndFeel();
+      ScatterLookAndFeel();
 
       // ── Colors ──────────────────────────────────────────────────────────
       static juce::Colour background()    { return juce::Colour(0xff111114); }
@@ -1582,7 +1582,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       juce::Colour(0xff22d3ee), // Band 6 cyan
   };
 
-  SheepLookAndFeel::SheepLookAndFeel()
+  ScatterLookAndFeel::ScatterLookAndFeel()
   {
       setColour(juce::ResizableWindow::backgroundColourId, background());
       setColour(juce::Slider::backgroundColourId,          surface());
@@ -1594,12 +1594,12 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       setColour(juce::TextButton::textColourOffId,         textSecondary());
   }
 
-  juce::Colour SheepLookAndFeel::bandColor(int band)
+  juce::Colour ScatterLookAndFeel::bandColor(int band)
   {
       return kBandColors[juce::jlimit(0, 5, band)];
   }
 
-  void SheepLookAndFeel::drawLinearSlider(juce::Graphics& g,
+  void ScatterLookAndFeel::drawLinearSlider(juce::Graphics& g,
                                           int x, int y, int w, int h,
                                           float sliderPos,
                                           float /*minSliderPos*/, float /*maxSliderPos*/,
@@ -1629,7 +1629,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
                              thumbW, thumbH, 3.0f);
   }
 
-  void SheepLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
+  void ScatterLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button& button,
                                               const juce::Colour& /*bg*/,
                                               bool isHighlighted, bool isDown)
   {
@@ -1643,11 +1643,11 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       g.drawRoundedRectangle(bounds, 3.0f, 1.0f);
   }
 
-  void SheepLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
+  void ScatterLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& button,
                                         bool /*isHighlighted*/, bool /*isDown*/)
   {
       g.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(9.0f)));
-      g.setColour(button.getToggleState() ? juce::Colours::white : SheepLookAndFeel::textSecondary());
+      g.setColour(button.getToggleState() ? juce::Colours::white : ScatterLookAndFeel::textSecondary());
       g.drawFittedText(button.getButtonText(), button.getLocalBounds(),
                        juce::Justification::centred, 1);
   }
@@ -1656,7 +1656,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
 - [ ] **Build to confirm no errors**
 
   ```bash
-  cmake --build build --config Debug --target SheepImager_AU -- -quiet
+  cmake --build build --config Debug --target Scatter_AU -- -quiet
   # Expected: 0 errors
   ```
 
@@ -1671,7 +1671,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
   #include <JuceHeader.h>
   #include "LookAndFeel.h"
 
-  class SheepImagerProcessor;
+  class ScatterProcessor;
 
   /**
    * Top bar: "sheep imager" name, IN/OUT gain sliders, global bypass toggle.
@@ -1680,14 +1680,14 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
   class HeaderBar : public juce::Component
   {
   public:
-      explicit HeaderBar(SheepImagerProcessor& processor);
+      explicit HeaderBar(ScatterProcessor& processor);
       ~HeaderBar() override;
 
       void paint(juce::Graphics&) override;
       void resized() override;
 
   private:
-      SheepImagerProcessor& processor;
+      ScatterProcessor& processor;
 
       juce::Label     titleLabel;
       juce::Slider    inputGainSlider;
@@ -1707,18 +1707,18 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
   #include "HeaderBar.h"
   #include "../PluginProcessor.h"
 
-  HeaderBar::HeaderBar(SheepImagerProcessor& p) : processor(p)
+  HeaderBar::HeaderBar(ScatterProcessor& p) : processor(p)
   {
       // Title
       titleLabel.setText("sheep imager", juce::dontSendNotification);
       titleLabel.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(14.0f)));
-      titleLabel.setColour(juce::Label::textColourId, SheepLookAndFeel::textPrimary());
+      titleLabel.setColour(juce::Label::textColourId, ScatterLookAndFeel::textPrimary());
       addAndMakeVisible(titleLabel);
 
       // IN label
       inLabel.setText("IN", juce::dontSendNotification);
       inLabel.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(9.0f)));
-      inLabel.setColour(juce::Label::textColourId, SheepLookAndFeel::textSecondary());
+      inLabel.setColour(juce::Label::textColourId, ScatterLookAndFeel::textSecondary());
       inLabel.setJustificationType(juce::Justification::centredRight);
       addAndMakeVisible(inLabel);
 
@@ -1731,7 +1731,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       // OUT label
       outLabel.setText("OUT", juce::dontSendNotification);
       outLabel.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(9.0f)));
-      outLabel.setColour(juce::Label::textColourId, SheepLookAndFeel::textSecondary());
+      outLabel.setColour(juce::Label::textColourId, ScatterLookAndFeel::textSecondary());
       outLabel.setJustificationType(juce::Justification::centredRight);
       addAndMakeVisible(outLabel);
 
@@ -1758,9 +1758,9 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
 
   void HeaderBar::paint(juce::Graphics& g)
   {
-      g.fillAll(SheepLookAndFeel::surface());
+      g.fillAll(ScatterLookAndFeel::surface());
       // Bottom divider line
-      g.setColour(SheepLookAndFeel::border());
+      g.setColour(ScatterLookAndFeel::border());
       g.fillRect(0, getHeight() - 1, getWidth(), 1);
   }
 
@@ -1817,14 +1817,14 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
   {
       versionLabel.setText("v1.0.0  electric sheep supply co.", juce::dontSendNotification);
       versionLabel.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(9.0f)));
-      versionLabel.setColour(juce::Label::textColourId, SheepLookAndFeel::textSecondary());
+      versionLabel.setColour(juce::Label::textColourId, ScatterLookAndFeel::textSecondary());
       addAndMakeVisible(versionLabel);
   }
 
   void FooterBar::paint(juce::Graphics& g)
   {
-      g.fillAll(SheepLookAndFeel::surface());
-      g.setColour(SheepLookAndFeel::border());
+      g.fillAll(ScatterLookAndFeel::surface());
+      g.setColour(ScatterLookAndFeel::border());
       g.fillRect(0, 0, getWidth(), 1); // top divider
 
       // Sheep logo (waveform bars) bottom-right at 24px height, opacity 0.4
@@ -1833,7 +1833,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
       const int logoX = getWidth() - logoW - 8;
       const int logoY = (getHeight() - logoH) / 2;
 
-      g.setColour(SheepLookAndFeel::accent().withAlpha(0.4f));
+      g.setColour(ScatterLookAndFeel::accent().withAlpha(0.4f));
       // Draw simplified waveform bars (matching sheep-logo.svg proportions)
       const int barW = 3;
       const int spacing = 1;
@@ -1857,7 +1857,7 @@ float w = apvts.getRawParameterValue("band_1_width")->load();
 - [ ] **Build to confirm no errors**
 
   ```bash
-  cmake --build build --config Debug --target SheepImager_AU -- -quiet
+  cmake --build build --config Debug --target Scatter_AU -- -quiet
   # Expected: 0 errors
   ```
 
@@ -1887,7 +1887,7 @@ Each strip shows one band's width slider, bypass, solo, and frequency range labe
   #include <JuceHeader.h>
   #include "LookAndFeel.h"
 
-  class SheepImagerProcessor;
+  class ScatterProcessor;
 
   /**
    * Per-band column: bypass toggle, solo button, vertical width slider, value label,
@@ -1900,7 +1900,7 @@ Each strip shows one band's width slider, bypass, solo, and frequency range labe
        * @param bandIndex  0..5
        * @param processor  For accessing APVTS and soloState
        */
-      BandStrip(int bandIndex, SheepImagerProcessor& processor);
+      BandStrip(int bandIndex, ScatterProcessor& processor);
       ~BandStrip() override;
 
       void paint(juce::Graphics&) override;
@@ -1916,7 +1916,7 @@ Each strip shows one band's width slider, bypass, solo, and frequency range labe
       juce::String formatHz(float hz) const;
 
       int bandIndex;
-      SheepImagerProcessor& processor;
+      ScatterProcessor& processor;
 
       juce::String bandNames[6] = { "Sub/Low", "Low-Mid", "Mid", "Upper-Mid", "High", "Air" };
 
@@ -1941,7 +1941,7 @@ Each strip shows one band's width slider, bypass, solo, and frequency range labe
   #include "BandStrip.h"
   #include "../PluginProcessor.h"
 
-  BandStrip::BandStrip(int index, SheepImagerProcessor& p)
+  BandStrip::BandStrip(int index, ScatterProcessor& p)
       : bandIndex(index), processor(p)
   {
       const juce::String n = juce::String(index + 1);
@@ -1949,13 +1949,13 @@ Each strip shows one band's width slider, bypass, solo, and frequency range labe
       // Band name
       nameLabel.setText(bandNames[index], juce::dontSendNotification);
       nameLabel.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(9.0f)));
-      nameLabel.setColour(juce::Label::textColourId, SheepLookAndFeel::textSecondary());
+      nameLabel.setColour(juce::Label::textColourId, ScatterLookAndFeel::textSecondary());
       nameLabel.setJustificationType(juce::Justification::centred);
       addAndMakeVisible(nameLabel);
 
       // Frequency range
       rangeLabel.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(8.0f)));
-      rangeLabel.setColour(juce::Label::textColourId, SheepLookAndFeel::textSecondary());
+      rangeLabel.setColour(juce::Label::textColourId, ScatterLookAndFeel::textSecondary());
       rangeLabel.setJustificationType(juce::Justification::centred);
       addAndMakeVisible(rangeLabel);
 
@@ -1978,13 +1978,13 @@ Each strip shows one band's width slider, bypass, solo, and frequency range labe
       // Width slider
       widthSlider.setSliderStyle(juce::Slider::LinearVertical);
       widthSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-      widthSlider.setColour(juce::Slider::thumbColourId, SheepLookAndFeel::bandColor(index));
-      widthSlider.setColour(juce::Slider::trackColourId, SheepLookAndFeel::bandColor(index).withAlpha(0.4f));
+      widthSlider.setColour(juce::Slider::thumbColourId, ScatterLookAndFeel::bandColor(index));
+      widthSlider.setColour(juce::Slider::trackColourId, ScatterLookAndFeel::bandColor(index).withAlpha(0.4f));
       addAndMakeVisible(widthSlider);
 
       // Width value label
       widthValueLabel.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(11.0f)));
-      widthValueLabel.setColour(juce::Label::textColourId, SheepLookAndFeel::textPrimary());
+      widthValueLabel.setColour(juce::Label::textColourId, ScatterLookAndFeel::textPrimary());
       widthValueLabel.setJustificationType(juce::Justification::centred);
       addAndMakeVisible(widthValueLabel);
 
@@ -2027,12 +2027,12 @@ Each strip shows one band's width slider, bypass, solo, and frequency range labe
   void BandStrip::paint(juce::Graphics& g)
   {
       // Right border divider
-      g.setColour(SheepLookAndFeel::border());
+      g.setColour(ScatterLookAndFeel::border());
       g.fillRect(getWidth() - 1, 0, 1, getHeight());
 
       // Dim if bypassed
       if (bypassBtn.getToggleState())
-          g.fillAll(SheepLookAndFeel::background().withAlpha(0.5f));
+          g.fillAll(ScatterLookAndFeel::background().withAlpha(0.5f));
   }
 
   void BandStrip::resized()
@@ -2066,7 +2066,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
   #include <JuceHeader.h>
   #include "LookAndFeel.h"
 
-  class SheepImagerProcessor;
+  class ScatterProcessor;
 
   /**
    * 2D visualization of the 6-band stereo field.
@@ -2079,7 +2079,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
   class FrequencyDisplay : public juce::Component
   {
   public:
-      explicit FrequencyDisplay(SheepImagerProcessor& processor);
+      explicit FrequencyDisplay(ScatterProcessor& processor);
       ~FrequencyDisplay() override = default;
 
       void paint(juce::Graphics&) override;
@@ -2101,7 +2101,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
       // Find which crossover handle (0..4) is nearest to x, within a grab radius
       int hitTestHandle(float x) const;
 
-      SheepImagerProcessor& processor;
+      ScatterProcessor& processor;
 
       int draggingHandle = -1;   // index of handle being dragged, -1 if none
       int hoveredHandle  = -1;   // index of hovered handle for tooltip
@@ -2121,7 +2121,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
   #include "../PluginProcessor.h"
   #include <cmath>
 
-  FrequencyDisplay::FrequencyDisplay(SheepImagerProcessor& p) : processor(p)
+  FrequencyDisplay::FrequencyDisplay(ScatterProcessor& p) : processor(p)
   {
       setMouseCursor(juce::MouseCursor::NormalCursor);
   }
@@ -2167,7 +2167,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
       auto bounds = getLocalBounds().toFloat();
 
       // Background
-      g.setColour(SheepLookAndFeel::background());
+      g.setColour(ScatterLookAndFeel::background());
       g.fillRect(bounds);
 
       // Gather current crossover positions and widths
@@ -2196,17 +2196,17 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
           bool bypassed = *processor.apvts.getRawParameterValue("band_" + juce::String(n+1) + "_bypass") > 0.5f;
           float alpha = bypassed ? 0.1f : 0.25f;
 
-          g.setColour(SheepLookAndFeel::bandColor(n).withAlpha(alpha));
+          g.setColour(ScatterLookAndFeel::bandColor(n).withAlpha(alpha));
           g.fillRect(x, topY, w, bottomY - topY);
 
           // Top edge line
-          g.setColour(SheepLookAndFeel::bandColor(n).withAlpha(bypassed ? 0.2f : 0.7f));
+          g.setColour(ScatterLookAndFeel::bandColor(n).withAlpha(bypassed ? 0.2f : 0.7f));
           g.drawLine(x, topY, x + w, topY, 1.5f);
       }
 
       // Reference line at 100% width
       float y100 = widthToY(100.0f);
-      g.setColour(SheepLookAndFeel::textSecondary().withAlpha(0.3f));
+      g.setColour(ScatterLookAndFeel::textSecondary().withAlpha(0.3f));
       const float dashPattern[] = { 4.0f, 4.0f };
       g.drawDashedLine(juce::Line<float>(0.0f, y100, (float)getWidth(), y100),
                        dashPattern, 2, 0.5f, 0);
@@ -2219,13 +2219,13 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
           bool isDragging = (draggingHandle == i);
 
           // Vertical line
-          g.setColour(SheepLookAndFeel::textSecondary().withAlpha(isDragging ? 0.9f : (isHovered ? 0.6f : 0.35f)));
+          g.setColour(ScatterLookAndFeel::textSecondary().withAlpha(isDragging ? 0.9f : (isHovered ? 0.6f : 0.35f)));
           g.drawLine(hx, 0, hx, (float)getHeight(), 1.0f);
 
           // Handle circle at bottom
-          g.setColour(isDragging ? SheepLookAndFeel::accent()
-                      : isHovered ? SheepLookAndFeel::textPrimary()
-                                  : SheepLookAndFeel::textSecondary());
+          g.setColour(isDragging ? ScatterLookAndFeel::accent()
+                      : isHovered ? ScatterLookAndFeel::textPrimary()
+                                  : ScatterLookAndFeel::textSecondary());
           g.fillEllipse(hx - kHandleRadius, (float)getHeight() - kHandleRadius * 2,
                         kHandleRadius * 2, kHandleRadius * 2);
 
@@ -2236,14 +2236,14 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
                   ? juce::String(xoHz[i] / 1000.0f, 1) + " kHz"
                   : juce::String((int)xoHz[i]) + " Hz";
               g.setFont(juce::Font(juce::FontOptions().withName("SF Mono").withHeight(9.0f)));
-              g.setColour(SheepLookAndFeel::textPrimary());
+              g.setColour(ScatterLookAndFeel::textPrimary());
               g.drawText(label, (int)hx - 24, (int)getHeight() - 28, 50, 12,
                          juce::Justification::centred);
           }
       }
 
       // Border
-      g.setColour(SheepLookAndFeel::border());
+      g.setColour(ScatterLookAndFeel::border());
       g.drawRect(bounds, 1.0f);
   }
 
@@ -2314,11 +2314,11 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
   #include "ui/BandStrip.h"
   #include "ui/FrequencyDisplay.h"
 
-  class SheepImagerEditor : public juce::AudioProcessorEditor, private juce::Timer
+  class ScatterEditor : public juce::AudioProcessorEditor, private juce::Timer
   {
   public:
-      explicit SheepImagerEditor(SheepImagerProcessor&);
-      ~SheepImagerEditor() override;
+      explicit ScatterEditor(ScatterProcessor&);
+      ~ScatterEditor() override;
 
       void paint(juce::Graphics&) override;
       void resized() override;
@@ -2327,8 +2327,8 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
       void timerCallback() override;
       void updateBandRangeLabels();
 
-      SheepImagerProcessor& processor;
-      SheepLookAndFeel laf;
+      ScatterProcessor& processor;
+      ScatterLookAndFeel laf;
 
       HeaderBar      headerBar;
       FrequencyDisplay freqDisplay;
@@ -2347,7 +2347,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
   ```cpp
   #include "PluginEditor.h"
 
-  SheepImagerEditor::SheepImagerEditor(SheepImagerProcessor& p)
+  ScatterEditor::ScatterEditor(ScatterProcessor& p)
       : AudioProcessorEditor(&p), processor(p),
         headerBar(p), freqDisplay(p)
   {
@@ -2369,18 +2369,18 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
       startTimerHz(15); // refresh freq range labels as XOs move
   }
 
-  SheepImagerEditor::~SheepImagerEditor()
+  ScatterEditor::~ScatterEditor()
   {
       stopTimer();
       setLookAndFeel(nullptr);
   }
 
-  void SheepImagerEditor::paint(juce::Graphics& g)
+  void ScatterEditor::paint(juce::Graphics& g)
   {
-      g.fillAll(SheepLookAndFeel::background());
+      g.fillAll(ScatterLookAndFeel::background());
   }
 
-  void SheepImagerEditor::resized()
+  void ScatterEditor::resized()
   {
       auto area = getLocalBounds();
       headerBar.setBounds(area.removeFromTop(kHeaderH));
@@ -2394,7 +2394,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
       bandStrips[5]->setBounds(area); // remainder
   }
 
-  void SheepImagerEditor::timerCallback()
+  void ScatterEditor::timerCallback()
   {
       updateBandRangeLabels();
       for (auto& strip : bandStrips)
@@ -2402,7 +2402,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
       freqDisplay.repaint();
   }
 
-  void SheepImagerEditor::updateBandRangeLabels()
+  void ScatterEditor::updateBandRangeLabels()
   {
       float xoHz[5];
       for (int i = 0; i < 5; ++i)
@@ -2422,16 +2422,16 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
   return new juce::GenericAudioProcessorEditor(*this);
 
   // AFTER:
-  return new SheepImagerEditor(*this);
+  return new ScatterEditor(*this);
   ```
 
 - [ ] **Build and load in Logic Pro**
 
   ```bash
-  cmake --build build --config Debug --target SheepImager_AU -- -quiet
+  cmake --build build --config Debug --target Scatter_AU -- -quiet
   ```
 
-  Open Logic Pro, load Sheep Imager on a track. Verify:
+  Open Logic Pro, load Scatter on a track. Verify:
   - [ ] Window is 600×380px, dark background
   - [ ] Header shows "sheep imager", IN/OUT sliders, BYP button
   - [ ] Frequency display shows 6 colored bands and draggable crossover handles
@@ -2463,7 +2463,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 - [ ] **Build Release and install**
 
   ```bash
-  cmake --build build --config Release --target SheepImager_AU SheepImager_VST3 -- -quiet
+  cmake --build build --config Release --target Scatter_AU Scatter_VST3 -- -quiet
   # Release build installs to ~/Library/Audio/Plug-Ins/
   ```
 
@@ -2479,7 +2479,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 - [ ] **Run auval**
 
   ```bash
-  auval -v aufx Shim Essc
+  auval -v aufx Scat Essc
   # Expected output ends with:
   #   VALIDATING: .... PASSED
   # Common failures and fixes:
@@ -2488,7 +2488,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
   #   "failed to initialize" → check for crashes in prepareToPlay
   ```
 
-  > Note: If `auval` cannot find the plugin, run `auval -a` to list all installed AU plugins and verify "Sheep Imager" appears.
+  > Note: If `auval` cannot find the plugin, run `auval -a` to list all installed AU plugins and verify "Scatter" appears.
 
 - [ ] **Fix any auval failures**
 
@@ -2512,7 +2512,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 - [ ] **Run pluginval on the VST3**
 
   ```bash
-  pluginval --validate ~/Library/Audio/Plug-Ins/VST3/SheepImager.vst3 --strictness-level 5 --output-dir /tmp/pluginval-results
+  pluginval --validate ~/Library/Audio/Plug-Ins/VST3/Scatter.vst3 --strictness-level 5 --output-dir /tmp/pluginval-results
   # Expected: All tests pass at strictness level 5
   ```
 
@@ -2524,7 +2524,7 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 
 - [ ] **Manual test in Logic Pro**
 
-  1. Open Logic Pro, load Sheep Imager on a track
+  1. Open Logic Pro, load Scatter on a track
   2. Drag XO1 to ~300 Hz (away from default 150 Hz)
   3. Set Band 3 width to 75%
   4. Toggle Band 2 bypass ON
@@ -2541,19 +2541,19 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 - [ ] **Copy SVG from sheep project**
 
   ```bash
-  cp /Volumes/zodlightning/sites/sheep/icon.svg /Volumes/zodlightning/sites/sheep-imager/Resources/sheep-logo.svg
+  cp /Volumes/zodlightning/sites/sheep/icon.svg /Volumes/zodlightning/sites/sheep/plugins/scatter/Resources/sheep-logo.svg
   ```
 
   The SVG contains the waveform-bars icon used in FooterBar. FooterBar currently draws it programmatically — this file is for documentation and future use.
 
 ---
 
-### Task 23: Add CLAUDE.md to sheep-imager
+### Task 23: Add CLAUDE.md to scatter
 
-- [ ] **Create `/Volumes/zodlightning/sites/sheep-imager/CLAUDE.md`**
+- [ ] **Create `/Volumes/zodlightning/sites/sheep/plugins/scatter/CLAUDE.md`**
 
   ```markdown
-  # CLAUDE.md — Sheep Imager
+  # CLAUDE.md — Scatter
 
   AU + VST3 plugin for macOS. 6-band multiband stereo imager.
 
@@ -2561,16 +2561,16 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 
   ```bash
   cmake -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
-  cmake --build build --config Debug --target SheepImager_AU SheepImager_VST3
-  cmake --build build --config Debug --target SheepImagerTests
-  ./build/SheepImagerTests_artefacts/Debug/SheepImagerTests
+  cmake --build build --config Debug --target Scatter_AU Scatter_VST3
+  cmake --build build --config Debug --target ScatterTests
+  ./build/ScatterTests_artefacts/Debug/ScatterTests
   ```
 
   ## Validate
 
   ```bash
-  auval -v aufx Shim Essc
-  pluginval --validate ~/Library/Audio/Plug-Ins/VST3/SheepImager.vst3
+  auval -v aufx Scat Essc
+  pluginval --validate ~/Library/Audio/Plug-Ins/VST3/Scatter.vst3
   ```
 
   ## Architecture
@@ -2582,11 +2582,11 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 
   ## Spec
 
-  Full design spec: `../sheep/docs/superpowers/specs/2026-03-12-sheep-imager-design.md`
+  Full design spec: `../sheep/docs/superpowers/specs/2026-03-12-scatter-design.md`
 
   ## Notes
 
-  - Plugin codes: manufacturer `Essc`, plugin `Shim` — verify no collision before distribution
+  - Plugin codes: manufacturer `Essc`, plugin `Scat` — verify no collision before distribution
   - Solo state is NOT an APVTS parameter — it is a `uint8_t soloState` bitmask on the processor
   - LR4 crossovers use clamp-the-mover: dragged handle stops at its limit, neighbors never move
   - No gain compensation at 0% width — by design (see spec §3.3)
@@ -2599,9 +2599,9 @@ The frequency display draws 6 colored band rectangles and 5 draggable crossover 
 - [ ] **Stage and commit everything**
 
   ```bash
-  cd /Volumes/zodlightning/sites/sheep-imager
+  cd /Volumes/zodlightning/sites/sheep/plugins/scatter
   git add .
-  git commit -m "feat: complete Sheep Imager v1.0.0 — AU+VST3, 6-band multiband stereo imager"
+  git commit -m "feat: complete Scatter v1.0.0 — AU+VST3, 6-band multiband stereo imager"
   git tag v1.0.0
   ```
 
