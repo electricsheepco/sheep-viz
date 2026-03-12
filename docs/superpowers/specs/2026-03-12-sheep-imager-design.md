@@ -36,7 +36,7 @@ The plugin should feel like it was made by someone who mixes — not someone who
 
 ### 3.1 Core Concept
 
-6-band stereo width processing using Mid/Side (M/S) technique. Each band is independently width-controlled. Bands are isolated via Linkwitz-Riley crossover filters (4th order, LR4), which sum to a mathematically flat frequency response — no coloration when all widths are at 100%.
+6-band stereo width processing using Mid/Side (M/S) technique. Each band is independently width-controlled. Bands are isolated via Linkwitz-Riley crossover filters (4th order, LR4), which sum to a flat amplitude response when all bands are at unity width (100%). Note: LR4 filters introduce phase rotation near crossover frequencies — phase-linear crossovers are out of scope for v1. The plugin introduces zero samples of latency (`setLatencySamples(0)`).
 
 ### 3.2 Signal Flow
 
@@ -67,16 +67,24 @@ Stereo Output (L/R)
 ### 3.3 M/S Encoding
 
 ```
-Mid  = (L + R) / 2
-Side = (L - R) / 2
+// Encode
+Mid  = (L + R) / 2      // [-1.0, 1.0]
+Side = (L - R) / 2      // [-1.0, 1.0]
 
-Width 0%:   Output = Mid only (mono-compatible)
-Width 100%: Output = original L/R (unity)
-Width >100%: Side channel amplified (hyper-wide, use with care)
+// Width: 0% → 0.0, 100% → 1.0, 150% → 1.5
+width_factor = width_percent / 100.0
 
+// Decode
 L_out = Mid + (Side × width_factor)
 R_out = Mid - (Side × width_factor)
 ```
+
+**Gain behavior:**
+- Width 100% (unity): `L_out = L`, `R_out = R` — exact passthrough ✓
+- Width 0% (mono): `L_out = R_out = (L+R)/2` — fully mono-compatible. Side energy is discarded. For a mono source (L=R), output level is unchanged. For a stereo source with significant side content, some energy is lost — this is expected and correct behavior for a width reduction.
+- Width >100% (hyper-wide): Side channel amplified. Can exceed 0dBFS on material with strong stereo content; document as intentional, no hard clamp.
+
+**No gain compensation is applied.** Mid is not boosted when Side is reduced. This matches the behavior of standard M/S processor design and is transparent on mono-compatible material (kick, bass). Users should compensate with the output gain control if needed after collapsing to mono.
 
 ### 3.4 Default Band Configuration
 
@@ -94,26 +102,32 @@ R_out = Mid - (Side × width_factor)
 - **Type:** Linkwitz-Riley 4th order (LR4)
 - **Implementation:** Two cascaded 2nd-order Butterworth filters per crossover
 - **Slopes:** -24 dB/oct
-- **Phase:** All bands sum flat with zero amplitude error
-- **Crossover range:** 20 Hz – 20000 Hz, min spacing 50 Hz between adjacent crossovers
+- **Amplitude:** All bands sum flat (within <0.1dB)
+- **Phase:** Phase rotation occurs near crossover frequencies (inherent to IIR). Phase-linear crossovers are out of scope for v1.
+- **Crossover range:** 40 Hz – 18000 Hz (practical bounds; prevents zero-bandwidth bands at the frequency floor/ceiling). Min 50 Hz spacing between adjacent crossovers.
+- **Sample rate handling:** Biquad coefficients recalculated in `prepareToPlay` on every sample rate change. Supported sample rates: 44100, 48000, 88200, 96000, 176400, 192000 Hz.
 
 ### 3.6 Crossover Default Frequencies
 
-| Crossover | Default | Min | Max |
-|-----------|---------|-----|-----|
-| XO1 | 150 Hz | 20 Hz | XO2 - 50 Hz |
-| XO2 | 500 Hz | XO1 + 50 Hz | XO3 - 50 Hz |
-| XO3 | 2000 Hz | XO2 + 50 Hz | XO4 - 50 Hz |
-| XO4 | 5000 Hz | XO3 + 50 Hz | XO5 - 50 Hz |
-| XO5 | 10000 Hz | XO4 + 50 Hz | 20000 Hz |
+| Crossover | Default | Hard Min | Hard Max |
+|-----------|---------|----------|----------|
+| XO1 | 150 Hz | 40 Hz | 18000 Hz |
+| XO2 | 500 Hz | 40 Hz | 18000 Hz |
+| XO3 | 2000 Hz | 40 Hz | 18000 Hz |
+| XO4 | 5000 Hz | 40 Hz | 18000 Hz |
+| XO5 | 10000 Hz | 40 Hz | 18000 Hz |
+
+Crossover ordering constraint enforced at parameter level (not just UI): `XO(N) ≤ XO(N+1) - 50Hz` always. Constraint is enforced in `parameterChanged` by clamping the changed parameter and pushing adjacent crossovers if needed (cascade clamp). JUCE `AudioParameterFloat` static ranges cover the full shared range; dynamic ordering is enforced in the processor layer, not the parameter range itself.
 
 ---
 
 ## 4. Parameters
 
-All parameters are automatable and MIDI-CC mappable.
+### 4.1 Automatable Parameters
 
-### 4.1 Global Parameters
+These are registered as `AudioParameterFloat` / `AudioParameterBool` in JUCE and are available for DAW automation and MIDI-CC mapping. All automatable parameters use `SmoothedValue<float>` with a 20ms linear ramp applied per-sample in `processBlock` to prevent zipper noise.
+
+**Global (3):**
 
 | ID | Name | Range | Default | Unit |
 |----|------|--------|---------|------|
@@ -121,21 +135,26 @@ All parameters are automatable and MIDI-CC mappable.
 | `output_gain` | Output Gain | -24 to +24 | 0.0 | dB |
 | `bypass` | Bypass | 0/1 | 0 | — |
 
-### 4.2 Per-Band Parameters (×6, prefixed `band_N_`)
+**Per-Band (×6, prefixed `band_N_`, N = 1–6) — 12 parameters:**
 
 | ID Suffix | Name | Range | Default | Unit |
 |-----------|------|--------|---------|------|
 | `width` | Width | 0 – 150 | varies | % |
 | `bypass` | Band Bypass | 0/1 | 0 | — |
-| `solo` | Band Solo | 0/1 | 0 | — |
 
-### 4.3 Crossover Parameters (×5, prefixed `xo_N_`)
+**Crossover (×5, prefixed `xo_N_`, N = 1–5) — 5 parameters:**
 
 | ID Suffix | Name | Range | Default | Unit |
 |-----------|------|--------|---------|------|
-| `freq` | Frequency | 20 – 20000 | varies | Hz |
+| `freq` | Frequency | 40 – 18000 | varies | Hz |
 
-Total parameter count: 3 + (6 × 3) + (5 × 1) = **26 parameters**
+**Total automatable parameter count:** 3 + (6 × 2) + (5 × 1) = **20 parameters**
+
+### 4.2 Non-Automatable State
+
+**Band Solo** is not a DAW-automatable parameter. It is runtime state stored in `PluginProcessor` as a bitmask (`soloState: uint8_t`). Solo is intentionally excluded from automation because it behaves as a monitoring mode toggle with side effects on all bands simultaneously — DAW automation of solo across multiple bands simultaneously produces undefined playback behavior.
+
+Solo state persists across session save/load via `getStateInformation` / `setStateInformation` alongside all automatable parameters. Solo state is saved as a raw int in the XML state tree under key `soloState`.
 
 ---
 
@@ -188,9 +207,10 @@ Flat, dark, immediate. The user should understand what the plugin does within tw
 The main visual: a 2D map where X = frequency (log scale) and Y = stereo width.
 
 - Each of the 6 bands is a colored rectangle filling its frequency range
-- Height of each rectangle = current width value
-- Crossover points are vertical handles on the X axis, draggable left/right
-- Hovering a crossover shows its Hz value
+- Height of each rectangle = current width value for that band (driven by band strip sliders)
+- **The frequency display is a live read-only visualization.** It reflects parameter state but is not a second input surface — band widths can only be set via the band strip sliders. This avoids dual-input state sync complexity in v1.
+- Crossover points are vertical handles on the X axis, draggable left/right — these ARE the primary input for crossover parameters
+- Hovering a crossover handle shows its Hz value as a floating label
 - Band colors are distinct but muted (not neon) — desaturated versions of sheep-viz accent palette
 - A horizontal dashed line at "0% width" = center reference
 - A horizontal dashed line at "100% width" = full stereo reference
@@ -289,8 +309,8 @@ sheep-imager/
 juce_add_plugin(SheepImager
     FORMATS AU VST3
     PLUGIN_NAME "Sheep Imager"
-    PLUGIN_MANUFACTURER_CODE Essc
-    PLUGIN_CODE Shim
+    PLUGIN_MANUFACTURER_CODE Essc   # Must be unique; verify via Apple AU registry
+    PLUGIN_CODE Shim                # Must be unique; verify no collision before shipping
     PLUGIN_MANUFACTURER "Electric Sheep Supply Co."
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
@@ -299,8 +319,15 @@ juce_add_plugin(SheepImager
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     VST3_CATEGORIES "Fx Spatial"
     AU_MAIN_TYPE "kAudioUnitType_Effect"
+    COPY_PLUGIN_AFTER_BUILD TRUE     # Auto-install to ~/Library during dev
 )
 ```
+
+**Channel layout:** The plugin declares a single stereo bus layout (2-in, 2-out) via `isBusesLayoutSupported`. Mono input is not supported in v1. This must be declared explicitly so hosts can reject invalid configurations gracefully.
+
+**Plugin code uniqueness:** `Shim` / `Essc` must be verified as unused before distribution. Collision causes AU validation failure. Search the community registry and run `auval -a` locally after install to confirm no conflict.
+
+**Universal binary:** JUCE CMake produces a universal binary (arm64 + x86_64) by default on macOS when building with Xcode. No additional configuration required.
 
 ### 8.2 macOS Requirements
 
@@ -318,12 +345,16 @@ juce_add_plugin(SheepImager
 
 ## 9. Error Handling & Edge Cases
 
-- **Crossover collision:** Enforce minimum 50 Hz spacing between adjacent crossovers in parameter system, not just UI
-- **Solo conflict:** Multiple solos active simultaneously = all active-solo bands audible (additive, not exclusive)
-- **Hyper-wide artifacts:** Width > 100% documented as intentional; no hard clamp, but default max in UI is 150%
-- **Denormals:** Flush to zero enabled in audio callback
-- **Bypass:** True bypass (copy input to output), not soft bypass — avoids latency tail issues
-- **DAW automation:** All 26 parameters smoothed with 20ms ramp to prevent zipper noise
+- **Crossover collision:** See Section 3.6 — cascade clamp enforced in `parameterChanged`
+- **Solo conflict:** Multiple solos active = all active-solo bands audible (additive, not exclusive). Solo is runtime state, not automatable (see Section 4.2).
+- **Solo + bypass:** A band that is both bypassed and soloed outputs silence for that band (bypass wins). Solo of a bypassed band is a no-op from an audio perspective.
+- **Solo only active band:** If the sole non-bypassed band is the only soloed band, output is that band only. No implicit fallback.
+- **Hyper-wide artifacts:** Width > 100% documented as intentional; no hard clamp, but UI slider max is 150%
+- **Denormals:** `FloatVectorOperations::disableDenormalisedNumberSupport()` called in `prepareToPlay`
+- **Bypass:** True bypass (copy input to output via `juce::AudioBuffer::copyFrom`), not soft bypass — avoids latency tail artifacts
+- **Parameter smoothing:** All 20 automatable parameters use `SmoothedValue<float>` (linear, 20ms ramp). Applied per-sample in `processBlock`.
+- **State persistence:** `getStateInformation` serializes all 20 automatable parameters by string ID + `soloState` bitmask into a JUCE `ValueTree` → XML. `setStateInformation` restores by ID (not by index) for forward compatibility.
+- **Zero latency:** `setLatencySamples(0)` called in constructor. Declared to host via standard JUCE mechanism.
 
 ---
 
@@ -331,14 +362,19 @@ juce_add_plugin(SheepImager
 
 | Test | Method |
 |------|--------|
-| LR4 crossovers sum flat | Generate pink noise, apply all bands at 100%, compare input/output spectrum — must be <0.1dB deviation |
-| M/S at 0% = mono | Verify L == R when width = 0% |
-| M/S at 100% = unity | Verify input == output when all widths = 100% |
-| No CPU spikes | Profile in Logic Pro with 256 sample buffer |
-| AU validation | `auval -v aufx Shim Essc` must pass |
-| VST3 validation | JUCE pluginval tool |
-| Crossover drag | Smoke test: all 5 crossovers draggable to limits without crash |
-| Preset state save/load | Save plugin state in DAW, reload session — verify all params restore |
+| LR4 crossovers sum flat | Pink noise in, all bands at 100%, compare I/O spectrum — must be <0.1dB deviation across 20Hz–20kHz |
+| M/S at 0% = mono | Verify `L_out == R_out` for all input when band width = 0% |
+| M/S at 100% = unity | Verify `L_out == L_in` and `R_out == R_in` when all band widths = 100% |
+| Mono source at 0% = no level change | Feed identical L/R signal, verify output level unchanged at width=0% |
+| Crossover constraint | Set XO2 below XO1 programmatically, verify cascade clamp fires, no crossover inversion |
+| Sample rate change | Switch host sample rate mid-session, verify no silence/crash and filter recalculates |
+| Solo + bypass interaction | Bypass a band, solo it, verify silence |
+| No CPU spikes | Profile in Logic Pro with 256-sample buffer, verify <5% CPU on M-series chip |
+| AU validation | `auval -v aufx Shim Essc` — note: codes are case-sensitive, must match compiled binary exactly |
+| VST3 validation | JUCE pluginval — run against VST3 binary |
+| Crossover drag UI | All 5 crossovers draggable to hard limits without crash or visual artifact |
+| State save/load | Save in Logic, reload session — all 20 automatable params + soloState restore correctly |
+| Latency declaration | Verify host reports 0 samples PDC for this plugin |
 
 ---
 
@@ -348,11 +384,12 @@ juce_add_plugin(SheepImager
 - AAX (Pro Tools) format
 - Resizable UI
 - Preset library / preset manager
-- Spectrum analyzer overlay
+- Spectrum analyzer overlay on frequency display
 - Mid-only or Side-only monitoring toggle
 - Correlation meter
 - CLAP format
-- M1/Intel universal binary (builds will be universal by default via JUCE CMake)
+- Gain compensation on width reduction (intentional design decision — see Section 3.3)
+- Dragging band rectangles in frequency display as a second width input (display is read-only in v1)
 
 ---
 
