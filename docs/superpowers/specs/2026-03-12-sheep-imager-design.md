@@ -90,12 +90,14 @@ R_out = Mid - (Side × width_factor)
 
 | # | Band Name | Default Range | Default Width | Stereo Position |
 |---|-----------|--------------|---------------|-----------------|
-| 1 | Sub/Low | 20 – 150 Hz | 0% | Center |
+| 1 | Sub/Low | **20 Hz** – 150 Hz | 0% | Center |
 | 2 | Low-Mid | 150 – 500 Hz | 15% | Center-L/R |
 | 3 | Mid | 500 – 2000 Hz | 35% | Center-L/R |
 | 4 | Upper-Mid | 2000 – 5000 Hz | 60% | Side-L/R |
 | 5 | High | 5000 – 10000 Hz | 80% | Side-L/R |
-| 6 | Air | 10000 – 20000 Hz | 100% | Extreme-L/R |
+| 6 | Air | 10000 – **20000 Hz** | 100% | Extreme-L/R |
+
+Band 1's lower bound (20 Hz) and Band 6's upper bound (20 kHz) are fixed — they are the hard spectrum floor/ceiling, not user-adjustable crossover positions. XO1 can be dragged as low as 40 Hz (per Section 3.6), making Band 1 potentially as narrow as 20–40 Hz.
 
 ### 3.5 Crossover Filters
 
@@ -117,7 +119,9 @@ R_out = Mid - (Side × width_factor)
 | XO4 | 5000 Hz | 40 Hz | 18000 Hz |
 | XO5 | 10000 Hz | 40 Hz | 18000 Hz |
 
-Crossover ordering constraint enforced at parameter level (not just UI): `XO(N) ≤ XO(N+1) - 50Hz` always. Constraint is enforced in `parameterChanged` by clamping the changed parameter and pushing adjacent crossovers if needed (cascade clamp). JUCE `AudioParameterFloat` static ranges cover the full shared range; dynamic ordering is enforced in the processor layer, not the parameter range itself.
+Crossover ordering constraint: `XO(N) ≤ XO(N+1) - 50Hz` always. Enforced in `parameterChanged` using a **clamp-the-mover** strategy: the moved crossover is clamped to the nearest valid position (`XO(N-1) + 50Hz` or `XO(N+1) - 50Hz`) and neighboring crossovers are never pushed. This means a user cannot force adjacent crossovers apart by dragging one through another — the dragged handle stops at its limit. No cascade propagation. This is simpler to implement and avoids unexpected movement of crossovers the user did not touch.
+
+JUCE `AudioParameterFloat` static ranges cover the full shared range (40–18000 Hz); dynamic ordering is enforced in the processor layer, not the parameter range itself.
 
 ---
 
@@ -129,26 +133,30 @@ These are registered as `AudioParameterFloat` / `AudioParameterBool` in JUCE and
 
 **Global (3):**
 
-| ID | Name | Range | Default | Unit |
-|----|------|--------|---------|------|
-| `input_gain` | Input Gain | -24 to +24 | 0.0 | dB |
-| `output_gain` | Output Gain | -24 to +24 | 0.0 | dB |
-| `bypass` | Bypass | 0/1 | 0 | — |
+| ID | Name | Type | Range | Default | Unit |
+|----|------|------|--------|---------|------|
+| `input_gain` | Input Gain | Float | -24 to +24 | 0.0 | dB |
+| `output_gain` | Output Gain | Float | -24 to +24 | 0.0 | dB |
+| `bypass` | Bypass | Bool | 0/1 | 0 | — |
 
 **Per-Band (×6, prefixed `band_N_`, N = 1–6) — 12 parameters:**
 
-| ID Suffix | Name | Range | Default | Unit |
-|-----------|------|--------|---------|------|
-| `width` | Width | 0 – 150 | varies | % |
-| `bypass` | Band Bypass | 0/1 | 0 | — |
+| ID Suffix | Name | Type | Range | Default | Unit |
+|-----------|------|------|--------|---------|------|
+| `width` | Width | Float | 0 – 150 | varies | % |
+| `bypass` | Band Bypass | Bool | 0/1 | 0 | — |
 
 **Crossover (×5, prefixed `xo_N_`, N = 1–5) — 5 parameters:**
 
-| ID Suffix | Name | Range | Default | Unit |
-|-----------|------|--------|---------|------|
-| `freq` | Frequency | 40 – 18000 | varies | Hz |
+| ID Suffix | Name | Type | Range | Default | Unit |
+|-----------|------|------|--------|---------|------|
+| `freq` | Frequency | Float | 40 – 18000 | varies | Hz |
 
-**Total automatable parameter count:** 3 + (6 × 2) + (5 × 1) = **20 parameters**
+**Total automatable parameter count:** 3 + (6 × 2) + (5 × 1) = **20 parameters** (13 float, 7 bool)
+
+**Smoothing:** All **float** automatable parameters (13 total: `input_gain`, `output_gain`, 6× `band_N_width`, 5× `xo_N_freq`) use `SmoothedValue<float>` with a 20ms linear ramp per-sample in `processBlock`.
+
+**Bypass transition:** Bool parameters (`bypass`, `band_N_bypass`) use hard switching — no ramp. To suppress click artifacts on global bypass, a 5ms linear mute-in/mute-out applied in the audio callback before the hard copy. Per-band bypass uses instant switching (bands are part of a summed signal; single-band pops are inaudible at normal levels).
 
 ### 4.2 Non-Automatable State
 
@@ -312,6 +320,7 @@ juce_add_plugin(SheepImager
     PLUGIN_MANUFACTURER_CODE Essc   # Must be unique; verify via Apple AU registry
     PLUGIN_CODE Shim                # Must be unique; verify no collision before shipping
     PLUGIN_MANUFACTURER "Electric Sheep Supply Co."
+    PLUGIN_VERSION "1.0.0"          # Required for Info.plist generation
     IS_SYNTH FALSE
     NEEDS_MIDI_INPUT FALSE
     NEEDS_MIDI_OUTPUT FALSE
