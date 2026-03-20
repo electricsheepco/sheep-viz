@@ -1,9 +1,10 @@
-# CLAUDE.md - Sheep
+# CLAUDE.md - viz-by-sheep
 
 Creative coding for **Electric Sheep Supply Co.** music visuals, videos, and generative art.
 
 **Live:** https://sheep-xi.vercel.app
-**GitHub:** https://github.com/electricsheepco/sheep-viz
+**GitHub:** https://github.com/electricsheepco/viz-by-sheep
+**Local:** `/Volumes/zodlightning/sites/sheep/viz-by-sheep/`
 **Instagram:** @sheep.sheep.sheep.sheep.sheep.
 
 ## Recent Changes
